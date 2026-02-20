@@ -1,0 +1,20 @@
+[project]
+name = "alrt-workers"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "celery[redis]>=5.4",
+    "httpx>=0.28",
+    "cryptography>=44",
+    "alrt-db",
+]
+
+[tool.uv.sources]
+alrt-db = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["alrt_workers"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
