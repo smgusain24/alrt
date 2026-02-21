@@ -1,12 +1,11 @@
 import json
 import logging
-import os
 
 import httpx
-from cryptography.fernet import Fernet
 from sqlalchemy import select
 
 from alrt_workers.celery_app import celery_app
+from alrt_workers.utils.crypto import get_fernet
 from alrt_workers.utils.retry import EMAIL_RETRY
 from alrt_workers.utils.template import render
 from alrt_db.session import sync_session
@@ -37,7 +36,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
             log.warning(f"No email provider configured for team {team_id}")
             return
 
-        f = Fernet(os.getenv("ENCRYPTION_KEY", "").encode())
+        f = get_fernet()
         config = json.loads(f.decrypt(provider.config["encrypted"].encode()))
 
         subject = render(template_data.get("subject", ""), payload)
@@ -51,7 +50,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
                 subscriber_id=subscriber_id,
                 workflow_execution_id=execution_id,
                 channel="email",
-                title=subject,
+                title=subject[:500] if subject else None,
                 body=body_html,
                 payload=payload,
                 status="pending",
@@ -65,20 +64,23 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
             notification.status = "sent"
             db.commit()
         except Exception as exc:
-            log.error(f"Email delivery failed for notification {notification.id}: {exc}")
-            if self.request.retries >= self.max_retries:
+            nid = getattr(notification, "id", None)
+            log.error(f"Email delivery failed for notification {nid}: {exc}")
+            if nid and self.request.retries >= self.max_retries:
                 notification.status = "failed"
                 db.commit()
                 raise
-            db.commit()
-            raise self.retry(exc=exc, kwargs={
-                "execution_id": execution_id,
-                "subscriber_id": subscriber_id,
-                "team_id": team_id,
-                "template_data": template_data,
-                "payload": payload,
-                "notification_id": str(notification.id),
-            })
+            if nid:
+                db.commit()
+                raise self.retry(exc=exc, kwargs={
+                    "execution_id": execution_id,
+                    "subscriber_id": subscriber_id,
+                    "team_id": team_id,
+                    "template_data": template_data,
+                    "payload": payload,
+                    "notification_id": str(nid),
+                })
+            raise
 
 
 def _send_email(provider_type, config, to_email, subject, body_html):

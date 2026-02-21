@@ -28,7 +28,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
                 subscriber_id=subscriber_id,
                 workflow_execution_id=execution_id,
                 channel="in_app",
-                title=title,
+                title=title[:500] if title else None,
                 body=body,
                 action_url=action_url,
                 payload=payload,
@@ -57,17 +57,20 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
             notification.status = "sent"
             db.commit()
         except Exception as exc:
-            log.error(f"In-app delivery failed for notification {notification.id}: {exc}")
-            if self.request.retries >= self.max_retries:
+            nid = getattr(notification, "id", None)
+            log.error(f"In-app delivery failed for notification {nid}: {exc}")
+            if nid and self.request.retries >= self.max_retries:
                 notification.status = "failed"
                 db.commit()
                 raise
-            db.commit()
-            raise self.retry(exc=exc, kwargs={
-                "execution_id": execution_id,
-                "subscriber_id": subscriber_id,
-                "team_id": team_id,
-                "template_data": template_data,
-                "payload": payload,
-                "notification_id": str(notification.id),
-            })
+            if nid:
+                db.commit()
+                raise self.retry(exc=exc, kwargs={
+                    "execution_id": execution_id,
+                    "subscriber_id": subscriber_id,
+                    "team_id": team_id,
+                    "template_data": template_data,
+                    "payload": payload,
+                    "notification_id": str(nid),
+                })
+            raise
