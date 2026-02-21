@@ -1,10 +1,12 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from alrt.config import settings
 from alrt.deps import get_db, get_current_team
+from alrt.middleware.rate_limit import limiter
 from alrt.schemas.subscriber import (
     CreateSubscriber,
     SubscriberResponse,
@@ -28,7 +30,9 @@ async def _get_subscriber(db, team_id, external_id):
 
 
 @router.post("", response_model=SubscriberResponse, status_code=201)
+@limiter.limit(settings.rate_limit_write)
 async def create_subscriber(
+    request: Request,
     body: CreateSubscriber,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
@@ -53,7 +57,9 @@ async def create_subscriber(
 
 
 @router.get("/{external_id}", response_model=SubscriberResponse)
+@limiter.limit(settings.rate_limit_read)
 async def get_subscriber(
+    request: Request,
     external_id: str,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
@@ -65,7 +71,9 @@ async def get_subscriber(
 
 
 @router.patch("/{external_id}", response_model=SubscriberResponse)
+@limiter.limit(settings.rate_limit_write)
 async def update_subscriber(
+    request: Request,
     external_id: str,
     body: UpdateSubscriber,
     db: AsyncSession = Depends(get_db),
@@ -85,7 +93,9 @@ async def update_subscriber(
 
 
 @router.delete("/{external_id}", status_code=204)
+@limiter.limit(settings.rate_limit_write)
 async def delete_subscriber(
+    request: Request,
     external_id: str,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
@@ -99,7 +109,9 @@ async def delete_subscriber(
 
 
 @router.get("/{external_id}/preferences")
+@limiter.limit(settings.rate_limit_read)
 async def get_preferences(
+    request: Request,
     external_id: str,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
@@ -111,7 +123,9 @@ async def get_preferences(
 
 
 @router.patch("/{external_id}/preferences")
+@limiter.limit(settings.rate_limit_write)
 async def update_preferences(
+    request: Request,
     external_id: str,
     body: UpdatePreferences,
     db: AsyncSession = Depends(get_db),

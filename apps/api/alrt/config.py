@@ -8,6 +8,11 @@ class Settings(BaseSettings):
     encryption_key: str = "change-me-generate-with-fernet"
     cors_origins: list[str] = ["http://localhost:3000"]
 
+    # Rate limiting
+    rate_limit_write: str = "60/minute"
+    rate_limit_read: str = "120/minute"
+    rate_limit_public: str = "30/minute"
+
     model_config = {"env_file": ".env"}
 
 

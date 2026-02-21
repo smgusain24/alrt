@@ -17,7 +17,8 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     imports=["alrt_workers.tasks.workflow", "alrt_workers.tasks.step_runner", "alrt_workers.tasks.delay",
-             "alrt_workers.tasks.channels.inapp", "alrt_workers.tasks.channels.email"],
+             "alrt_workers.tasks.channels.inapp", "alrt_workers.tasks.channels.email",
+             "alrt_workers.tasks.channels.slack"],
 )
 
 celery_app.conf.beat_schedule = {

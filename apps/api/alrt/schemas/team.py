@@ -16,6 +16,10 @@ class TeamResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TeamCreatedResponse(TeamResponse):
+    raw_key: str
+
+
 class CreateApiKey(BaseModel):
     key_type: str = "server"
 

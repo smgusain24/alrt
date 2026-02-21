@@ -1,10 +1,12 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from alrt.config import settings
 from alrt.deps import get_db, get_current_team
+from alrt.middleware.rate_limit import limiter
 from alrt.schemas.notification import NotificationResponse, UpdateNotification
 from alrt_db.models.notification import Notification
 from alrt_db.models.subscriber import Subscriber
@@ -30,7 +32,9 @@ async def _resolve_subscriber(db, team_id, external_id):
     "/subscribers/{external_id}/notifications",
     response_model=list[NotificationResponse],
 )
+@limiter.limit(settings.rate_limit_read)
 async def list_notifications(
+    request: Request,
     external_id: str,
     channel: str | None = Query(None),
     is_read: bool | None = Query(None),
@@ -60,7 +64,9 @@ async def list_notifications(
     "/subscribers/{external_id}/notifications/{notification_id}",
     response_model=NotificationResponse,
 )
+@limiter.limit(settings.rate_limit_write)
 async def update_notification(
+    request: Request,
     external_id: str,
     notification_id: uuid.UUID,
     body: UpdateNotification,
@@ -89,7 +95,9 @@ async def update_notification(
 
 
 @router.post("/subscribers/{external_id}/notifications/mark-all-read", status_code=204)
+@limiter.limit(settings.rate_limit_write)
 async def mark_all_read(
+    request: Request,
     external_id: str,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),

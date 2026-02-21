@@ -5,14 +5,14 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from alrt_db.session import async_session
+import alrt_db.session as db_session_mod
 from alrt_db.models.api_key import ApiKey
 
 security = HTTPBearer()
 
 
 async def get_db():
-    async with async_session() as session:
+    async with db_session_mod.async_session() as session:
         yield session
 
 

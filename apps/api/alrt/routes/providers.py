@@ -1,12 +1,13 @@
 import uuid
 
 from cryptography.fernet import Fernet
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from alrt.config import settings
 from alrt.deps import get_db, get_current_team
+from alrt.middleware.rate_limit import limiter
 from alrt.schemas.provider import CreateProvider, ProviderResponse
 from alrt_db.models.provider import Provider
 
@@ -31,7 +32,9 @@ def _decrypt_config(config: dict) -> dict:
 
 
 @router.post("", response_model=ProviderResponse, status_code=201)
+@limiter.limit(settings.rate_limit_write)
 async def create_provider(
+    request: Request,
     body: CreateProvider,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
@@ -49,7 +52,9 @@ async def create_provider(
 
 
 @router.get("", response_model=list[ProviderResponse])
+@limiter.limit(settings.rate_limit_read)
 async def list_providers(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
@@ -60,7 +65,9 @@ async def list_providers(
 
 
 @router.delete("/{provider_id}", status_code=204)
+@limiter.limit(settings.rate_limit_write)
 async def delete_provider(
+    request: Request,
     provider_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),

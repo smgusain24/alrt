@@ -1,12 +1,13 @@
 import uuid
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from alrt.config import settings
 from alrt.deps import get_db, get_current_team
+from alrt.middleware.rate_limit import limiter
 from alrt.schemas.event import TriggerEvent, TriggerResponse
 from alrt_db.models.subscriber import Subscriber
 from alrt_db.models.workflow import Workflow
@@ -16,7 +17,9 @@ router = APIRouter(prefix="/events", tags=["events"])
 
 
 @router.post("/trigger", response_model=TriggerResponse, status_code=202)
+@limiter.limit(settings.rate_limit_write)
 async def trigger_event(
+    request: Request,
     body: TriggerEvent,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),

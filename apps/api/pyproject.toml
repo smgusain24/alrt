@@ -8,8 +8,21 @@ dependencies = [
     "pydantic-settings>=2.7",
     "python-jose[cryptography]>=3.3",
     "redis>=5.2",
+    "slowapi>=0.1.9",
     "alrt-db",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+testpaths = ["tests"]
 
 [tool.uv.sources]
 alrt-db = { workspace = true }

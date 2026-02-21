@@ -1,10 +1,12 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from alrt.config import settings
 from alrt.deps import get_db, get_current_team
+from alrt.middleware.rate_limit import limiter
 from alrt.schemas.workflow import CreateWorkflow, UpdateWorkflow, WorkflowResponse
 from alrt_db.models.workflow import Workflow
 
@@ -12,7 +14,9 @@ router = APIRouter(prefix="/workflows", tags=["workflows"])
 
 
 @router.post("", response_model=WorkflowResponse, status_code=201)
+@limiter.limit(settings.rate_limit_write)
 async def create_workflow(
+    request: Request,
     body: CreateWorkflow,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
@@ -39,7 +43,9 @@ async def create_workflow(
 
 
 @router.get("", response_model=list[WorkflowResponse])
+@limiter.limit(settings.rate_limit_read)
 async def list_workflows(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
@@ -50,7 +56,9 @@ async def list_workflows(
 
 
 @router.get("/{workflow_id}", response_model=WorkflowResponse)
+@limiter.limit(settings.rate_limit_read)
 async def get_workflow(
+    request: Request,
     workflow_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
@@ -65,7 +73,9 @@ async def get_workflow(
 
 
 @router.put("/{workflow_id}", response_model=WorkflowResponse)
+@limiter.limit(settings.rate_limit_write)
 async def update_workflow(
+    request: Request,
     workflow_id: uuid.UUID,
     body: UpdateWorkflow,
     db: AsyncSession = Depends(get_db),
@@ -91,7 +101,9 @@ async def update_workflow(
 
 
 @router.post("/{workflow_id}/publish", response_model=WorkflowResponse)
+@limiter.limit(settings.rate_limit_write)
 async def publish_workflow(
+    request: Request,
     workflow_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
@@ -123,7 +135,9 @@ async def publish_workflow(
 
 
 @router.delete("/{workflow_id}", status_code=204)
+@limiter.limit(settings.rate_limit_write)
 async def delete_workflow(
+    request: Request,
     workflow_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
