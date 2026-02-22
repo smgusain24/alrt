@@ -1,5 +1,5 @@
 {
-  "name": "alrt-dashboard",
+  "name": "alrt",
   "compatibility_date": "2026-02-22",
   "compatibility_flags": ["nodejs_compat"],
   "pages_build_output_dir": ".vercel/output/static"
