@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   RetroButton,
@@ -74,10 +74,15 @@ const SAUL_LINES = [
 ];
 
 function AnnouncementBar() {
-  const saulLine = useMemo(
-    () => SAUL_LINES[Math.floor(Math.random() * SAUL_LINES.length)],
-    []
-  );
+  const [saulLine, setSaulLine] = useState(SAUL_LINES[0]);
+
+  useEffect(() => {
+    setSaulLine(SAUL_LINES[Math.floor(Math.random() * SAUL_LINES.length)]);
+    const interval = setInterval(() => {
+      setSaulLine(SAUL_LINES[Math.floor(Math.random() * SAUL_LINES.length)]);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <MarqueeBar>
