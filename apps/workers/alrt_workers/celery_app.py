@@ -13,8 +13,9 @@ for env_path in [Path(__file__).resolve().parents[3] / ".env", Path(".env")]:
 
 from celery import Celery
 
-broker_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-result_backend = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+broker_url = os.getenv("CELERY_BROKER_URL", redis_url)
+result_backend = os.getenv("CELERY_RESULT_BACKEND", redis_url)
 
 celery_app = Celery("alrt_workers", broker=broker_url, backend=result_backend)
 
