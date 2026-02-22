@@ -1,28 +1,19 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from alrt.config import settings
-from alrt.deps import get_db, get_current_team
+from alrt.db import execute_read_query, execute_read_one_query, execute_update_query
+from alrt.deps import get_current_team
 from alrt.middleware.rate_limit import limiter
 from alrt.schemas.notification import NotificationResponse, UpdateNotification
-from alrt_db.models.notification import Notification
-from alrt_db.models.subscriber import Subscriber
+from alrt.queries import notifications as notif_q, subscribers as sub_q
 
 router = APIRouter(tags=["notifications"])
 
 
-async def _resolve_subscriber(db, team_id, external_id):
-    result = await db.execute(
-        select(Subscriber).where(
-            Subscriber.team_id == team_id,
-            Subscriber.external_id == external_id,
-            Subscriber.is_deleted == False,
-        )
-    )
-    sub = result.scalar_one_or_none()
+async def _resolve_subscriber(team_id: uuid.UUID, external_id: str) -> dict:
+    sub = await execute_read_one_query(sub_q.FIND_BY_EXTERNAL_ID, [team_id, external_id])
     if not sub:
         raise HTTPException(status_code=404, detail="Subscriber not found")
     return sub
@@ -40,24 +31,15 @@ async def list_notifications(
     is_read: bool | None = Query(None),
     limit: int = Query(20, le=100),
     offset: int = Query(0),
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    sub = await _resolve_subscriber(db, team_id, external_id)
+    sub = await _resolve_subscriber(team_id, external_id)
 
-    query = select(Notification).where(
-        Notification.subscriber_id == sub.id,
-        Notification.team_id == team_id,
-        Notification.is_archived == False,
+    rows = await execute_read_query(
+        notif_q.LIST_BY_SUBSCRIBER_FILTERED,
+        [sub["id"], team_id, channel, is_read, limit, offset],
     )
-    if channel:
-        query = query.where(Notification.channel == channel)
-    if is_read is not None:
-        query = query.where(Notification.is_read == is_read)
-
-    query = query.order_by(Notification.created_at.desc()).limit(limit).offset(offset)
-    result = await db.execute(query)
-    return [NotificationResponse.model_validate(n) for n in result.scalars().all()]
+    return [NotificationResponse.model_validate(row) for row in rows]
 
 
 @router.patch(
@@ -70,28 +52,35 @@ async def update_notification(
     external_id: str,
     notification_id: uuid.UUID,
     body: UpdateNotification,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    sub = await _resolve_subscriber(db, team_id, external_id)
+    sub = await _resolve_subscriber(team_id, external_id)
 
-    result = await db.execute(
-        select(Notification).where(
-            Notification.id == notification_id,
-            Notification.subscriber_id == sub.id,
-        )
+    notification = await execute_read_one_query(
+        notif_q.FIND_BY_ID, [notification_id, sub["id"]]
     )
-    notification = result.scalar_one_or_none()
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
 
     updates = body.model_dump(exclude_unset=True)
-    for field, value in updates.items():
-        setattr(notification, field, value)
+    updated = None
 
-    await db.commit()
-    await db.refresh(notification)
-    return NotificationResponse.model_validate(notification)
+    if "is_read" in updates:
+        # execute_read_one_query works for UPDATE...RETURNING (uses fetchrow)
+        updated = await execute_read_one_query(
+            notif_q.UPDATE_READ_STATUS, [notification_id, updates["is_read"]]
+        )
+
+    if "is_archived" in updates:
+        updated = await execute_read_one_query(
+            notif_q.UPDATE_ARCHIVED_STATUS, [notification_id, updates["is_archived"]]
+        )
+
+    if updated is None:
+        # No fields were updated; return the existing notification
+        updated = notification
+
+    return NotificationResponse.model_validate(updated)
 
 
 @router.post("/subscribers/{external_id}/notifications/mark-all-read", status_code=204)
@@ -99,17 +88,7 @@ async def update_notification(
 async def mark_all_read(
     request: Request,
     external_id: str,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    sub = await _resolve_subscriber(db, team_id, external_id)
-
-    await db.execute(
-        update(Notification)
-        .where(
-            Notification.subscriber_id == sub.id,
-            Notification.is_read == False,
-        )
-        .values(is_read=True)
-    )
-    await db.commit()
+    sub = await _resolve_subscriber(team_id, external_id)
+    await execute_update_query(notif_q.MARK_ALL_READ, [sub["id"]])

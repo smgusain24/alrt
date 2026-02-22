@@ -2,21 +2,17 @@ import asyncio
 import json
 import logging
 import uuid
-from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as aioredis
 
 from alrt.config import settings
-from alrt.deps import get_db, get_current_team
+from alrt.db import execute_read_one_query, execute_update_query
+from alrt.deps import get_current_team
 from alrt.middleware.rate_limit import limiter
-from alrt_db.models.subscriber import Subscriber
-from alrt_db.models.notification import Notification
-import alrt_db.session as db_session_mod
+from alrt.queries import subscribers as sub_q, notifications as notif_q
 
 log = logging.getLogger(__name__)
 
@@ -29,12 +25,6 @@ _JWT_EXPIRY_HOURS = 24
 _connections: dict[str, WebSocket] = {}
 
 
-@asynccontextmanager
-async def _get_db_session():
-    async with db_session_mod.async_session() as session:
-        yield session
-
-
 # ── Token Generation ──────────────────────────────────────
 
 @router.post("/subscribers/{external_id}/token")
@@ -42,23 +32,17 @@ async def _get_db_session():
 async def create_subscriber_token(
     request: Request,
     external_id: str,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    result = await db.execute(
-        select(Subscriber).where(
-            Subscriber.team_id == team_id,
-            Subscriber.external_id == external_id,
-            Subscriber.is_deleted == False,
-        )
+    subscriber = await execute_read_one_query(
+        sub_q.FIND_BY_EXTERNAL_ID, [team_id, external_id]
     )
-    subscriber = result.scalar_one_or_none()
     if not subscriber:
         raise HTTPException(status_code=404, detail="Subscriber not found")
 
     now = datetime.now(timezone.utc)
     payload = {
-        "sub": str(subscriber.id),
+        "sub": str(subscriber["id"]),
         "team_id": str(team_id),
         "scope": "subscriber",
         "iat": now,
@@ -70,8 +54,8 @@ async def create_subscriber_token(
 
 # ── WebSocket Helpers ─────────────────────────────────────
 
-async def _validate_ws_token(token: str, db: AsyncSession) -> Subscriber:
-    """Decode JWT and return the subscriber, or raise ValueError."""
+async def _validate_ws_token(token: str) -> dict:
+    """Decode JWT and return the subscriber dict, or raise ValueError."""
     try:
         payload = jwt.decode(token, settings.api_secret_key, algorithms=[_JWT_ALGORITHM])
     except JWTError:
@@ -84,13 +68,9 @@ async def _validate_ws_token(token: str, db: AsyncSession) -> Subscriber:
     if not subscriber_id:
         raise ValueError("Missing subscriber in token")
 
-    result = await db.execute(
-        select(Subscriber).where(
-            Subscriber.id == uuid.UUID(subscriber_id),
-            Subscriber.is_deleted == False,
-        )
+    subscriber = await execute_read_one_query(
+        sub_q.FIND_BY_ID, [uuid.UUID(subscriber_id)]
     )
-    subscriber = result.scalar_one_or_none()
     if not subscriber:
         raise ValueError("Subscriber not found")
 
@@ -114,59 +94,46 @@ async def _redis_listener(ws: WebSocket, subscriber_id: str):
 
 async def _handle_client_messages(ws: WebSocket, subscriber_id: str):
     """Receive messages from WebSocket client and handle them."""
-    async with _get_db_session() as db:
-        async for raw in ws.iter_text():
-            try:
-                msg = json.loads(raw)
-            except json.JSONDecodeError:
-                await ws.send_text(json.dumps({"type": "error", "message": "Invalid JSON"}))
-                continue
+    async for raw in ws.iter_text():
+        try:
+            msg = json.loads(raw)
+        except json.JSONDecodeError:
+            await ws.send_text(json.dumps({"type": "error", "message": "Invalid JSON"}))
+            continue
 
-            msg_type = msg.get("type")
+        msg_type = msg.get("type")
 
-            if msg_type == "ping":
-                await ws.send_text(json.dumps({"type": "pong"}))
+        if msg_type == "ping":
+            await ws.send_text(json.dumps({"type": "pong"}))
 
-            elif msg_type == "mark_read":
-                notification_id = msg.get("notification_id")
-                if notification_id:
-                    await db.execute(
-                        update(Notification)
-                        .where(
-                            Notification.id == uuid.UUID(notification_id),
-                            Notification.subscriber_id == uuid.UUID(subscriber_id),
-                        )
-                        .values(is_read=True)
-                    )
-                    await db.commit()
-                    await ws.send_text(json.dumps({"type": "mark_read_ok", "notification_id": notification_id}))
-
-            elif msg_type == "mark_all_read":
-                await db.execute(
-                    update(Notification)
-                    .where(
-                        Notification.subscriber_id == uuid.UUID(subscriber_id),
-                        Notification.channel == "in_app",
-                        Notification.is_read == False,
-                    )
-                    .values(is_read=True)
+        elif msg_type == "mark_read":
+            notification_id = msg.get("notification_id")
+            if notification_id:
+                await execute_update_query(
+                    notif_q.UPDATE_READ_STATUS,
+                    [uuid.UUID(notification_id), True],
                 )
-                await db.commit()
-                await ws.send_text(json.dumps({"type": "mark_all_read_ok"}))
+                await ws.send_text(json.dumps({"type": "mark_read_ok", "notification_id": notification_id}))
+
+        elif msg_type == "mark_all_read":
+            await execute_update_query(
+                notif_q.MARK_ALL_READ,
+                [uuid.UUID(subscriber_id)],
+            )
+            await ws.send_text(json.dumps({"type": "mark_all_read_ok"}))
 
 
 # ── WebSocket Endpoint ────────────────────────────────────
 
 @router.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket, token: str = Query(...)):
-    async with _get_db_session() as db:
-        try:
-            subscriber = await _validate_ws_token(token, db)
-        except ValueError as e:
-            await ws.close(code=4001, reason=str(e))
-            return
+    try:
+        subscriber = await _validate_ws_token(token)
+    except ValueError as e:
+        await ws.close(code=4001, reason=str(e))
+        return
 
-        subscriber_id = str(subscriber.id)
+    subscriber_id = str(subscriber["id"])
 
     await ws.accept()
 

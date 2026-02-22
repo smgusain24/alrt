@@ -1,3 +1,175 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===== Retro Design System Utilities ===== */
+
+@layer utilities {
+  /* 3D Bevel: Outset (raised) */
+  .bevel-outset {
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #dfdfdf;
+  }
+
+  /* 3D Bevel: Inset (sunken) */
+  .bevel-inset {
+    border: 2px solid;
+    border-color: #808080 #ffffff #ffffff #808080;
+    box-shadow: inset 1px 1px 0 #404040, inset -1px -1px 0 #dfdfdf;
+  }
+
+  /* 3D Bevel: Active/pressed state */
+  .bevel-pressed {
+    border-color: #808080 #ffffff #ffffff #808080;
+    box-shadow: inset 1px 1px 0 #404040, inset -1px -1px 0 #dfdfdf;
+    transform: translate(1px, 1px);
+  }
+
+  /* Accent blue bevel */
+  .bevel-accent {
+    border: 2px solid;
+    border-color: #5555ff #000080 #000080 #5555ff;
+    box-shadow: inset -1px -1px 0 #000060, inset 1px 1px 0 #7777ff;
+  }
+
+  /* Danger red bevel */
+  .bevel-danger {
+    border: 2px solid;
+    border-color: #ff5555 #800000 #800000 #ff5555;
+    box-shadow: inset -1px -1px 0 #600000, inset 1px 1px 0 #ff7777;
+  }
+
+  /* Success green bevel */
+  .bevel-success {
+    border: 2px solid;
+    border-color: #00ff00 #006600 #006600 #00ff00;
+    box-shadow: inset -1px -1px 0 #004400, inset 1px 1px 0 #44ff44;
+  }
+
+  /* 90s tiled crosshatch background */
+  .bg-90s-tile {
+    background-color: #c0c0c0;
+    background-image: linear-gradient(45deg, #b8b8b8 25%, transparent 25%),
+      linear-gradient(-45deg, #b8b8b8 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #b8b8b8 75%),
+      linear-gradient(-45deg, transparent 75%, #b8b8b8 75%);
+    background-size: 4px 4px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0px;
+  }
+
+  /* Construction warning stripes */
+  .bg-construction {
+    background: repeating-linear-gradient(
+      45deg,
+      #ffcc00,
+      #ffcc00 10px,
+      #000000 10px,
+      #000000 20px
+    );
+  }
+
+  /* Navy gradient (window title bars) */
+  .bg-title-bar {
+    background: linear-gradient(to right, #000080, #1084d0);
+  }
+
+  /* Groove horizontal rule */
+  .hr-groove {
+    border: none;
+    height: 4px;
+    background: linear-gradient(
+      to bottom,
+      #808080 0%,
+      #808080 50%,
+      #ffffff 50%,
+      #ffffff 100%
+    );
+  }
+
+  /* React Flow handle overrides — big, square, retro */
+  .react-flow__handle {
+    width: 16px !important;
+    height: 16px !important;
+    border-width: 3px !important;
+    border-radius: 0 !important;
+    border-color: #000080 !important;
+    background: #ffffff !important;
+    transition: none !important;
+    z-index: 10 !important;
+  }
+  .react-flow__handle:hover {
+    width: 20px !important;
+    height: 20px !important;
+    background: #ffcc00 !important;
+    border-color: #000 !important;
+    cursor: crosshair !important;
+  }
+  .react-flow__handle-connecting {
+    background: #00ff00 !important;
+  }
+
+  /* Connection line while dragging — thick navy */
+  .react-flow__connection-line {
+    stroke: #000080 !important;
+    stroke-width: 3 !important;
+  }
+
+  /* Edge paths — solid, thick */
+  .react-flow__edge-path {
+    stroke-width: 3 !important;
+    stroke: #000080 !important;
+  }
+  .react-flow__edge.selected .react-flow__edge-path {
+    stroke: #ffcc00 !important;
+    stroke-width: 4 !important;
+  }
+
+  /* Selected node highlight */
+  .react-flow__node.selected {
+    outline: 3px solid #ffcc00 !important;
+    outline-offset: 2px;
+  }
+
+  /* Minimap styling */
+  .react-flow__minimap {
+    border-radius: 0 !important;
+  }
+
+  /* Controls styling */
+  .react-flow__controls-button {
+    border-radius: 0 !important;
+    border: 2px solid #808080 !important;
+  }
+
+  /* Rainbow text animation */
+  .text-rainbow {
+    animation: rainbow 4s linear infinite;
+  }
+
+  /* Windows 95 focus ring */
+  .focus-retro:focus-visible {
+    outline: 2px dotted #000000;
+    outline-offset: 2px;
+  }
+
+  /* Selection colors */
+  ::selection {
+    background-color: #000080;
+    color: #ffffff;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .text-rainbow {
+    animation: none;
+    color: #ff0000;
+  }
+  .animate-pulse-glow {
+    animation: none;
+  }
+  .animate-blink {
+    animation: none;
+  }
+}

@@ -1,11 +1,14 @@
+import hashlib
+import secrets
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from alrt.config import settings
-from alrt.deps import get_db, get_current_team
+from alrt.db import execute_insert_query, execute_read_query, execute_read_one_query, execute_update_query
+from alrt.deps import get_current_team
 from alrt.middleware.rate_limit import limiter
+from alrt.queries import api_keys as api_key_q, teams as team_q
 from alrt.schemas.team import (
     ApiKeyCreatedResponse,
     ApiKeyResponse,
@@ -14,26 +17,33 @@ from alrt.schemas.team import (
     TeamCreatedResponse,
     TeamResponse,
 )
-from alrt.services.api_key import create_api_key, list_api_keys, revoke_api_key
-from alrt_db.models.team import Team
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
 
+def _generate_key(key_type: str) -> str:
+    prefix = "alrt_sk_" if key_type == "server" else "alrt_ck_"
+    return prefix + secrets.token_hex(32)
+
+
+def _hash_key(raw_key: str) -> str:
+    return hashlib.sha256(raw_key.encode()).hexdigest()
+
+
 @router.post("", response_model=TeamCreatedResponse, status_code=201)
 @limiter.limit(settings.rate_limit_write)
-async def create_team(request: Request, body: CreateTeam, db: AsyncSession = Depends(get_db)):
-    team = Team(name=body.name)
-    db.add(team)
-    await db.commit()
-    await db.refresh(team)
+async def create_team(request: Request, body: CreateTeam):
+    team_id = uuid.uuid4()
+    team = await execute_insert_query(team_q.CREATE, [team_id, body.name])
 
     # Auto-create initial server key
-    _, raw_key = await create_api_key(db, team.id, "server")
+    raw_key = _generate_key("server")
+    key_id = uuid.uuid4()
+    await execute_insert_query(api_key_q.CREATE, [
+        key_id, team_id, _hash_key(raw_key), raw_key[:16], "server", None
+    ])
 
-    resp = TeamCreatedResponse.model_validate(team)
-    resp.raw_key = raw_key
-    return resp
+    return TeamCreatedResponse(**team, raw_key=raw_key)
 
 
 @router.post(
@@ -46,16 +56,18 @@ async def create_team_api_key(
     request: Request,
     team_id: uuid.UUID,
     body: CreateApiKey = CreateApiKey(),
-    db: AsyncSession = Depends(get_db),
     current_team: uuid.UUID = Depends(get_current_team),
 ):
     if current_team != team_id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    key, raw_key = await create_api_key(db, team_id, body.key_type)
-    resp = ApiKeyCreatedResponse.model_validate(key)
-    resp.raw_key = raw_key
-    return resp
+    raw_key = _generate_key(body.key_type)
+    key_id = uuid.uuid4()
+    key = await execute_insert_query(api_key_q.CREATE, [
+        key_id, team_id, _hash_key(raw_key), raw_key[:16], body.key_type, body.name
+    ])
+
+    return ApiKeyCreatedResponse(**key, raw_key=raw_key)
 
 
 @router.get("/{team_id}/api-keys", response_model=list[ApiKeyResponse])
@@ -63,14 +75,13 @@ async def create_team_api_key(
 async def list_team_api_keys(
     request: Request,
     team_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
     current_team: uuid.UUID = Depends(get_current_team),
 ):
     if current_team != team_id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    keys = await list_api_keys(db, team_id)
-    return [ApiKeyResponse.model_validate(k) for k in keys]
+    keys = await execute_read_query(api_key_q.LIST_BY_TEAM, [team_id])
+    return keys
 
 
 @router.delete("/{team_id}/api-keys/{key_id}", status_code=204)
@@ -79,12 +90,11 @@ async def delete_team_api_key(
     request: Request,
     team_id: uuid.UUID,
     key_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
     current_team: uuid.UUID = Depends(get_current_team),
 ):
     if current_team != team_id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    key = await revoke_api_key(db, team_id, key_id)
+    key = await execute_read_one_query(api_key_q.REVOKE, [key_id, team_id])
     if not key:
         raise HTTPException(status_code=404, detail="API key not found")

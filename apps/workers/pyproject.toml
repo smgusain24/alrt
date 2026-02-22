@@ -6,11 +6,8 @@ dependencies = [
     "celery[redis]>=5.4",
     "httpx>=0.28",
     "cryptography>=44",
-    "alrt-db",
+    "asyncpg>=0.30",
 ]
-
-[tool.uv.sources]
-alrt-db = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["alrt_workers"]

@@ -6,20 +6,17 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from alrt.config import settings
+from alrt.db import init_pool, close_pool, ensure_schema
 from alrt.middleware.rate_limit import limiter, rate_limit_exceeded_handler
-from alrt.routes import events, notifications, providers, subscribers, teams, websocket, workflows
-from alrt_db.session import init_engine, engine as _engine_ref
-from alrt_db.base import Base
-import alrt_db.models  # noqa: F401 – register all models on metadata
-import alrt_db.session as db_session_mod
+from alrt.routes import auth, events, notifications, providers, subscribers, teams, websocket, workflows
 
 
 @asynccontextmanager
 async def lifespan(app):
-    init_engine(settings.database_url)
-    async with db_session_mod.engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    await init_pool(settings.database_url)
+    await ensure_schema()
     yield
+    await close_pool()
 
 
 app = FastAPI(title="Alrt API", version="0.1.0", lifespan=lifespan)
@@ -37,6 +34,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(teams.router)
 app.include_router(subscribers.router)
 app.include_router(workflows.router)

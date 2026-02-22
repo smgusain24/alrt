@@ -22,6 +22,7 @@ class TeamCreatedResponse(TeamResponse):
 
 class CreateApiKey(BaseModel):
     key_type: str = "server"
+    name: str | None = None
 
 
 class ApiKeyResponse(BaseModel):
@@ -29,6 +30,8 @@ class ApiKeyResponse(BaseModel):
     key_prefix: str
     key_type: str
     is_active: bool
+    name: str | None = None
+    last_used_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

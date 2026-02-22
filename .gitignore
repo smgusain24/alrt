@@ -55,3 +55,6 @@ Thumbs.db
 
 # mypy
 .mypy_cache/
+
+#notes
+.note

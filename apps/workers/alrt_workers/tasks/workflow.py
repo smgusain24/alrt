@@ -1,68 +1,96 @@
+import uuid
+import logging
+
 from alrt_workers.celery_app import celery_app
-from alrt_db.session import sync_session
-from alrt_db.models.workflow_execution import WorkflowExecution
-from alrt_db.models.workflow import Workflow
-from alrt_db.models.subscriber import Subscriber
+from alrt_workers.db import execute_read_one_query, execute_update_query
+
+logger = logging.getLogger("alrt.workers.workflow")
+
+# Queries
+Q_GET_EXECUTION = "SELECT id, team_id, workflow_id, subscriber_id, event_payload, channels, status FROM workflow_executions WHERE id = $1"
+Q_GET_WORKFLOW = "SELECT id, team_id, name, event_name, definition, status FROM workflows WHERE id = $1"
+Q_GET_SUBSCRIBER = "SELECT id, team_id, external_id, email, name, slack_user_id, custom_properties, channel_preferences FROM subscribers WHERE id = $1 AND is_deleted = false"
+Q_UPDATE_EXECUTION_STATUS = "UPDATE workflow_executions SET status = $2, updated_at = now() WHERE id = $1"
 
 
 @celery_app.task(bind=True, max_retries=3)
 def execute(self, execution_id):
-    with sync_session() as db:
-        execution = db.get(WorkflowExecution, execution_id)
-        if not execution:
-            return
+    execution = execute_read_one_query(Q_GET_EXECUTION, [uuid.UUID(execution_id)])
+    if not execution:
+        return
 
-        workflow = db.get(Workflow, execution.workflow_id)
-        subscriber = db.get(Subscriber, execution.subscriber_id)
-        if not workflow or not subscriber:
-            execution.status = "failed"
-            db.commit()
-            return
+    workflow = execute_read_one_query(Q_GET_WORKFLOW, [execution["workflow_id"]])
+    subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [execution["subscriber_id"]])
 
-        definition = workflow.definition or {}
-        nodes = definition.get("nodes", [])
-        edges = definition.get("edges", [])
+    if not workflow or not subscriber:
+        execute_update_query(Q_UPDATE_EXECUTION_STATUS, [execution["id"], "failed"])
+        return
 
-        # Build adjacency: source -> target
-        next_map = {}
-        for edge in edges:
-            next_map[edge["source"]] = edge["target"]
+    definition = workflow["definition"] or {}
+    nodes = definition.get("nodes", [])
+    edges = definition.get("edges", [])
 
-        # Find trigger node
-        trigger = next(
-            (n for n in nodes if n.get("type") == "trigger"),
-            None,
+    # Build adjacency: source -> [target1, target2, ...] (supports branching)
+    children_map: dict[str, list[str]] = {}
+    for edge in edges:
+        src = edge["source"]
+        if src not in children_map:
+            children_map[src] = []
+        children_map[src].append(edge["target"])
+
+    # Find trigger node
+    trigger = next(
+        (n for n in nodes if n.get("type") == "trigger"),
+        None,
+    )
+    if not trigger:
+        execute_update_query(Q_UPDATE_EXECUTION_STATUS, [execution["id"], "failed"])
+        return
+
+    node_map = {n["id"]: n for n in nodes}
+    allowed_channels = execution["channels"]
+
+    from alrt_workers.tasks.step_runner import execute_step
+
+    # BFS walk — supports branching (one node can have multiple children)
+    queue = list(children_map.get(trigger["id"], []))
+    visited = set()
+    paused = False
+
+    while queue:
+        current_id = queue.pop(0)
+
+        # Avoid revisiting nodes (handles diamond patterns)
+        if current_id in visited:
+            continue
+        visited.add(current_id)
+
+        node = node_map.get(current_id)
+        if not node:
+            continue
+
+        logger.info(f"Executing node: {node['type']} ({current_id})")
+
+        result = execute_step(
+            str(execution["id"]),
+            node,
+            str(subscriber["id"]),
+            str(execution["team_id"]),
+            execution["event_payload"] or {},
+            subscriber["channel_preferences"] or {},
+            allowed_channels=allowed_channels,
         )
-        if not trigger:
-            execution.status = "failed"
-            db.commit()
-            return
 
-        # Walk nodes starting from trigger
-        node_map = {n["id"]: n for n in nodes}
-        current_id = next_map.get(trigger["id"])
+        if result == "paused":
+            paused = True
+            continue  # Don't follow children of paused nodes, but process other branches
 
-        from alrt_workers.tasks.step_runner import execute_step
-        while current_id:
-            node = node_map.get(current_id)
-            if not node:
-                break
+        if result == "skipped":
+            continue  # Don't follow children of skipped condition nodes
 
-            result = execute_step(
-                str(execution.id),
-                node,
-                str(subscriber.id),
-                str(execution.team_id),
-                execution.event_payload or {},
-                subscriber.channel_preferences or {},
-            )
+        # Add children to the queue
+        children = children_map.get(current_id, [])
+        queue.extend(children)
 
-            # Delay node returns "paused" — stop walking, Celery Beat resumes later
-            if result == "paused":
-                break
-
-            current_id = next_map.get(current_id)
-
-        if result != "paused":
-            execution.status = "completed"
-            db.commit()
+    if not paused:
+        execute_update_query(Q_UPDATE_EXECUTION_STATUS, [execution["id"], "completed"])

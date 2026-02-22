@@ -5,7 +5,6 @@ requires-python = ">=3.12"
 
 [tool.uv.workspace]
 members = [
-    "packages/db",
     "apps/api",
     "apps/workers",
 ]

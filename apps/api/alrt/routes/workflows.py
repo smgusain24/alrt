@@ -1,14 +1,14 @@
+import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from alrt.config import settings
-from alrt.deps import get_db, get_current_team
+from alrt.db import execute_read_query, execute_read_one_query, execute_insert_query, execute_delete_query
+from alrt.deps import get_current_team
 from alrt.middleware.rate_limit import limiter
+from alrt.queries import workflows as wf_q
 from alrt.schemas.workflow import CreateWorkflow, UpdateWorkflow, WorkflowResponse
-from alrt_db.models.workflow import Workflow
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 
@@ -18,41 +18,35 @@ router = APIRouter(prefix="/workflows", tags=["workflows"])
 async def create_workflow(
     request: Request,
     body: CreateWorkflow,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    result = await db.execute(
-        select(Workflow).where(
-            Workflow.team_id == team_id,
-            Workflow.event_name == body.event_name,
-        )
-    )
-    if result.scalar_one_or_none():
+    existing = await execute_read_one_query(wf_q.FIND_BY_EVENT_NAME, [team_id, body.event_name])
+    if existing:
         raise HTTPException(status_code=409, detail="Event name already in use")
 
-    workflow = Workflow(
-        team_id=team_id,
-        name=body.name,
-        event_name=body.event_name,
-        definition=body.definition,
+    row = await execute_insert_query(
+        wf_q.CREATE,
+        [
+            uuid.uuid4(),
+            team_id,
+            body.name,
+            body.event_name,
+            body.definition if body.definition is not None else {},
+        ],
     )
-    db.add(workflow)
-    await db.commit()
-    await db.refresh(workflow)
-    return WorkflowResponse.model_validate(workflow)
+    if not row:
+        raise HTTPException(status_code=500, detail="Failed to create workflow")
+    return WorkflowResponse.model_validate(row)
 
 
 @router.get("", response_model=list[WorkflowResponse])
 @limiter.limit(settings.rate_limit_read)
 async def list_workflows(
     request: Request,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    result = await db.execute(
-        select(Workflow).where(Workflow.team_id == team_id)
-    )
-    return [WorkflowResponse.model_validate(w) for w in result.scalars().all()]
+    rows = await execute_read_query(wf_q.LIST_BY_TEAM, [team_id])
+    return [WorkflowResponse.model_validate(r) for r in rows]
 
 
 @router.get("/{workflow_id}", response_model=WorkflowResponse)
@@ -60,13 +54,9 @@ async def list_workflows(
 async def get_workflow(
     request: Request,
     workflow_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    result = await db.execute(
-        select(Workflow).where(Workflow.id == workflow_id, Workflow.team_id == team_id)
-    )
-    workflow = result.scalar_one_or_none()
+    workflow = await execute_read_one_query(wf_q.FIND_BY_ID, [workflow_id, team_id])
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return WorkflowResponse.model_validate(workflow)
@@ -78,26 +68,28 @@ async def update_workflow(
     request: Request,
     workflow_id: uuid.UUID,
     body: UpdateWorkflow,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    result = await db.execute(
-        select(Workflow).where(Workflow.id == workflow_id, Workflow.team_id == team_id)
-    )
-    workflow = result.scalar_one_or_none()
+    workflow = await execute_read_one_query(wf_q.FIND_BY_ID, [workflow_id, team_id])
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
-    if workflow.status == "published":
-        raise HTTPException(status_code=400, detail="Cannot edit a published workflow")
-
     updates = body.model_dump(exclude_unset=True)
-    for field, value in updates.items():
-        setattr(workflow, field, value)
 
-    await db.commit()
-    await db.refresh(workflow)
-    return WorkflowResponse.model_validate(workflow)
+    # COALESCE pattern: pass None for unchanged fields so DB keeps existing value
+    row = await execute_insert_query(
+        wf_q.UPDATE,
+        [
+            workflow_id,
+            team_id,
+            updates.get("name"),
+            updates.get("event_name"),
+            updates["definition"] if "definition" in updates else None,
+        ],
+    )
+    if not row:
+        raise HTTPException(status_code=500, detail="Failed to update workflow")
+    return WorkflowResponse.model_validate(row)
 
 
 @router.post("/{workflow_id}/publish", response_model=WorkflowResponse)
@@ -105,17 +97,13 @@ async def update_workflow(
 async def publish_workflow(
     request: Request,
     workflow_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    result = await db.execute(
-        select(Workflow).where(Workflow.id == workflow_id, Workflow.team_id == team_id)
-    )
-    workflow = result.scalar_one_or_none()
+    workflow = await execute_read_one_query(wf_q.FIND_BY_ID, [workflow_id, team_id])
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
-    definition = workflow.definition or {}
+    definition = workflow["definition"] or {}
     nodes = definition.get("nodes", [])
 
     if not nodes:
@@ -128,10 +116,10 @@ async def publish_workflow(
     if len(nodes) > 10:
         raise HTTPException(status_code=400, detail="Workflow cannot exceed 10 steps")
 
-    workflow.status = "published"
-    await db.commit()
-    await db.refresh(workflow)
-    return WorkflowResponse.model_validate(workflow)
+    row = await execute_insert_query(wf_q.PUBLISH, [workflow_id, team_id])
+    if not row:
+        raise HTTPException(status_code=500, detail="Failed to publish workflow")
+    return WorkflowResponse.model_validate(row)
 
 
 @router.delete("/{workflow_id}", status_code=204)
@@ -139,15 +127,10 @@ async def publish_workflow(
 async def delete_workflow(
     request: Request,
     workflow_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    result = await db.execute(
-        select(Workflow).where(Workflow.id == workflow_id, Workflow.team_id == team_id)
-    )
-    workflow = result.scalar_one_or_none()
+    workflow = await execute_read_one_query(wf_q.FIND_BY_ID, [workflow_id, team_id])
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
-    await db.delete(workflow)
-    await db.commit()
+    await execute_delete_query(wf_q.DELETE, [workflow_id, team_id])

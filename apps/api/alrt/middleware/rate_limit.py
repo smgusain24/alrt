@@ -1,5 +1,3 @@
-"""Rate-limiting middleware powered by SlowAPI + Redis."""
-
 from __future__ import annotations
 
 import hashlib

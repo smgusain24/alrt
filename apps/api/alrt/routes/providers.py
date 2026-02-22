@@ -1,15 +1,18 @@
+import json
 import uuid
+import urllib.parse
 
+import httpx
 from cryptography.fernet import Fernet
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.responses import RedirectResponse
 
 from alrt.config import settings
-from alrt.deps import get_db, get_current_team
+from alrt.db import execute_read_query, execute_read_one_query, execute_insert_query, execute_delete_query
+from alrt.deps import get_current_team
 from alrt.middleware.rate_limit import limiter
 from alrt.schemas.provider import CreateProvider, ProviderResponse
-from alrt_db.models.provider import Provider
+from alrt.queries import providers as prov_q
 
 router = APIRouter(prefix="/providers", tags=["providers"])
 
@@ -19,14 +22,12 @@ def _get_fernet():
 
 
 def _encrypt_config(config: dict) -> dict:
-    import json
     f = _get_fernet()
     encrypted = f.encrypt(json.dumps(config).encode()).decode()
     return {"encrypted": encrypted}
 
 
 def _decrypt_config(config: dict) -> dict:
-    import json
     f = _get_fernet()
     return json.loads(f.decrypt(config["encrypted"].encode()))
 
@@ -36,32 +37,26 @@ def _decrypt_config(config: dict) -> dict:
 async def create_provider(
     request: Request,
     body: CreateProvider,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    provider = Provider(
-        team_id=team_id,
-        channel=body.channel,
-        provider_type=body.provider_type,
-        config=_encrypt_config(body.config),
+    encrypted_config = _encrypt_config(body.config)
+    row = await execute_insert_query(
+        prov_q.CREATE,
+        [uuid.uuid4(), team_id, body.channel, body.provider_type, encrypted_config],
     )
-    db.add(provider)
-    await db.commit()
-    await db.refresh(provider)
-    return ProviderResponse.model_validate(provider)
+    if not row:
+        raise HTTPException(status_code=500, detail="Failed to create provider")
+    return ProviderResponse.model_validate(row)
 
 
 @router.get("", response_model=list[ProviderResponse])
 @limiter.limit(settings.rate_limit_read)
 async def list_providers(
     request: Request,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    result = await db.execute(
-        select(Provider).where(Provider.team_id == team_id)
-    )
-    return [ProviderResponse.model_validate(p) for p in result.scalars().all()]
+    rows = await execute_read_query(prov_q.LIST_BY_TEAM, [team_id])
+    return [ProviderResponse.model_validate(row) for row in rows]
 
 
 @router.delete("/{provider_id}", status_code=204)
@@ -69,15 +64,100 @@ async def list_providers(
 async def delete_provider(
     request: Request,
     provider_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
     team_id: uuid.UUID = Depends(get_current_team),
 ):
-    result = await db.execute(
-        select(Provider).where(Provider.id == provider_id, Provider.team_id == team_id)
-    )
-    provider = result.scalar_one_or_none()
+    provider = await execute_read_one_query(prov_q.FIND_BY_ID, [provider_id, team_id])
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
-    await db.delete(provider)
-    await db.commit()
+    await execute_delete_query(prov_q.DELETE, [provider_id, team_id])
+
+
+# ─── Slack OAuth ───
+
+SLACK_OAUTH_SCOPES = "chat:write,users:read"
+
+
+@router.get("/slack/connect")
+async def slack_oauth_connect(token: str | None = None):
+    """Redirect user to Slack's OAuth authorization page."""
+    if not settings.slack_client_id:
+        raise HTTPException(status_code=500, detail="Slack OAuth not configured. Set SLACK_CLIENT_ID in env.")
+
+    # Resolve team_id from the JWT token passed as query param
+    if not token:
+        raise HTTPException(status_code=401, detail="Token required")
+
+    from jose import jwt, JWTError
+    try:
+        payload = jwt.decode(token, settings.api_secret_key, algorithms=["HS256"])
+        team_id = payload.get("team_id")
+        if not team_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Encrypt team_id into state param so we know which team on callback
+    f = _get_fernet()
+    state = f.encrypt(team_id.encode()).decode()
+
+    params = urllib.parse.urlencode({
+        "client_id": settings.slack_client_id,
+        "scope": SLACK_OAUTH_SCOPES,
+        "redirect_uri": settings.slack_redirect_uri,
+        "state": state,
+    })
+
+    return RedirectResponse(f"https://slack.com/oauth/v2/authorize?{params}")
+
+
+@router.get("/slack/callback")
+async def slack_oauth_callback(
+    code: str,
+    state: str,
+):
+    """Handle Slack OAuth callback — exchange code for bot token and store as provider."""
+    if not settings.slack_client_id or not settings.slack_client_secret:
+        raise HTTPException(status_code=500, detail="Slack OAuth not configured")
+
+    # Decrypt state to get team_id
+    try:
+        f = _get_fernet()
+        team_id = uuid.UUID(f.decrypt(state.encode()).decode())
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid state parameter")
+
+    # Exchange code for token
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://slack.com/api/oauth.v2.access",
+            data={
+                "client_id": settings.slack_client_id,
+                "client_secret": settings.slack_client_secret,
+                "code": code,
+                "redirect_uri": settings.slack_redirect_uri,
+            },
+        )
+        data = resp.json()
+
+    if not data.get("ok"):
+        error = data.get("error", "unknown_error")
+        return RedirectResponse(f"{settings.dashboard_url}/settings/providers?error={error}")
+
+    # Extract bot token and workspace info
+    bot_token = data.get("access_token")
+    workspace_name = data.get("team", {}).get("name", "Slack Workspace")
+    workspace_id = data.get("team", {}).get("id", "")
+
+    # Store as encrypted provider
+    encrypted_config = _encrypt_config({
+        "bot_token": bot_token,
+        "workspace_name": workspace_name,
+        "workspace_id": workspace_id,
+    })
+
+    await execute_insert_query(prov_q.CREATE, [
+        uuid.uuid4(), team_id, "slack", "slack_oauth", encrypted_config,
+    ])
+
+    return RedirectResponse(f"{settings.dashboard_url}/settings/providers?connected=slack")
