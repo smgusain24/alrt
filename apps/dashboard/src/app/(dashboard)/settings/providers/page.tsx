@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   RetroButton,
@@ -36,6 +36,14 @@ function getToken(): string | null {
 }
 
 export default function ProvidersPage() {
+  return (
+    <Suspense fallback={<p className="text-muted">Loading providers...</p>}>
+      <ProvidersContent />
+    </Suspense>
+  );
+}
+
+function ProvidersContent() {
   const searchParams = useSearchParams();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
