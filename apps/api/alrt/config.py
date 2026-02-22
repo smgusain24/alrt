@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     api_secret_key: str = "change-me"
     encryption_key: str = "change-me-generate-with-fernet"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:3000", "https://alrt.dev"]
 
     # Slack OAuth
     slack_client_id: str = ""
