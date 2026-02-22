@@ -1,8 +1,8 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "apps/workers/Dockerfile"
 
 [deploy]
-startCommand = "uv run celery -A alrt_workers.celery_app worker --loglevel=info"
+startCommand = "uv run --package alrt-workers celery -A alrt_workers.celery_app worker --loglevel=info"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
