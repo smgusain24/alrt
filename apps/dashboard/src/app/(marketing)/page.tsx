@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   RetroButton,
@@ -55,7 +55,30 @@ function TopBar() {
 }
 
 /* ─── Marquee ─── */
+const SAUL_LINES = [
+  "Notifications not reaching your users? THAT sounds satisfying to your competitors",
+  "You don't NEED a notification platform. You need THE notification platform",
+  "Has THIS ever happened to YOU? *silent notifications* — NEVER AGAIN",
+  "I once had a client who built notifications from scratch. He's still building them",
+  "Act now and your first 10,000 notifications are FREE. I'm not kidding. I'm a lawyer— wait no I'm not",
+  "Your notifications deserve better representation",
+  "Don't let your emails end up in the spam folder of LIFE",
+  "Results not guaranteed but also kind of guaranteed — 99.9% uptime baby",
+  "Call now! Actually don't call. Just POST to our API. It's easier",
+  "Other platforms charge you per notification. We charge you per SMILE",
+  "Is your notification provider giving you the OLD RUNAROUND? Switch to ALRT",
+  "FREE CONSULTATION— I mean FREE TIER. 1000 notifications. No strings attached. Okay maybe one string. It's an API key",
+  "You want notifications? I KNOW notifications. I AM notifications",
+  "Side effects may include: higher engagement, happier users, and an overwhelming sense of productivity",
+  "As seen on... well you're seeing it right now aren't you",
+];
+
 function AnnouncementBar() {
+  const saulLine = useMemo(
+    () => SAUL_LINES[Math.floor(Math.random() * SAUL_LINES.length)],
+    []
+  );
+
   return (
     <MarqueeBar>
       <span className="text-[#00ff00]">★ MULTI-CHANNEL NOTIFICATIONS </span>
@@ -66,7 +89,9 @@ function AnnouncementBar() {
       <span className="text-white">// </span>
       <span className="text-danger">15 MIN SETUP </span>
       <span className="text-white">// </span>
-      <span className="text-[#ff80ff]">FREE TIER: 10K NOTIFICATIONS/MO </span>
+      <span className="text-[#ff80ff]">FREE TIER: 1000 NOTIFICATIONS/MO </span>
+      <span className="text-white">// </span>
+      <span className="text-[#ffd700]">★ {saulLine} </span>
       <span className="text-white">// </span>
     </MarqueeBar>
   );
@@ -93,7 +118,7 @@ function Hero() {
         <div className="mt-10 flex justify-center">
           <StatsCounter
             stats={[
-              { label: "Free/Mo", value: "10K+" },
+              { label: "Free/Mo", value: "1000" },
               { label: "Channels", value: "3" },
               { label: "Setup", value: "15min" },
             ]}
@@ -383,7 +408,7 @@ const TIERS: PricingTier[] = [
     price: "$0",
     period: "forever",
     features: [
-      "10K notifications/mo",
+      "1000 notifications/mo",
       "3 channels (in-app, email, Slack)",
       "Visual workflow builder",
       "1 team member",
