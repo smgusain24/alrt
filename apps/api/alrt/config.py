@@ -2,11 +2,11 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+asyncpg://alrt:alrt@localhost:5432/alrt"
+    database_url: str = "postgresql://alrt:alrt@localhost:5432/alrt"
     redis_url: str = "redis://localhost:6379"
     api_secret_key: str = "change-me"
     encryption_key: str = "change-me-generate-with-fernet"
-    cors_origins: list[str] = ["http://localhost:3000", "https://alrt.dev"]
+    cors_origins: str = "http://localhost:3000"
 
     # Slack OAuth
     slack_client_id: str = ""
@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     rate_limit_public: str = "30/minute"
 
     model_config = {"env_file": ["../../.env", ".env"]}
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",")]
 
 
 settings = Settings()
