@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   RetroButton,
@@ -60,7 +60,7 @@ const SAUL_LINES = [
   "You don't NEED a notification platform. You need THE notification platform",
   "Has THIS ever happened to YOU? *silent notifications* — NEVER AGAIN",
   "I once had a client who built notifications from scratch. He's still building them",
-  "Act now and your first 10,000 notifications are FREE. I'm not kidding. I'm a lawyer— wait no I'm not",
+  "Act now and your first 1000 notifications are FREE. I'm not kidding. I'm a lawyer— wait no I'm not",
   "Your notifications deserve better representation",
   "Don't let your emails end up in the spam folder of LIFE",
   "Results not guaranteed but also kind of guaranteed — 99.9% uptime baby",
@@ -73,31 +73,28 @@ const SAUL_LINES = [
   "As seen on... well you're seeing it right now aren't you",
 ];
 
-function AnnouncementBar() {
-  const [saulLine, setSaulLine] = useState(SAUL_LINES[0]);
+const STATIC_ITEMS = [
+  { text: "★ MULTI-CHANNEL NOTIFICATIONS", color: "text-green-500" },
+  { text: "IN-APP + EMAIL + SLACK", color: "text-yellow-400" },
+  { text: "ONE API CALL", color: "text-cyan-400" },
+  { text: "15 MIN SETUP", color: "text-red-500" },
+  { text: "FREE TIER: 1000 NOTIFICATIONS/MO", color: "text-pink-500" },
+];
 
-  useEffect(() => {
-    setSaulLine(SAUL_LINES[Math.floor(Math.random() * SAUL_LINES.length)]);
-    const interval = setInterval(() => {
-      setSaulLine(SAUL_LINES[Math.floor(Math.random() * SAUL_LINES.length)]);
-    }, 8000);
-    return () => clearInterval(interval);
-  }, []);
+function AnnouncementBar() {
+  const items = SAUL_LINES.map((line, index) => [
+    STATIC_ITEMS[index % STATIC_ITEMS.length],
+    { text: `★ ${line}`, color: "text-yellow-500" },
+  ]).flat();
 
   return (
-    <MarqueeBar>
-      <span className="text-[#00ff00]">★ MULTI-CHANNEL NOTIFICATIONS </span>
-      <span className="text-white">// </span>
-      <span className="text-[#ffff00]">IN-APP + EMAIL + SLACK </span>
-      <span className="text-white">// </span>
-      <span className="text-[#00ffff]">ONE API CALL </span>
-      <span className="text-white">// </span>
-      <span className="text-danger">15 MIN SETUP </span>
-      <span className="text-white">// </span>
-      <span className="text-[#ff80ff]">FREE TIER: 1000 NOTIFICATIONS/MO </span>
-      <span className="text-white">// </span>
-      <span className="text-[#ffd700]">★ {saulLine} </span>
-      <span className="text-white">// </span>
+    <MarqueeBar speed={40}>
+      {items.map((item, index) => (
+        <span key={index} className="whitespace-nowrap">
+          <span className={`${item.color} font-bold`}>{item.text}</span>
+          <span className="text-white mx-2">//</span>
+        </span>
+      ))}
     </MarqueeBar>
   );
 }
