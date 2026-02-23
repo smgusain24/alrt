@@ -7,8 +7,8 @@ from alrt_workers.db import execute_read_one_query, execute_update_query
 logger = logging.getLogger("alrt.workers.workflow")
 
 # Queries
-Q_GET_EXECUTION = "SELECT id, team_id, workflow_id, subscriber_id, event_payload, channels, status FROM workflow_executions WHERE id = $1"
-Q_GET_WORKFLOW = "SELECT id, team_id, name, event_name, definition, status FROM workflows WHERE id = $1"
+Q_GET_EXECUTION = "SELECT id, team_id, workflow_id, subscriber_id, event_payload, channels, overrides, status FROM workflow_executions WHERE id = $1"
+Q_GET_WORKFLOW = "SELECT id, team_id, name, event_name, category, definition, status FROM workflows WHERE id = $1"
 Q_GET_SUBSCRIBER = "SELECT id, team_id, external_id, email, name, slack_user_id, custom_properties, channel_preferences FROM subscribers WHERE id = $1 AND is_deleted = false"
 Q_UPDATE_EXECUTION_STATUS = "UPDATE workflow_executions SET status = $2, updated_at = now() WHERE id = $1"
 
@@ -49,6 +49,7 @@ def execute(self, execution_id):
 
     node_map = {n["id"]: n for n in nodes}
     allowed_channels = execution["channels"]
+    overrides = execution.get("overrides") or {}
 
     from alrt_workers.tasks.step_runner import execute_step
 
@@ -79,6 +80,8 @@ def execute(self, execution_id):
             execution["event_payload"] or {},
             subscriber["channel_preferences"] or {},
             allowed_channels=allowed_channels,
+            overrides=overrides,
+            workflow_category=workflow.get("category"),
         )
 
         if result == "paused":

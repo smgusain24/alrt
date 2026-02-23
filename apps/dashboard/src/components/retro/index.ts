@@ -9,3 +9,4 @@ export { default as CodeBlock } from "./CodeBlock";
 export { default as RetroModal } from "./RetroModal";
 export { default as StatsCounter } from "./StatsCounter";
 export { default as MarqueeBar } from "./MarqueeBar";
+export { default as TimezoneSelector } from "./TimezoneSelector";

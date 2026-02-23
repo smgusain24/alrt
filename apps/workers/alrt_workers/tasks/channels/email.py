@@ -21,11 +21,18 @@ Q_CREATE_NOTIFICATION = """
     VALUES ($1, $2, $3, $4, 'email', $5, $6, $7, 'pending')
     RETURNING id, created_at
 """
-Q_UPDATE_NOTIFICATION_STATUS = "UPDATE notifications SET status = $2, updated_at = now() WHERE id = $1"
+Q_MARK_SENT = "UPDATE notifications SET status = 'sent', sent_at = now(), updated_at = now() WHERE id = $1"
+Q_MARK_FAILED = "UPDATE notifications SET status = 'failed', error_reason = $2, updated_at = now() WHERE id = $1"
+
+PERMANENT_HTTP_CODES = {400, 401, 403, 422}
+
+
+class _PermanentEmailError(Exception):
+    pass
 
 
 @celery_app.task(bind=True, **EMAIL_RETRY.as_task_kwargs())
-def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None):
+def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber or not subscriber.get("email"):
         log.warning(f"Subscriber {subscriber_id} has no email")
@@ -39,8 +46,10 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     f = get_fernet()
     config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
 
-    subject = render(template_data.get("subject", ""), payload)
-    body_html = render(template_data.get("body", ""), payload)
+    overrides = overrides or {}
+    subject = overrides.get("subject") or render(template_data.get("subject", ""), payload, subscriber)
+    body_html = render(template_data.get("body", ""), payload, subscriber)
+    to_email = overrides.get("to") or subscriber["email"]
 
     if notification_id:
         notification = execute_read_one_query(Q_GET_NOTIFICATION, [uuid.UUID(notification_id)])
@@ -61,12 +70,25 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     nid = notification["id"] if notification else None
 
     try:
-        _send_email(provider["provider_type"], config, subscriber["email"], subject, body_html)
-        execute_update_query(Q_UPDATE_NOTIFICATION_STATUS, [nid, "sent"])
+        _send_email(
+            provider["provider_type"],
+            config,
+            to_email,
+            subject,
+            body_html,
+            cc=overrides.get("cc", []),
+            bcc=overrides.get("bcc", []),
+            reply_to=overrides.get("reply_to"),
+        )
+        execute_update_query(Q_MARK_SENT, [nid])
+    except _PermanentEmailError as exc:
+        log.error(f"Permanent email error for notification {nid}: {exc}")
+        if nid:
+            execute_update_query(Q_MARK_FAILED, [nid, str(exc)])
     except Exception as exc:
         log.error(f"Email delivery failed for notification {nid}: {exc}")
         if nid and self.request.retries >= self.max_retries:
-            execute_update_query(Q_UPDATE_NOTIFICATION_STATUS, [nid, "failed"])
+            execute_update_query(Q_MARK_FAILED, [nid, str(exc)])
             raise
         if nid:
             raise self.retry(exc=exc, kwargs={
@@ -80,27 +102,53 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
         raise
 
 
-def _send_email(provider_type, config, to_email, subject, body_html):
+def _send_email(provider_type, config, to_email, subject, body_html, cc=None, bcc=None, reply_to=None):
     if provider_type == "sendgrid":
-        httpx.post(
+        personalization = {"to": [{"email": to_email}]}
+        if cc:
+            personalization["cc"] = [{"email": email} for email in cc]
+        if bcc:
+            personalization["bcc"] = [{"email": email} for email in bcc]
+
+        payload = {
+            "personalizations": [personalization],
+            "from": {"email": config.get("from_email", "noreply@alrt.dev")},
+            "subject": subject,
+            "content": [{"type": "text/html", "value": body_html}],
+        }
+        if reply_to:
+            payload["reply_to"] = {"email": reply_to}
+
+        resp = httpx.post(
             "https://api.sendgrid.com/v3/mail/send",
             headers={"Authorization": f"Bearer {config['api_key']}"},
-            json={
-                "personalizations": [{"to": [{"email": to_email}]}],
-                "from": {"email": config.get("from_email", "noreply@alrt.dev")},
-                "subject": subject,
-                "content": [{"type": "text/html", "value": body_html}],
-            },
-        ).raise_for_status()
+            json=payload,
+        )
+        _check_response(resp)
 
     elif provider_type == "resend":
-        httpx.post(
+        payload = {
+            "from": config.get("from_email", "noreply@alrt.dev"),
+            "to": [to_email],
+            "subject": subject,
+            "html": body_html,
+        }
+        if cc:
+            payload["cc"] = cc
+        if bcc:
+            payload["bcc"] = bcc
+        if reply_to:
+            payload["reply_to"] = reply_to
+
+        resp = httpx.post(
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {config['api_key']}"},
-            json={
-                "from": config.get("from_email", "noreply@alrt.dev"),
-                "to": [to_email],
-                "subject": subject,
-                "html": body_html,
-            },
-        ).raise_for_status()
+            json=payload,
+        )
+        _check_response(resp)
+
+
+def _check_response(resp):
+    if resp.status_code in PERMANENT_HTTP_CODES:
+        raise _PermanentEmailError(f"HTTP {resp.status_code}: {resp.text[:200]}")
+    resp.raise_for_status()

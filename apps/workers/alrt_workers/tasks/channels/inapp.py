@@ -12,6 +12,8 @@ from alrt_workers.utils.template import render
 
 log = logging.getLogger(__name__)
 
+Q_GET_SUBSCRIBER = "SELECT id, team_id, external_id, email, name, slack_user_id, custom_properties, channel_preferences FROM subscribers WHERE id = $1 AND is_deleted = false"
+
 # Queries
 Q_GET_NOTIFICATION = "SELECT id, team_id, subscriber_id, workflow_execution_id, channel, title, body, action_url, payload, status, created_at FROM notifications WHERE id = $1"
 Q_CREATE_NOTIFICATION = """
@@ -19,14 +21,23 @@ Q_CREATE_NOTIFICATION = """
     VALUES ($1, $2, $3, $4, 'in_app', $5, $6, $7, $8, 'pending')
     RETURNING id, created_at
 """
-Q_UPDATE_NOTIFICATION_STATUS = "UPDATE notifications SET status = $2, updated_at = now() WHERE id = $1"
+Q_MARK_SENT = "UPDATE notifications SET status = 'sent', sent_at = now(), updated_at = now() WHERE id = $1"
+Q_MARK_FAILED = "UPDATE notifications SET status = 'failed', error_reason = $2, updated_at = now() WHERE id = $1"
 
 
 @celery_app.task(bind=True, **INAPP_RETRY.as_task_kwargs())
-def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None):
-    title = render(template_data.get("title", ""), payload)
-    body = render(template_data.get("body", ""), payload)
-    action_url = template_data.get("action_url", "")
+def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
+    subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
+    if not subscriber:
+        log.warning(f"Subscriber {subscriber_id} not found, marking as permanent failure")
+        if notification_id:
+            execute_update_query(Q_MARK_FAILED, [uuid.UUID(notification_id), "Subscriber not found"])
+        return
+
+    title = render(template_data.get("title", ""), payload, subscriber)
+    body = render(template_data.get("body", ""), payload, subscriber)
+    overrides = overrides or {}
+    action_url = overrides.get("action_url") or template_data.get("action_url", "")
 
     if notification_id:
         notification = execute_read_one_query(Q_GET_NOTIFICATION, [uuid.UUID(notification_id)])
@@ -64,11 +75,11 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
                 },
             }),
         )
-        execute_update_query(Q_UPDATE_NOTIFICATION_STATUS, [nid, "sent"])
+        execute_update_query(Q_MARK_SENT, [nid])
     except Exception as exc:
         log.error(f"In-app delivery failed for notification {nid}: {exc}")
         if nid and self.request.retries >= self.max_retries:
-            execute_update_query(Q_UPDATE_NOTIFICATION_STATUS, [nid, "failed"])
+            execute_update_query(Q_MARK_FAILED, [nid, str(exc)])
             raise
         if nid:
             raise self.retry(exc=exc, kwargs={

@@ -23,8 +23,9 @@ class RetryPolicy:
 INAPP_RETRY = RetryPolicy(
     max_retries=3,
     default_retry_delay=5,
-    retry_backoff=False,
-    retry_jitter=False,
+    retry_backoff=True,
+    retry_backoff_max=300,
+    retry_jitter=True,
 )
 
 EMAIL_RETRY = RetryPolicy(

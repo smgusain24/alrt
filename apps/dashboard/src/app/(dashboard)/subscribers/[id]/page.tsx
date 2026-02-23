@@ -9,8 +9,9 @@ import {
   Badge,
   GrooveDivider,
   RetroTable,
+  TimezoneSelector,
 } from "@/components/retro";
-import { User, Mail, MessageSquare, Bell, Save, ArrowLeft, Trash2 } from "lucide-react";
+import { User, Mail, MessageSquare, Bell, Save, ArrowLeft, Trash2, Clock, Activity } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface Subscriber {
@@ -19,18 +20,18 @@ interface Subscriber {
   name: string;
   email: string;
   slack_user_id?: string;
-  channel_preferences: Record<string, boolean>;
+  channel_preferences: Record<string, any>;
   created_at: string;
 }
 
 interface Notification {
+  [key: string]: any;
   id: string;
   channel: string;
   title: string;
   status: string;
   read: boolean;
   created_at: string;
-  [key: string]: unknown;
 }
 
 export default function SubscriberDetailPage() {
@@ -51,10 +52,20 @@ export default function SubscriberDetailPage() {
   const [email, setEmail] = useState("");
   const [slackUserId, setSlackUserId] = useState("");
 
-  // Channel preferences
+  // Global channel preferences
   const [prefInApp, setPrefInApp] = useState(true);
   const [prefEmail, setPrefEmail] = useState(true);
   const [prefSlack, setPrefSlack] = useState(false);
+
+  // DND preferences
+  const [dndEnabled, setDndEnabled] = useState(false);
+  const [dndTimezone, setDndTimezone] = useState("UTC");
+  const [dndStart, setDndStart] = useState("22:00");
+  const [dndEnd, setDndEnd] = useState("08:00");
+
+  // Frequency preferences
+  const [freqEnabled, setFreqEnabled] = useState(false);
+  const [freqMaxPerDay, setFreqMaxPerDay] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -67,9 +78,26 @@ export default function SubscriberDetailPage() {
       setName(sub.name || "");
       setEmail(sub.email || "");
       setSlackUserId(sub.slack_user_id || "");
-      setPrefInApp(sub.channel_preferences?.in_app ?? true);
-      setPrefEmail(sub.channel_preferences?.email ?? true);
-      setPrefSlack(sub.channel_preferences?.slack ?? false);
+
+      const prefs = sub.channel_preferences || {};
+      const globalPrefs = prefs.global || prefs; // Fallback for old flat format
+
+      setPrefInApp(globalPrefs.in_app ?? true);
+      setPrefEmail(globalPrefs.email ?? true);
+      setPrefSlack(globalPrefs.slack ?? false);
+
+      if (prefs.dnd) {
+        setDndEnabled(true);
+        setDndTimezone(prefs.dnd.timezone || "UTC");
+        setDndStart(prefs.dnd.start || "22:00");
+        setDndEnd(prefs.dnd.end || "08:00");
+      }
+
+      if (prefs.frequency && prefs.frequency.max_per_day) {
+        setFreqEnabled(true);
+        setFreqMaxPerDay(String(prefs.frequency.max_per_day));
+      }
+
       setNotifications(Array.isArray(notifs) ? notifs : []);
     } catch (err: any) {
       if (err.message?.includes("404") || err.message?.includes("not found") || err.message?.includes("Not Found")) {
@@ -94,9 +122,23 @@ export default function SubscriberDetailPage() {
         email: email.trim() || undefined,
         slack_user_id: slackUserId.trim() || undefined,
         channel_preferences: {
-          in_app: prefInApp,
-          email: prefEmail,
-          slack: prefSlack,
+          global: {
+            in_app: prefInApp,
+            email: prefEmail,
+            slack: prefSlack,
+          },
+          ...(dndEnabled ? {
+            dnd: {
+              timezone: dndTimezone,
+              start: dndStart,
+              end: dndEnd,
+            }
+          } : { dnd: null }),
+          ...(freqEnabled && freqMaxPerDay ? {
+            frequency: {
+              max_per_day: parseInt(freqMaxPerDay, 10),
+            }
+          } : { frequency: null }),
         },
       });
       setSaveSuccess(true);
@@ -185,7 +227,7 @@ export default function SubscriberDetailPage() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto">
-        <p className="text-muted">Loading subscriber...</p>
+        <p className="text-muted font-mono animate-pulse">Loading subscriber...</p>
       </div>
     );
   }
@@ -212,7 +254,7 @@ export default function SubscriberDetailPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto pb-12">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -220,12 +262,12 @@ export default function SubscriberDetailPage() {
           className="flex items-center gap-1 text-sm font-heading uppercase text-muted hover:text-foreground cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" strokeWidth={2} />
-          Back to Subscribers
+          Back
         </button>
         <div className="flex gap-2">
           <RetroButton variant="success" onClick={handleSave} disabled={saving}>
             <Save className="w-4 h-4 inline mr-1" strokeWidth={2} />
-            {saving ? "Saving..." : saveSuccess ? "Saved!" : "Save"}
+            {saving ? "Saving..." : saveSuccess ? "Saved!" : "Save Changes"}
           </RetroButton>
           <RetroButton variant="danger" onClick={handleDelete} disabled={deleting}>
             <Trash2 className="w-4 h-4 inline mr-1" strokeWidth={2} />
@@ -234,138 +276,220 @@ export default function SubscriberDetailPage() {
         </div>
       </div>
 
-      {/* Two-column grid: Profile + Preferences */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        {/* Profile */}
-        <WindowCard title="SUBSCRIBER PROFILE">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
-                External ID
-              </label>
-              <code className="font-mono text-sm bg-row-alt px-2 py-1.5 bevel-inset block">
-                {subscriber.external_id}
-              </code>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-start">
+        {/* Left Column */}
+        <div className="flex flex-col gap-6">
+          {/* Profile */}
+          <WindowCard title="SUBSCRIBER PROFILE">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+                  External ID
+                </label>
+                <code className="font-mono text-sm bg-row-alt px-2 py-1.5 bevel-inset block">
+                  {subscriber.external_id}
+                </code>
+              </div>
+
+              <BeveledInput
+                id="sub-name"
+                label="Name"
+                placeholder="Subscriber name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+
+              <BeveledInput
+                id="sub-email"
+                label="Email"
+                type="email"
+                placeholder="subscriber@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+
+              <BeveledInput
+                id="sub-slack-id"
+                label="Slack User ID"
+                placeholder="U04ABC123"
+                value={slackUserId}
+                onChange={(e) => setSlackUserId(e.target.value)}
+              />
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+                  Created
+                </label>
+                <span className="font-mono text-sm text-muted">
+                  {new Date(subscriber.created_at).toLocaleString()}
+                </span>
+              </div>
             </div>
+          </WindowCard>
 
-            <BeveledInput
-              id="sub-name"
-              label="Name"
-              placeholder="Subscriber name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+          {/* Preferences Area */}
+          {/* DND Hours */}
+          <WindowCard title="DO NOT DISTURB">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted font-mono tracking-tighter max-w-[200px]">
+                  Delay notifications during specific hours.
+                </p>
+                <RetroButton
+                  variant={dndEnabled ? "danger" : "default"}
+                  onClick={() => setDndEnabled(!dndEnabled)}
+                  className="text-xs px-2 py-1"
+                >
+                  {dndEnabled ? "Disable" : "Enable"}
+                </RetroButton>
+              </div>
 
-            <BeveledInput
-              id="sub-email"
-              label="Email"
-              type="email"
-              placeholder="subscriber@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-
-            <BeveledInput
-              id="sub-slack-id"
-              label="Slack User ID"
-              placeholder="U04ABC123"
-              value={slackUserId}
-              onChange={(e) => setSlackUserId(e.target.value)}
-            />
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
-                Created
-              </label>
-              <span className="font-mono text-sm text-muted">
-                {new Date(subscriber.created_at).toLocaleString()}
-              </span>
+              {dndEnabled && (
+                <>
+                  <GrooveDivider />
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+                        Timezone
+                      </label>
+                      <TimezoneSelector value={dndTimezone} onChange={setDndTimezone} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <BeveledInput
+                        id="dnd-start"
+                        label="Start Time"
+                        type="time"
+                        value={dndStart}
+                        onChange={(e) => setDndStart(e.target.value)}
+                      />
+                      <BeveledInput
+                        id="dnd-end"
+                        label="End Time"
+                        type="time"
+                        value={dndEnd}
+                        onChange={(e) => setDndEnd(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-        </WindowCard>
+          </WindowCard>
+        </div>
 
-        {/* Channel Preferences */}
-        <WindowCard title="CHANNEL PREFERENCES">
-          <div className="space-y-4">
-            <p className="text-xs text-muted uppercase font-bold tracking-wide">
-              Toggle channels this subscriber can receive
-            </p>
+        {/* Right Column */}
+        <div className="flex flex-col gap-6">
+          {/* Channel Preferences */}
+          <WindowCard title="GLOBAL CHANNELS">
+            <div className="space-y-4">
+              <p className="text-xs text-muted font-mono tracking-tighter">
+                Control which channels this subscriber can receive notifications from globally.
+              </p>
 
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={() => setPrefInApp((v) => !v)}
-                className={`flex items-center gap-3 px-4 py-3 text-sm font-bold uppercase cursor-pointer ${
-                  prefInApp
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPrefInApp((v) => !v)}
+                  className={`flex items-center gap-3 px-4 py-3 text-sm font-bold uppercase cursor-pointer ${prefInApp
                     ? "bevel-inset bg-white text-success"
-                    : "bevel-outset bg-[#c0c0c0] text-muted"
-                }`}
-              >
-                <Bell className="w-4 h-4" strokeWidth={2} />
-                In-App
-                {prefInApp && (
-                  <Badge variant="success" className="ml-auto">ON</Badge>
-                )}
-              </button>
+                    : "bevel-outset bg-[#c0c0c0] text-muted hover:bg-[#d0d0d0]"
+                    }`}
+                >
+                  <Bell className="w-4 h-4" strokeWidth={2} />
+                  In-App
+                  {prefInApp && (
+                    <Badge variant="success" className="ml-auto">ON</Badge>
+                  )}
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setPrefEmail((v) => !v)}
-                className={`flex items-center gap-3 px-4 py-3 text-sm font-bold uppercase cursor-pointer ${
-                  prefEmail
+                <button
+                  type="button"
+                  onClick={() => setPrefEmail((v) => !v)}
+                  className={`flex items-center gap-3 px-4 py-3 text-sm font-bold uppercase cursor-pointer ${prefEmail
                     ? "bevel-inset bg-white text-success"
-                    : "bevel-outset bg-[#c0c0c0] text-muted"
-                }`}
-              >
-                <Mail className="w-4 h-4" strokeWidth={2} />
-                Email
-                {prefEmail && (
-                  <Badge variant="success" className="ml-auto">ON</Badge>
-                )}
-              </button>
+                    : "bevel-outset bg-[#c0c0c0] text-muted hover:bg-[#d0d0d0]"
+                    }`}
+                >
+                  <Mail className="w-4 h-4" strokeWidth={2} />
+                  Email
+                  {prefEmail && (
+                    <Badge variant="success" className="ml-auto">ON</Badge>
+                  )}
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setPrefSlack((v) => !v)}
-                className={`flex items-center gap-3 px-4 py-3 text-sm font-bold uppercase cursor-pointer ${
-                  prefSlack
+                <button
+                  type="button"
+                  onClick={() => setPrefSlack((v) => !v)}
+                  className={`flex items-center gap-3 px-4 py-3 text-sm font-bold uppercase cursor-pointer ${prefSlack
                     ? "bevel-inset bg-white text-success"
-                    : "bevel-outset bg-[#c0c0c0] text-muted"
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" strokeWidth={2} />
-                Slack
-                {prefSlack && (
-                  <Badge variant="success" className="ml-auto">ON</Badge>
-                )}
-              </button>
+                    : "bevel-outset bg-[#c0c0c0] text-muted hover:bg-[#d0d0d0]"
+                    }`}
+                >
+                  <MessageSquare className="w-4 h-4" strokeWidth={2} />
+                  Slack
+                  {prefSlack && (
+                    <Badge variant="success" className="ml-auto">ON</Badge>
+                  )}
+                </button>
+              </div>
             </div>
+          </WindowCard>
 
-            <GrooveDivider />
+          {/* Frequency Cap */}
+          <WindowCard title="FREQUENCY CAP">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted font-mono tracking-tighter max-w-[200px]">
+                  Limit max notifications per channel per day.
+                </p>
+                <RetroButton
+                  variant={freqEnabled ? "danger" : "default"}
+                  onClick={() => setFreqEnabled(!freqEnabled)}
+                  className="text-xs px-2 py-1"
+                >
+                  {freqEnabled ? "Disable" : "Enable"}
+                </RetroButton>
+              </div>
 
-            <p className="text-xs text-muted">
-              Changes are applied when you click <strong>Save</strong>.
-            </p>
-          </div>
-        </WindowCard>
+              {freqEnabled && (
+                <>
+                  <GrooveDivider />
+                  <div className="space-y-3">
+                    <BeveledInput
+                      id="freq-max-day"
+                      label="Max Per Day"
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 5"
+                      value={freqMaxPerDay}
+                      onChange={(e) => setFreqMaxPerDay(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </WindowCard>
+        </div>
       </div>
-
-      {/* Notification History */}
-      <WindowCard title="NOTIFICATION HISTORY">
-        {notifications.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="bevel-outset bg-navy w-12 h-12 flex items-center justify-center mx-auto mb-3">
-              <Bell className="w-6 h-6 text-white" strokeWidth={2} />
+      < WindowCard title="NOTIFICATION HISTORY" >
+        {
+          notifications.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="bevel-outset bg-navy w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                <Bell className="w-6 h-6 text-white" strokeWidth={2} />
+              </div>
+              <p className="text-muted text-sm font-mono">No notifications logged yet</p>
             </div>
-            <p className="text-muted text-sm">No notifications yet</p>
-          </div>
-        ) : (
-          <RetroTable<Notification>
-            columns={notificationColumns}
-            data={notifications}
-          />
-        )}
-      </WindowCard>
-    </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <RetroTable<Notification>
+                columns={notificationColumns}
+                data={notifications}
+              />
+            </div>
+          )
+        }
+      </WindowCard >
+    </div >
   );
 }
