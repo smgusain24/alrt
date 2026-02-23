@@ -332,7 +332,10 @@ export default function LogsPage() {
                 <span className="font-mono text-xs text-muted">
                   Page {page} of {totalPages}
                 </span>
+
                 <div className="flex gap-1">
+
+                  {/* Prev */}
                   <RetroButton
                     onClick={() => setPage(Math.max(1, page - 1))}
                     disabled={page <= 1}
@@ -340,8 +343,13 @@ export default function LogsPage() {
                   >
                     <ChevronLeft className="w-3 h-3" />
                   </RetroButton>
+
+
+                  {/* Page Numbers */}
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+
                     let pageNum: number;
+
                     if (totalPages <= 5) {
                       pageNum = i + 1;
                     } else if (page <= 3) {
@@ -351,17 +359,21 @@ export default function LogsPage() {
                     } else {
                       pageNum = page - 2 + i;
                     }
+
                     return (
                       <RetroButton
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
-                        variant={pageNum === page ? "primary" : "default"}
+                        variant={pageNum === page ? "accent" : "default"}
                         className="text-xs px-2 py-1 min-w-[28px]"
                       >
                         {pageNum}
                       </RetroButton>
                     );
+
                   })}
+
+
                   <RetroButton
                     onClick={() => setPage(Math.min(totalPages, page + 1))}
                     disabled={page >= totalPages}
@@ -369,6 +381,7 @@ export default function LogsPage() {
                   >
                     <ChevronRight className="w-3 h-3" />
                   </RetroButton>
+
                 </div>
               </div>
             )}
