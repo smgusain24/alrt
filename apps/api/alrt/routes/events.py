@@ -67,6 +67,8 @@ async def trigger_event(
         for ch in unmatched:
             warnings.append(f"Channel '{ch}' has no step in workflow '{body.workflow}'")
 
+    overrides = body.overrides.model_dump(exclude_none=True) if body.overrides else {}
+
     # Create execution record
     execution_id = uuid.uuid4()
     execution = await execute_insert_query(
@@ -78,6 +80,7 @@ async def trigger_event(
             subscriber["id"],
             body.payload or {},
             body.channels,
+            overrides,
             body.idempotency_key,
         ],
     )

@@ -53,6 +53,7 @@ function WorkflowBuilderInner() {
   const { screenToFlowPosition } = useReactFlow();
 
   const [workflow, setWorkflow] = useState<any>(null);
+  const [category, setCategory] = useState("");
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -64,6 +65,7 @@ function WorkflowBuilderInner() {
   useEffect(() => {
     api.workflows.get(workflowId).then((data: any) => {
       setWorkflow(data);
+      setCategory(data.category || "");
       const def = data.definition || {};
       const loadedNodes = (def.nodes || []).map((n: any) => ({
         id: n.id,
@@ -194,8 +196,8 @@ function WorkflowBuilderInner() {
           target: e.target,
         })),
       };
-      await api.workflows.update(workflowId, { definition });
-      setWorkflow((prev: any) => ({ ...prev, definition }));
+      await api.workflows.update(workflowId, { definition, category: category || undefined });
+      setWorkflow((prev: any) => ({ ...prev, definition, category }));
     } catch (err: any) {
       alert("Save failed: " + err.message);
     } finally {
@@ -339,6 +341,15 @@ function WorkflowBuilderInner() {
           >
             {workflow.status}
           </Badge>
+          <div className="flex items-center gap-2 ml-4">
+            <span className="text-xs font-bold uppercase text-muted tracking-wide shrink-0">Category</span>
+            <input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="e.g. marketing"
+              className="bevel-inset bg-white text-xs px-2 py-1 font-body focus-retro w-32"
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <RetroButton variant="default" onClick={handleCopyCurl}>

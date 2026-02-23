@@ -1,6 +1,8 @@
 "use client";
+import { useState } from "react";
 import { BeveledInput, RetroButton, GrooveDivider, Badge } from "@/components/retro";
-import { X, Plus, Trash2 } from "lucide-react";
+import { X, Plus, Trash2, Eye } from "lucide-react";
+import { api } from "@/lib/api";
 
 /* ─── Condition Builder ─── */
 
@@ -195,6 +197,13 @@ interface ConfigPanelProps {
 }
 
 export default function ConfigPanel({ node, onUpdate, onDelete, onClose, onSave, saving }: ConfigPanelProps) {
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewPayload, setPreviewPayload] = useState('{\n  "name": "Alex",\n  "order_id": "ORD-123"\n}');
+  const [previewSubId, setPreviewSubId] = useState("");
+  const [previewResult, setPreviewResult] = useState("");
+  const [previewing, setPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+
   if (!node) return null;
 
   const data = node.data || {};
@@ -207,6 +216,31 @@ export default function ConfigPanel({ node, onUpdate, onDelete, onClose, onSave,
   const updateTemplate = (field: string, value: string) => {
     const template = { ...(data.template || {}), [field]: value };
     onUpdate(node.id, { ...data, template });
+  };
+
+  const handlePreview = async () => {
+    setPreviewing(true);
+    setPreviewError("");
+    setPreviewResult("");
+    try {
+      let payloadObj = {};
+      if (previewPayload.trim()) {
+        payloadObj = JSON.parse(previewPayload);
+      }
+
+      const templateToRender = data.template?.body_html || data.template?.body || data.template?.text || data.template?.title || "";
+
+      const res: any = await api.templates.preview({
+        template: templateToRender,
+        payload: payloadObj,
+        subscriber_id: previewSubId || undefined,
+      });
+      setPreviewResult(res.rendered);
+    } catch (err: any) {
+      setPreviewError(err.message || "Failed to render template.");
+    } finally {
+      setPreviewing(false);
+    }
   };
 
   return (
@@ -243,26 +277,33 @@ export default function ConfigPanel({ node, onUpdate, onDelete, onClose, onSave,
         {nodeType === "channel" && (
           <div className="space-y-3">
             {/* Channel type selector */}
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wide block mb-1">Channel</label>
-              <div className="flex gap-1">
-                {["in_app", "email", "slack"].map((ch) => (
-                  <button
-                    key={ch}
-                    onClick={() => updateField("channel", ch)}
-                    className={`px-2 py-1 text-xs font-heading uppercase font-bold transition-none
-                      ${data.channel === ch ? "bevel-inset bg-white text-accent" : "bevel-outset bg-[#c0c0c0] text-foreground"}`}
-                  >
-                    {ch.replace("_", "-")}
+            {!showPreview && (
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold uppercase tracking-wide block">Channel</label>
+                  <button onClick={() => setShowPreview(true)} className="flex items-center text-[10px] text-accent font-bold uppercase hover:underline">
+                    <Eye className="w-3 h-3 mr-1" strokeWidth={2} /> Preview
                   </button>
-                ))}
+                </div>
+                <div className="flex gap-1">
+                  {["in_app", "email", "slack"].map((ch) => (
+                    <button
+                      key={ch}
+                      onClick={() => updateField("channel", ch)}
+                      className={`px-2 py-1 text-xs font-heading uppercase font-bold transition-none
+                        ${data.channel === ch ? "bevel-inset bg-white text-accent" : "bevel-outset bg-[#c0c0c0] text-foreground"}`}
+                    >
+                      {ch.replace("_", "-")}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <GrooveDivider className="!my-2" />
+            {!showPreview && <GrooveDivider className="!my-2" />}
 
-            {/* In-App template */}
-            {data.channel === "in_app" && (
+            {/* Template Editor Mode */}
+            {!showPreview && data.channel === "in_app" && (
               <>
                 <BeveledInput id="title" label="Title" value={data.template?.title || ""} onChange={(e) => updateTemplate("title", e.target.value)} placeholder="Notification title with {{variables}}" />
                 <div>
@@ -318,9 +359,62 @@ export default function ConfigPanel({ node, onUpdate, onDelete, onClose, onSave,
               </>
             )}
 
-            <p className="text-[10px] text-muted">
-              Use {"{{variable}}"} syntax for dynamic content from the trigger payload.
-            </p>
+            {/* Preview Mode */}
+            {showPreview && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-right-4">
+                <div className="flex justify-between items-center bg-navy text-white px-2 py-1 bevel-inset font-bold text-xs uppercase">
+                  <span>Template Preview</span>
+                  <button onClick={() => setShowPreview(false)} className="hover:text-danger">Close</button>
+                </div>
+
+                <BeveledInput
+                  id="preview-sub-id"
+                  label="Subscriber ID (Optional)"
+                  value={previewSubId}
+                  onChange={(e) => setPreviewSubId(e.target.value)}
+                  placeholder="External ID to fetch context"
+                />
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wide block mb-1">Test Payload (JSON)</label>
+                  <textarea
+                    className="bevel-inset bg-navy text-[#00ff00] text-xs w-full px-2 py-1 font-mono placeholder:text-muted focus-retro min-h-[80px]"
+                    value={previewPayload}
+                    onChange={(e) => setPreviewPayload(e.target.value)}
+                    placeholder='{"key": "value"}'
+                  />
+                </div>
+
+                <RetroButton variant="accent" className="w-full text-xs" onClick={handlePreview} disabled={previewing}>
+                  {previewing ? "Rendering..." : "Render Jinja2 Template"}
+                </RetroButton>
+
+                {previewError && (
+                  <div className="bg-danger text-white text-xs p-2 font-mono break-all bevel-inset">
+                    {previewError}
+                  </div>
+                )}
+
+                {previewResult && (
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wide block mb-1 text-success">Output</label>
+                    <div className="bevel-inset bg-white p-2 text-sm text-foreground break-words overflow-x-auto">
+                      {data.channel === "email" ? (
+                        <div dangerouslySetInnerHTML={{ __html: previewResult }} />
+                      ) : (
+                        <pre className="font-mono text-xs whitespace-pre-wrap">{previewResult}</pre>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!showPreview && (
+              <p className="text-[10px] text-muted">
+                Use {"{{variable}}"} syntax for Jinja2 dynamic content.
+              </p>
+            )}
           </div>
         )}
 

@@ -5,6 +5,8 @@ import {
   Workflow,
   Users,
   Activity,
+  BarChart,
+  FileText,
   Settings,
   Menu,
   X,
@@ -18,11 +20,14 @@ import { api } from "@/lib/api";
 const NAV_ITEMS = [
   { href: "/workflows", label: "Workflows", icon: Workflow },
   { href: "/subscribers", label: "Subscribers", icon: Users },
-  { href: "/activity", label: "Activity", icon: Activity },
-  { href: "/settings", label: "Settings", icon: Settings, children: [
-    { href: "/settings", label: "API Keys" },
-    { href: "/settings/providers", label: "Providers" },
-  ]},
+  { href: "/analytics", label: "Analytics", icon: BarChart },
+  { href: "/logs", label: "Logs", icon: FileText },
+  {
+    href: "/settings", label: "Settings", icon: Settings, children: [
+      { href: "/settings", label: "API Keys" },
+      { href: "/settings/providers", label: "Providers" },
+    ]
+  },
 ];
 
 function Sidebar({
@@ -79,10 +84,9 @@ function Sidebar({
                   className={`
                     flex items-center gap-2 px-3 py-2 text-sm font-bold uppercase tracking-wide
                     transition-none focus-retro
-                    ${
-                      active || isParentActive
-                        ? "bevel-inset bg-white text-accent"
-                        : "bevel-outset bg-[#c0c0c0] text-foreground hover:bg-[#d0d0d0]"
+                    ${active || isParentActive
+                      ? "bevel-inset bg-white text-accent"
+                      : "bevel-outset bg-[#c0c0c0] text-foreground hover:bg-[#d0d0d0]"
                     }
                   `}
                 >

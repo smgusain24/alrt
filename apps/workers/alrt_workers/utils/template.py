@@ -1,9 +1,17 @@
-import re
+from jinja2 import Environment, Undefined
 
 
-def render(template, variables):
-    def replace_var(match):
-        key = match.group(1).strip()
-        return str(variables.get(key, match.group(0)))
+_env = Environment(undefined=Undefined, autoescape=False)
 
-    return re.sub(r"\{\{(.+?)\}\}", replace_var, template)
+
+def render(template, payload, subscriber=None):
+    ctx = {"payload": payload or {}}
+    if subscriber:
+        ctx["subscriber"] = {
+            **subscriber,
+            "properties": subscriber.get("custom_properties", {}),
+        }
+    try:
+        return _env.from_string(template).render(**ctx)
+    except Exception:
+        return template

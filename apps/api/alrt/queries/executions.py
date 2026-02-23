@@ -1,11 +1,11 @@
 CREATE = """
-    INSERT INTO workflow_executions (id, team_id, workflow_id, subscriber_id, event_payload, channels, idempotency_key)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, team_id, workflow_id, subscriber_id, event_payload, channels, status, idempotency_key, created_at
+    INSERT INTO workflow_executions (id, team_id, workflow_id, subscriber_id, event_payload, channels, overrides, idempotency_key)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id, team_id, workflow_id, subscriber_id, event_payload, channels, overrides, status, idempotency_key, created_at
 """
 
 FIND_BY_ID = """
-    SELECT id, team_id, workflow_id, subscriber_id, event_payload, channels, status, created_at
+    SELECT id, team_id, workflow_id, subscriber_id, event_payload, channels, overrides, status, created_at
     FROM workflow_executions WHERE id = $1
 """
 

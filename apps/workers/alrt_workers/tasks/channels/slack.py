@@ -31,17 +31,19 @@ Q_CREATE_NOTIFICATION = """
     VALUES ($1, $2, $3, $4, 'slack', $5, $6, $7, 'pending')
     RETURNING id, created_at
 """
-Q_UPDATE_NOTIFICATION_STATUS = "UPDATE notifications SET status = $2, updated_at = now() WHERE id = $1"
+Q_MARK_SENT = "UPDATE notifications SET status = 'sent', sent_at = now(), updated_at = now() WHERE id = $1"
+Q_MARK_FAILED = "UPDATE notifications SET status = 'failed', error_reason = $2, updated_at = now() WHERE id = $1"
 
 
 @celery_app.task(bind=True, **SLACK_RETRY.as_task_kwargs())
-def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None):
+def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
         log.warning(f"Subscriber {subscriber_id} not found")
         return
 
-    target = template_data.get("slack_channel_id") or subscriber.get("slack_user_id")
+    overrides = overrides or {}
+    target = overrides.get("channel_id") or template_data.get("slack_channel_id") or subscriber.get("slack_user_id")
     if not target:
         log.warning(f"Subscriber {subscriber_id} has no slack_user_id and no slack_channel_id in template")
         return
@@ -55,7 +57,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
     bot_token = config["bot_token"]
 
-    text, blocks = _build_message(template_data, payload)
+    text, blocks = _build_message(template_data, payload, subscriber)
 
     if notification_id:
         notification = execute_read_one_query(Q_GET_NOTIFICATION, [uuid.UUID(notification_id)])
@@ -76,16 +78,16 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     nid = notification["id"] if notification else None
 
     try:
-        _send_slack_message(bot_token, target, text, blocks)
-        execute_update_query(Q_UPDATE_NOTIFICATION_STATUS, [nid, "sent"])
+        _send_slack_message(bot_token, target, text, blocks, thread_ts=overrides.get("thread_ts"))
+        execute_update_query(Q_MARK_SENT, [nid])
     except _PermanentSlackError as exc:
         log.error(f"Permanent Slack error for notification {nid}: {exc}")
         if nid:
-            execute_update_query(Q_UPDATE_NOTIFICATION_STATUS, [nid, "failed"])
+            execute_update_query(Q_MARK_FAILED, [nid, str(exc)])
     except Exception as exc:
         log.error(f"Slack delivery failed for notification {nid}: {exc}")
         if nid and self.request.retries >= self.max_retries:
-            execute_update_query(Q_UPDATE_NOTIFICATION_STATUS, [nid, "failed"])
+            execute_update_query(Q_MARK_FAILED, [nid, str(exc)])
             raise
         if nid:
             raise self.retry(exc=exc, kwargs={
@@ -103,24 +105,24 @@ class _PermanentSlackError(Exception):
     pass
 
 
-def _build_message(template_data, payload):
+def _build_message(template_data, payload, subscriber=None):
     """Build Slack message text and optional Block Kit blocks."""
     blocks = None
 
     if "blocks" in template_data:
         blocks_raw = json.dumps(template_data["blocks"])
-        blocks_rendered = render(blocks_raw, payload)
+        blocks_rendered = render(blocks_raw, payload, subscriber)
         blocks = json.loads(blocks_rendered)
-        text = render(template_data.get("text", template_data.get("title", "Notification")), payload)
+        text = render(template_data.get("text", template_data.get("title", "Notification")), payload, subscriber)
     else:
-        title = render(template_data.get("title", ""), payload)
-        body = render(template_data.get("body", template_data.get("text", "")), payload)
+        title = render(template_data.get("title", ""), payload, subscriber)
+        body = render(template_data.get("body", template_data.get("text", "")), payload, subscriber)
         text = f"*{title}*\n{body}" if title else body
 
     return text, blocks
 
 
-def _send_slack_message(bot_token, channel, text, blocks=None):
+def _send_slack_message(bot_token, channel, text, blocks=None, thread_ts=None):
     """Send message via Slack chat.postMessage API."""
     message_payload = {
         "channel": channel,
@@ -128,6 +130,8 @@ def _send_slack_message(bot_token, channel, text, blocks=None):
     }
     if blocks:
         message_payload["blocks"] = blocks
+    if thread_ts:
+        message_payload["thread_ts"] = thread_ts
 
     resp = httpx.post(
         SLACK_API_URL,

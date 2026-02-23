@@ -60,7 +60,7 @@ export const api = {
     },
     me: () => request("/auth/me"),
     logout: async () => {
-      await request("/auth/logout", { method: "POST" }).catch(() => {});
+      await request("/auth/logout", { method: "POST" }).catch(() => { });
       clearToken();
     },
   },
@@ -93,5 +93,23 @@ export const api = {
     list: () => request("/providers"),
     create: (data: any) => request("/providers", { method: "POST", body: JSON.stringify(data) }),
     delete: (id: string) => request(`/providers/${id}`, { method: "DELETE" }),
+  },
+  analytics: {
+    overview: (days: number = 30) => request(`/analytics/overview?days=${days}`),
+    delivery: (days: number = 30) => request(`/analytics/delivery?days=${days}`),
+    workflows: () => request("/analytics/workflows"),
+    timeline: (days: number = 30) => request(`/analytics/notifications/timeline?days=${days}`),
+  },
+  templates: {
+    preview: (data: any) => request("/templates/preview", { method: "POST", body: JSON.stringify(data) }),
+  },
+  logs: {
+    list: (params?: Record<string, string | number>) => {
+      const qs = params ? "?" + new URLSearchParams(
+        Object.entries(params).filter(([_, v]) => v !== "" && v !== undefined && v !== null).map(([k, v]) => [k, String(v)])
+      ).toString() : "";
+      return request(`/logs${qs}`);
+    },
+    get: (id: string) => request(`/logs/${id}`),
   },
 };

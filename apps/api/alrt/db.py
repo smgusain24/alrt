@@ -35,6 +35,7 @@ async def init_pool(database_url: str):
 REQUIRED_TABLES = [
     "teams", "users", "api_keys", "subscribers", "workflows",
     "workflow_executions", "notifications", "providers", "scheduled_steps",
+    "event_logs",
 ]
 
 REQUIRED_INDEXES = [
@@ -52,6 +53,9 @@ REQUIRED_INDEXES = [
     ("idx_scheduled_steps_due", "scheduled_steps", "status, scheduled_at"),
     ("idx_users_email", "users", "email"),
     ("idx_users_team_id", "users", "team_id"),
+    ("idx_event_logs_team_id", "event_logs", "team_id"),
+    ("idx_event_logs_created_at", "event_logs", "team_id, created_at DESC"),
+    ("idx_notifications_status", "notifications", "team_id, status"),
 ]
 
 SCHEMA_SQL = """
@@ -112,6 +116,7 @@ CREATE TABLE IF NOT EXISTS workflows (
     team_id UUID NOT NULL REFERENCES teams(id),
     name VARCHAR(255) NOT NULL,
     event_name VARCHAR(255) NOT NULL,
+    category VARCHAR(50),
     definition JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'draft',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -126,6 +131,7 @@ CREATE TABLE IF NOT EXISTS workflow_executions (
     subscriber_id UUID NOT NULL REFERENCES subscribers(id),
     event_payload JSONB NOT NULL DEFAULT '{}',
     channels JSONB,
+    overrides JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'running',
     idempotency_key VARCHAR(255) UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -144,6 +150,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     action_url VARCHAR(2048),
     payload JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    error_reason TEXT,
+    sent_at TIMESTAMPTZ,
     is_read BOOLEAN NOT NULL DEFAULT false,
     is_archived BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -170,6 +178,20 @@ CREATE TABLE IF NOT EXISTS scheduled_steps (
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS event_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    method VARCHAR(10) NOT NULL,
+    path VARCHAR(500) NOT NULL,
+    status_code INTEGER,
+    latency_ms INTEGER,
+    request_body JSONB,
+    response_summary JSONB,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 """
 

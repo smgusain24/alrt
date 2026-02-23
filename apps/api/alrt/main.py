@@ -8,7 +8,8 @@ from slowapi.middleware import SlowAPIMiddleware
 from alrt.config import settings
 from alrt.db import init_pool, close_pool, ensure_schema
 from alrt.middleware.rate_limit import limiter, rate_limit_exceeded_handler
-from alrt.routes import auth, events, notifications, providers, subscribers, teams, websocket, workflows
+from alrt.middleware.audit_log import AuditLogMiddleware
+from alrt.routes import analytics, auth, events, logs, notifications, providers, subscribers, teams, templates, websocket, workflows
 
 
 @asynccontextmanager
@@ -26,6 +27,8 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+app.add_middleware(AuditLogMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -42,6 +45,9 @@ app.include_router(notifications.router)
 app.include_router(events.router)
 app.include_router(providers.router)
 app.include_router(websocket.router)
+app.include_router(templates.router)
+app.include_router(analytics.router)
+app.include_router(logs.router)
 
 
 @app.get("/health")

@@ -1,8 +1,25 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+
+class DndWindow(BaseModel):
+    timezone: str = "UTC"
+    start: str = "22:00"
+    end: str = "08:00"
+
+
+class FrequencyCap(BaseModel):
+    max_per_day: int | None = None
+    max_per_hour: int | None = None
+
+
+class ChannelPreferences(BaseModel):
+    global_: dict[str, bool] = Field(default_factory=dict, alias="global")
+    categories: dict[str, dict[str, bool]] = Field(default_factory=dict)
+    dnd: DndWindow | None = None
+    frequency: FrequencyCap | None = None
 
 class CreateSubscriber(BaseModel):
     external_id: str
@@ -36,4 +53,4 @@ class SubscriberResponse(BaseModel):
 
 
 class UpdatePreferences(BaseModel):
-    channel_preferences: dict
+    channel_preferences: ChannelPreferences
