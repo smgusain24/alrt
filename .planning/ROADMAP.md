@@ -48,16 +48,25 @@ Plans:
 **Deliverables:**
 - alrt shared email account (Resend) — all teams send email via alrt's Resend account by default
 - alrt shared Slack app — teams connect their Slack workspace via alrt's registered OAuth app
-- Per-team sending quotas — tracked in DB; hard-cap on shared infra abuse
+- Per-team sending quotas — tracked in DB; soft limit with dashboard warning banner
 - Provider model update — `alrt_hosted` provider type alongside existing BYOC
-- Dashboard update — providers page shows "connected via alrt" vs. "custom credentials"
-- Migration — existing BYOC teams continue working; alrt-hosted becomes new default for new teams
+- Dashboard quota banner — generic warning shown across all pages when team exceeds 1,000/month
+- New teams auto-provisioned — alrt_hosted email (active) + Slack placeholder (inactive) at signup
 
 **Success criteria:**
 1. New team can trigger email delivery without visiting SendGrid or entering any email credentials
 2. New team can connect Slack workspace in one OAuth click without registering a Slack app
-3. Team sending quota is tracked; over-limit team gets a 429 with clear error message
+3. Team sending quota is tracked; over-limit team sees dashboard banner
 4. Existing BYOC teams are unaffected after migration
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Schema foundation: team_quotas table + alrt_hosted SQL query constants (Wave 1)
+- [ ] 02-02-PLAN.md — Config + auth auto-insert: env vars, db.py schema management, signup provider provisioning (Wave 2)
+- [ ] 02-03-PLAN.md — Email worker: alrt_hosted branch uses RESEND_API_KEY, quota increment after send (Wave 2)
+- [ ] 02-04-PLAN.md — Slack channels route + worker: OAuth UPSERT, tokens_revoked events, alrt_hosted branch (Wave 3)
+- [ ] 02-05-PLAN.md — Quota visibility: GET /teams/{id}/quota API + dashboard warning banner (Wave 3)
 
 ---
 
