@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Not started — planning complete, ready to execute Phase 1
-status: unknown
-stopped_at: Phase 2 context gathered
-last_updated: "2026-02-28T07:35:09.969Z"
+current_phase: 02-shared-sending-infrastructure
+status: in_progress
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-02-28T08:08:00.000Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Alrt — Project State
@@ -23,7 +23,7 @@ progress:
 ## Current Focus
 
 **Milestone:** Milestone 2 — Full-Stack Infrastructure
-**Current Phase:** Not started — planning complete, ready to execute Phase 1
+**Current Phase:** 02-shared-sending-infrastructure (Plan 02-01 complete)
 
 **Core value:** One API key replaces 5 integrations — full-stack notifications infrastructure
 
@@ -34,7 +34,7 @@ progress:
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
 | 1 | MVP Completion + Security | ○ Pending | — |
-| 2 | Shared Sending Infrastructure | ○ Pending | — |
+| 2 | Shared Sending Infrastructure | ◑ In Progress | 02-01 done |
 | 3 | WhatsApp Channel | ○ Pending | — |
 | 4 | White-Label & Pricing Tiers | ○ Pending | — |
 | 5 | Platform Hardening | ○ Pending | — |
@@ -42,6 +42,19 @@ progress:
 ---
 
 ## Session Log
+
+### 2026-02-28 — Phase 2 Plan 01 Execution
+- **Stopped at:** Completed 02-01-PLAN.md
+- **Decisions made:**
+  - team_quotas uses period_start = date_trunc('month', now()) at query time — no cron reset needed
+  - No created_at on team_quotas — period_start is the row identity timestamp
+  - over_limit uses post-increment comparison (monthly_count + 1) > $2 for correctness
+  - Unique index idx_providers_team_channel_type on (team_id, channel, provider_type) enables ON CONFLICT upsert without affecting BYOC providers
+  - Slack alrt_hosted inserted as inactive placeholder at signup, activated on OAuth
+- **Artifacts produced:**
+  - schema.sql: team_quotas table + 2 indexes
+  - apps/api/alrt/queries/quotas.py (new): UPSERT_QUOTA, GET_QUOTA_STATUS
+  - apps/api/alrt/queries/providers.py: 5 alrt_hosted constants appended
 
 ### 2026-02-28 — Strategy Session
 - **Stopped at:** Phase 2 context gathered

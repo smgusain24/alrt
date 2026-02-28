@@ -62,7 +62,7 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Schema foundation: team_quotas table + alrt_hosted SQL query constants (Wave 1)
+- [x] 02-01-PLAN.md — Schema foundation: team_quotas table + alrt_hosted SQL query constants (Wave 1)
 - [ ] 02-02-PLAN.md — Config + auth auto-insert: env vars, db.py schema management, signup provider provisioning (Wave 2)
 - [ ] 02-03-PLAN.md — Email worker: alrt_hosted branch uses RESEND_API_KEY, quota increment after send (Wave 2)
 - [ ] 02-04-PLAN.md — Slack channels route + worker: OAuth UPSERT, tokens_revoked events, alrt_hosted branch (Wave 3)
