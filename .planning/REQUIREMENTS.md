@@ -93,9 +93,9 @@
 | MVP-02 | Phase 1 | Pending |
 | MVP-03 | Phase 1 | Pending |
 | MVP-04 | Phase 1 | Pending |
-| INFRA-01 | Phase 2 | In Progress (02-01 schema done) |
-| INFRA-02 | Phase 2 | In Progress (02-01 schema done) |
-| INFRA-03 | Phase 2 | In Progress (02-01 schema done) |
+| INFRA-01 | Phase 2 | Complete (02-01 through 02-03 done) |
+| INFRA-02 | Phase 2 | Complete (02-01 through 02-04 done) |
+| INFRA-03 | Phase 2 | Complete (02-01, 02-03, 02-04, 02-05 done) |
 | WA-01 | Phase 3 | Pending |
 | WA-02 | Phase 3 | Pending |
 | WA-03 | Phase 3 | Pending |

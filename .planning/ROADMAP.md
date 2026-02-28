@@ -59,14 +59,14 @@ Plans:
 3. Team sending quota is tracked; over-limit team sees dashboard banner
 4. Existing BYOC teams are unaffected after migration
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md — Schema foundation: team_quotas table + alrt_hosted SQL query constants (Wave 1)
-- [ ] 02-02-PLAN.md — Config + auth auto-insert: env vars, db.py schema management, signup provider provisioning (Wave 2)
-- [ ] 02-03-PLAN.md — Email worker: alrt_hosted branch uses RESEND_API_KEY, quota increment after send (Wave 2)
-- [ ] 02-04-PLAN.md — Slack channels route + worker: OAuth UPSERT, tokens_revoked events, alrt_hosted branch (Wave 3)
-- [ ] 02-05-PLAN.md — Quota visibility: GET /teams/{id}/quota API + dashboard warning banner (Wave 3)
+- [x] 02-02-PLAN.md — Config + auth auto-insert: env vars, db.py schema management, signup provider provisioning (Wave 2)
+- [x] 02-03-PLAN.md — Email worker: alrt_hosted branch uses RESEND_API_KEY, quota increment after send (Wave 2)
+- [x] 02-04-PLAN.md — Slack channels route + worker: OAuth UPSERT, tokens_revoked events, alrt_hosted branch (Wave 3)
+- [x] 02-05-PLAN.md — Quota visibility: GET /teams/{id}/quota API + dashboard warning banner (Wave 3)
 
 ---
 
@@ -140,7 +140,8 @@ Plans:
 | Phase | Goal | Key Output |
 |-------|------|------------|
 | 1 | MVP Completion + Security | Beta-ready product, secure auth, fixed bugs |
-| 2 | 4/5 | In Progress|  | 3 | WhatsApp Channel | 4th delivery channel live |
+| 2 | Shared Sending Infrastructure | 5/5 Complete | alrt-hosted email + Slack, quota tracking, dashboard banner |
+| 3 | WhatsApp Channel | Pending | 4th delivery channel live |
 | 4 | White-Label & Pricing | Revenue model enforced; domain verification |
 | 5 | Platform Hardening | Bulk sends, advanced conditions, validated workflows |
 
