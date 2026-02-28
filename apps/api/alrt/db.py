@@ -35,7 +35,7 @@ async def init_pool(database_url: str):
 REQUIRED_TABLES = [
     "teams", "users", "api_keys", "subscribers", "workflows",
     "workflow_executions", "notifications", "providers", "scheduled_steps",
-    "event_logs",
+    "event_logs", "team_quotas",
 ]
 
 REQUIRED_INDEXES = [
@@ -56,6 +56,7 @@ REQUIRED_INDEXES = [
     ("idx_event_logs_team_id", "event_logs", "team_id"),
     ("idx_event_logs_created_at", "event_logs", "team_id, created_at DESC"),
     ("idx_notifications_status", "notifications", "team_id, status"),
+    ("idx_team_quotas_team_period", "team_quotas", "team_id, period_start"),
 ]
 
 SCHEMA_SQL = """
@@ -193,6 +194,20 @@ CREATE TABLE IF NOT EXISTS event_logs (
     user_agent VARCHAR(500),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS team_quotas (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id      UUID NOT NULL REFERENCES teams(id),
+    period_start TIMESTAMPTZ NOT NULL,
+    monthly_count INTEGER NOT NULL DEFAULT 0,
+    over_limit   BOOLEAN NOT NULL DEFAULT false,
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, period_start)
+);
+
+-- Ensure at most one alrt_hosted provider per channel per team (enables ON CONFLICT upsert)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_providers_team_channel_type
+    ON providers(team_id, channel, provider_type);
 """
 
 
