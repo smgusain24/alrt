@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { GrooveDivider, RetroButton } from "@/components/retro";
+import { Divider, Button } from "@/components/ui";
 import { api } from "@/lib/api";
 
 const NAV_ITEMS = [
@@ -68,7 +68,7 @@ function Sidebar({
           </button>
         </div>
 
-        <GrooveDivider className="!my-0 mx-1" />
+        <Divider className="!my-0 mx-1" />
 
         {/* Nav items */}
         <nav className="p-2 space-y-1">
@@ -154,9 +154,9 @@ function DashboardTopBar({
         <div className="bevel-outset bg-[#c0c0c0] px-3 py-1 text-xs font-bold">
           {user?.email ?? "Loading..."}
         </div>
-        <RetroButton variant="danger" onClick={handleLogout} className="text-xs px-2 py-1">
+        <Button variant="danger" onClick={handleLogout} className="text-xs px-2 py-1">
           Logout
-        </RetroButton>
+        </Button>
       </div>
     </header>
   );
@@ -169,6 +169,7 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
 
   useEffect(() => {
     api.auth.me()
@@ -179,12 +180,28 @@ export default function DashboardLayout({
       });
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    const teamId = (user as any).team_id;
+    if (!teamId) return;
+    api.teams.getQuota(teamId)
+      .then((data) => setQuotaExceeded(data.over_limit))
+      .catch(() => {
+        // Quota check is non-critical — fail silently
+      });
+  }, [user]);
+
   return (
     <div className="flex h-screen bg-surface overflow-hidden">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <DashboardTopBar onMenuClick={() => setSidebarOpen(true)} user={user} />
         <div className="hr-groove" />
+        {quotaExceeded && (
+          <div className="bevel-inset bg-[#fff3cd] px-4 py-2 text-sm text-danger font-bold text-center">
+            You&apos;ve exceeded your monthly notification limit. Contact support to continue sending.
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
