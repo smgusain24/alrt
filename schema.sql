@@ -135,3 +135,28 @@ CREATE TABLE IF NOT EXISTS event_logs (
     user_agent VARCHAR(500),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS team_invites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    email VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'viewer',
+    token_hash VARCHAR(64) NOT NULL,
+    invited_by UUID NOT NULL REFERENCES users(id),
+    accepted_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, email)
+);
+
+CREATE TABLE IF NOT EXISTS team_quotas (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id      UUID NOT NULL REFERENCES teams(id),
+    period_start TIMESTAMPTZ NOT NULL,
+    monthly_count INTEGER NOT NULL DEFAULT 0,
+    over_limit   BOOLEAN NOT NULL DEFAULT false,
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, period_start)
+);
+CREATE INDEX IF NOT EXISTS idx_team_quotas_team_period
+    ON team_quotas(team_id, period_start);
