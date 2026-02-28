@@ -7,7 +7,7 @@ from jose import jwt
 
 from alrt.config import settings
 from alrt.db import execute_read_one_query, execute_insert_query, execute_update_query
-from alrt.queries import users as user_q, teams as team_q
+from alrt.queries import users as user_q, teams as team_q, providers as prov_q
 from alrt.deps import get_current_user
 from alrt.schemas.auth import AuthResponse, LoginRequest, SignupRequest, UserResponse
 
@@ -49,11 +49,21 @@ async def signup(body: SignupRequest, response: Response):
         user_id, body.email, _hash_password(body.password), body.name, team_id
     ])
 
+    # Auto-insert alrt_hosted providers for the new team.
+    # Email provider is active immediately — alrt's Resend account handles all sending.
+    # Slack provider is inactive until the team completes the OAuth flow.
+    await execute_insert_query(prov_q.CREATE_ALRT_HOSTED_EMAIL, [
+        uuid.uuid4(), team_id, body.team_name,
+    ])
+    await execute_insert_query(prov_q.CREATE_ALRT_HOSTED_SLACK, [
+        uuid.uuid4(), team_id,
+    ])
+
     token = _create_jwt(str(user_id), str(team_id), body.email)
 
     response.set_cookie(
-        key="alrt_token", value=token, httponly=False,
-        secure=False, samesite="lax", max_age=JWT_EXPIRY_HOURS * 3600,
+        key="alrt_token", value=token, httponly=True,
+        secure=settings.cookie_secure, samesite="lax", max_age=JWT_EXPIRY_HOURS * 3600,
     )
 
     return AuthResponse(user=user, team_id=team_id, token=token)
@@ -74,8 +84,8 @@ async def login(body: LoginRequest, response: Response):
     token = _create_jwt(str(user["id"]), str(user["team_id"]), user["email"])
 
     response.set_cookie(
-        key="alrt_token", value=token, httponly=False,
-        secure=False, samesite="lax", max_age=JWT_EXPIRY_HOURS * 3600,
+        key="alrt_token", value=token, httponly=True,
+        secure=settings.cookie_secure, samesite="lax", max_age=JWT_EXPIRY_HOURS * 3600,
     )
 
     return AuthResponse(user=user, team_id=user["team_id"], token=token)
