@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import uuid
 
 import httpx
@@ -53,9 +54,20 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
         log.warning(f"No Slack provider configured for team {team_id}")
         return
 
-    f = get_fernet()
-    config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
-    bot_token = config["bot_token"]
+    if provider["provider_type"] == "alrt_hosted":
+        # alrt_hosted: config is encrypted (contains bot_token — it IS a secret)
+        f = get_fernet()
+        config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
+        bot_token = config.get("bot_token")
+        if not bot_token:
+            # Provider is inactive placeholder (OAuth not completed yet)
+            log.warning(f"Slack alrt_hosted provider for team {team_id} has no bot_token — OAuth incomplete")
+            return
+    else:
+        # BYOC path: existing slack_oauth provider type
+        f = get_fernet()
+        config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
+        bot_token = config["bot_token"]
 
     text, blocks = _build_message(template_data, payload, subscriber)
 
@@ -80,6 +92,18 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     try:
         _send_slack_message(bot_token, target, text, blocks, thread_ts=overrides.get("thread_ts"))
         execute_update_query(Q_MARK_SENT, [nid])
+        # Increment monthly quota counter (soft limit, fire-and-forget)
+        execute_update_query(
+            """
+            INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
+            VALUES ($1, date_trunc('month', now()), 1, (1 > $2))
+            ON CONFLICT (team_id, period_start) DO UPDATE
+            SET monthly_count = team_quotas.monthly_count + 1,
+                over_limit    = (team_quotas.monthly_count + 1) > $2,
+                updated_at    = now()
+            """,
+            [uuid.UUID(team_id), int(os.getenv("MONTHLY_QUOTA_LIMIT", "1000"))],
+        )
     except _PermanentSlackError as exc:
         log.error(f"Permanent Slack error for notification {nid}: {exc}")
         if nid:
