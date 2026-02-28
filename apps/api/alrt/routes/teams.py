@@ -8,7 +8,7 @@ from alrt.config import settings
 from alrt.db import execute_insert_query, execute_read_query, execute_read_one_query, execute_update_query
 from alrt.deps import get_current_team
 from alrt.middleware.rate_limit import limiter
-from alrt.queries import api_keys as api_key_q, teams as team_q
+from alrt.queries import api_keys as api_key_q, teams as team_q, quotas as quotas_q
 from alrt.schemas.team import (
     ApiKeyCreatedResponse,
     ApiKeyResponse,
@@ -98,3 +98,21 @@ async def delete_team_api_key(
     key = await execute_read_one_query(api_key_q.REVOKE, [key_id, team_id])
     if not key:
         raise HTTPException(status_code=404, detail="API key not found")
+
+
+@router.get("/{team_id}/quota")
+@limiter.limit(settings.rate_limit_read)
+async def get_team_quota(
+    request: Request,
+    team_id: uuid.UUID,
+    current_team: uuid.UUID = Depends(get_current_team),
+):
+    """Return current month's quota status for the team."""
+    if current_team != team_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    row = await execute_read_one_query(quotas_q.GET_QUOTA_STATUS, [team_id])
+    return {
+        "over_limit": row["over_limit"] if row else False,
+        "monthly_count": row["monthly_count"] if row else 0,
+    }
