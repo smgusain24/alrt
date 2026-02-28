@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import uuid
 
 import httpx
@@ -43,8 +44,17 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
         log.warning(f"No email provider configured for team {team_id}")
         return
 
-    f = get_fernet()
-    config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
+    if provider["provider_type"] == "alrt_hosted":
+        # alrt_hosted: config stores display_name only (no secrets, no encryption)
+        config = provider["config"]  # plain dict: {"display_name": "Team Name"}
+        config["api_key"] = os.getenv("RESEND_API_KEY", "")
+        if not config["api_key"]:
+            log.error(f"RESEND_API_KEY not configured — cannot send email for team {team_id}")
+            return
+    else:
+        # BYOC path: decrypt per-team credentials (sendgrid / resend with encrypted config)
+        f = get_fernet()
+        config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
 
     overrides = overrides or {}
     subject = overrides.get("subject") or render(template_data.get("subject", ""), payload, subscriber)
@@ -81,6 +91,18 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
             reply_to=overrides.get("reply_to"),
         )
         execute_update_query(Q_MARK_SENT, [nid])
+        # Increment monthly quota counter (soft limit — fire-and-forget, never blocks delivery)
+        execute_update_query(
+            """
+            INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
+            VALUES ($1, date_trunc('month', now()), 1, (1 > $2))
+            ON CONFLICT (team_id, period_start) DO UPDATE
+            SET monthly_count = team_quotas.monthly_count + 1,
+                over_limit    = (team_quotas.monthly_count + 1) > $2,
+                updated_at    = now()
+            """,
+            [uuid.UUID(team_id), int(os.getenv("MONTHLY_QUOTA_LIMIT", "1000"))],
+        )
     except _PermanentEmailError as exc:
         log.error(f"Permanent email error for notification {nid}: {exc}")
         if nid:
@@ -103,7 +125,36 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
 
 
 def _send_email(provider_type, config, to_email, subject, body_html, cc=None, bcc=None, reply_to=None):
-    if provider_type == "sendgrid":
+    if provider_type == "alrt_hosted":
+        # Use alrt's shared Resend account. api_key injected into config dict in deliver().
+        display_name = config.get("display_name", "")
+        # Sanitize display_name: strip angle brackets, limit to 64 chars
+        display_name = display_name.replace("<", "").replace(">", "").strip()[:64]
+        from_addr = f"{display_name} <noreply@alrt.dev>" if display_name else "noreply@alrt.dev"
+
+        payload = {
+            "from": from_addr,
+            "to": [to_email],
+            "subject": subject,
+            "html": body_html,
+        }
+        if cc:
+            payload["cc"] = cc
+        if bcc:
+            payload["bcc"] = bcc
+        if reply_to:
+            payload["reply_to"] = reply_to
+
+        resp = httpx.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {config['api_key']}"},
+            json=payload,
+            timeout=15,
+        )
+        _check_response(resp)
+        return
+
+    elif provider_type == "sendgrid":
         personalization = {"to": [{"email": to_email}]}
         if cc:
             personalization["cc"] = [{"email": email} for email in cc]
