@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02-shared-sending-infrastructure (Plans 02-01, 02-02, 02-03 complete)
+current_phase: 02-shared-sending-infrastructure (Plans 02-01, 02-02, 02-03, 02-04 complete)
 status: in_progress
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-02-28T08:14:37Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-02-28T08:18:38Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 11
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Alrt — Project State
@@ -23,7 +23,7 @@ progress:
 ## Current Focus
 
 **Milestone:** Milestone 2 — Full-Stack Infrastructure
-**Current Phase:** 02-shared-sending-infrastructure (Plans 02-01, 02-02, 02-03 complete)
+**Current Phase:** 02-shared-sending-infrastructure (Plans 02-01, 02-02, 02-03, 02-04 complete)
 
 **Core value:** One API key replaces 5 integrations — full-stack notifications infrastructure
 
@@ -34,7 +34,7 @@ progress:
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
 | 1 | MVP Completion + Security | ○ Pending | — |
-| 2 | Shared Sending Infrastructure | ◑ In Progress | 02-01, 02-02, 02-03 done |
+| 2 | Shared Sending Infrastructure | ◑ In Progress | 02-01, 02-02, 02-03, 02-04 done |
 | 3 | WhatsApp Channel | ○ Pending | — |
 | 4 | White-Label & Pricing Tiers | ○ Pending | — |
 | 5 | Platform Hardening | ○ Pending | — |
@@ -42,6 +42,18 @@ progress:
 ---
 
 ## Session Log
+
+### 2026-02-28 — Phase 2 Plan 04 Execution
+- **Stopped at:** Completed 02-04-PLAN.md
+- **Decisions made:**
+  - Slack bot_token stored encrypted in alrt_hosted config — per-workspace credential must be persisted (unlike email where api_key injected from env at runtime)
+  - alrt_hosted branch in Slack worker checks for missing bot_token and returns with warning if OAuth not yet completed
+  - HMAC-SHA256 signature verification skipped when slack_signing_secret is empty string (dev mode)
+  - Slack quota increment placed after Q_MARK_SENT (fire-and-forget) — DB hiccup does not undo sent status
+- **Artifacts produced:**
+  - apps/api/alrt/routes/channels.py (new): GET /channels, GET /channels/slack/connect, GET /channels/slack/callback (UPSERT), POST /channels/slack/events
+  - apps/api/alrt/main.py: channels router imported and registered
+  - apps/workers/alrt_workers/tasks/channels/slack.py: alrt_hosted branch in deliver() + quota upsert after Q_MARK_SENT
 
 ### 2026-02-28 — Phase 2 Plan 03 Execution
 - **Stopped at:** Completed 02-03-PLAN.md
