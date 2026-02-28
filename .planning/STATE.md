@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02-shared-sending-infrastructure
 status: in_progress
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-02-28T08:08:00.000Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-02-28T08:11:09Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Alrt — Project State
@@ -23,7 +23,7 @@ progress:
 ## Current Focus
 
 **Milestone:** Milestone 2 — Full-Stack Infrastructure
-**Current Phase:** 02-shared-sending-infrastructure (Plan 02-01 complete)
+**Current Phase:** 02-shared-sending-infrastructure (Plans 02-01, 02-02 complete)
 
 **Core value:** One API key replaces 5 integrations — full-stack notifications infrastructure
 
@@ -34,7 +34,7 @@ progress:
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
 | 1 | MVP Completion + Security | ○ Pending | — |
-| 2 | Shared Sending Infrastructure | ◑ In Progress | 02-01 done |
+| 2 | Shared Sending Infrastructure | ◑ In Progress | 02-01, 02-02 done |
 | 3 | WhatsApp Channel | ○ Pending | — |
 | 4 | White-Label & Pricing Tiers | ○ Pending | — |
 | 5 | Platform Hardening | ○ Pending | — |
@@ -42,6 +42,18 @@ progress:
 ---
 
 ## Session Log
+
+### 2026-02-28 — Phase 2 Plan 02 Execution
+- **Stopped at:** Completed 02-02-PLAN.md
+- **Decisions made:**
+  - resend_api_key and slack_signing_secret added as Settings fields mapping to env vars (empty defaults for local dev)
+  - monthly_quota_limit defaults to 1000 notifications/month per team, configurable via MONTHLY_QUOTA_LIMIT
+  - idx_providers_team_channel_type UNIQUE index added inline in SCHEMA_SQL (not REQUIRED_INDEXES loop) to preserve UNIQUE constraint
+  - Provider inserts in signup handler use execute_insert_query; silent failures acceptable due to UPSERT pattern in later plans
+- **Artifacts produced:**
+  - apps/api/alrt/config.py: resend_api_key, slack_signing_secret, monthly_quota_limit fields added
+  - apps/api/alrt/db.py: team_quotas in REQUIRED_TABLES + SCHEMA_SQL + REQUIRED_INDEXES; idx_providers_team_channel_type in SCHEMA_SQL
+  - apps/api/alrt/routes/auth.py: prov_q import + alrt_hosted email/slack provider inserts in signup handler
 
 ### 2026-02-28 — Phase 2 Plan 01 Execution
 - **Stopped at:** Completed 02-01-PLAN.md

@@ -16,9 +16,9 @@
 
 ### Shared Infrastructure
 
-- [ ] **INFRA-01**: Startup can trigger email delivery without providing their own SendGrid/Resend credentials (alrt uses its own shared sending account)
-- [ ] **INFRA-02**: Startup can connect Slack workspace via alrt's OAuth app without registering their own Slack app
-- [ ] **INFRA-03**: Each team's sending is quota-tracked to prevent abuse of shared infrastructure
+- [x] **INFRA-01**: Startup can trigger email delivery without providing their own SendGrid/Resend credentials (alrt uses its own shared sending account)
+- [x] **INFRA-02**: Startup can connect Slack workspace via alrt's OAuth app without registering their own Slack app
+- [x] **INFRA-03**: Each team's sending is quota-tracked to prevent abuse of shared infrastructure
 
 ### WhatsApp Channel
 

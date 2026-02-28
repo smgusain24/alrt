@@ -59,7 +59,7 @@ Plans:
 3. Team sending quota is tracked; over-limit team sees dashboard banner
 4. Existing BYOC teams are unaffected after migration
 
-**Plans:** 5 plans
+**Plans:** 2/5 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md — Schema foundation: team_quotas table + alrt_hosted SQL query constants (Wave 1)
@@ -140,8 +140,7 @@ Plans:
 | Phase | Goal | Key Output |
 |-------|------|------------|
 | 1 | MVP Completion + Security | Beta-ready product, secure auth, fixed bugs |
-| 2 | Shared Sending Infra | Zero-setup email + Slack; alrt owns the infra |
-| 3 | WhatsApp Channel | 4th delivery channel live |
+| 2 | 2/5 | In Progress|  | 3 | WhatsApp Channel | 4th delivery channel live |
 | 4 | White-Label & Pricing | Revenue model enforced; domain verification |
 | 5 | Platform Hardening | Bulk sends, advanced conditions, validated workflows |
 
