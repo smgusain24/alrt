@@ -160,3 +160,7 @@ CREATE TABLE IF NOT EXISTS team_quotas (
 );
 CREATE INDEX IF NOT EXISTS idx_team_quotas_team_period
     ON team_quotas(team_id, period_start);
+
+-- Ensure at most one alrt_hosted provider per channel per team
+CREATE UNIQUE INDEX IF NOT EXISTS idx_providers_team_channel_type
+    ON providers(team_id, channel, provider_type);
