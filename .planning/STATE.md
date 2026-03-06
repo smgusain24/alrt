@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 status: in_progress
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-06T03:28:00Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-03-06T03:34:27Z"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 12
-  completed_plans: 7
+  total_plans: 16
+  completed_plans: 10
 ---
 
 # Alrt — Project State
@@ -42,6 +42,31 @@ progress:
 ---
 
 ## Session Log
+
+### 2026-03-06 — Phase 4 Plan 03 Execution
+- **Stopped at:** Completed 04-03-PLAN.md
+- **Decisions made:**
+  - _TemplateRequiredError (codes 131026/132000) marks notification pending — not DLQ, because 24h session expiry is a business rule not infrastructure failure
+  - whatsapp_app_secret reused as Meta hub.verify_token — avoids separate config field
+  - Q_STORE_WAMID uses payload || $2::jsonb (JSONB merge) to add wamid without overwriting existing payload fields
+  - Template parameter auto-mapping: template_variables list in template_data maps to positional payload lookups
+- **Artifacts produced:**
+  - apps/workers/alrt_workers/tasks/channels/whatsapp.py: Full WhatsApp delivery Celery task — three send modes (text/template/media), phone normalization, wamid storage, quota increment
+  - apps/api/alrt/routes/channels.py: Q_UPDATE_WHATSAPP_STATUS query, _verify_whatsapp_signature helper, GET/POST /webhooks/whatsapp endpoints
+
+### 2026-03-06 — Phase 4 Plan 02 Execution
+- **Stopped at:** Completed 04-02-PLAN.md
+- **Decisions made:**
+  - Discord alrt_hosted provider config is encrypted (webhook URLs are secrets unlike email display_name which is non-secret)
+  - Discord embed color converted from hex string to int via int(hex.lstrip('#'), 16); default blue 0x3b82f6
+  - embed_enabled=False sends plain content (2000 char limit) instead of Discord rich embed
+  - Telegram uses shared TELEGRAM_BOT_TOKEN env var — no per-team credentials (platform-level bot model)
+  - Legacy Markdown parse mode chosen for Telegram over MarkdownV2 (forgiving, no escape complexity)
+  - _TelegramRateLimited exception carries retry_after attribute; deliver() uses countdown= for rate-limit-aware retry
+  - Telegram title stored as None in notifications table (no subject/title concept in Telegram messages)
+- **Artifacts produced:**
+  - apps/workers/alrt_workers/tasks/channels/discord.py (new): Discord webhook delivery Celery task
+  - apps/workers/alrt_workers/tasks/channels/telegram.py (new): Telegram Bot API delivery Celery task
 
 ### 2026-03-06 — Phase 4 Plan 01 Execution
 - **Stopped at:** Completed 04-01-PLAN.md
@@ -132,7 +157,7 @@ progress:
   - Pricing tied to white-label depth (alrt-hosted = free/cheap, custom domain = paid)
   - Scale target: startup-grade (<10k events/day) for now
   - Monorepo structure concern noted but not yet addressed
-- **Resume file:** .planning/phases/04-new-channels-whatsapp-discord-telegram/04-CONTEXT.md
+- **Resume file:** None
 - **Next action:** `/gsd:discuss-phase 1` → plan and execute MVP Completion phase
 
 ---

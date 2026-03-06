@@ -49,14 +49,14 @@
 ### Discord Channel
 
 - [x] **DC-01**: Developer can trigger Discord message delivery via standard `/events/trigger` API call using subscriber's `discord_webhook_url`
-- [ ] **DC-02**: Discord messages support embed formatting (title, body, color) configurable in workflow builder channel node
-- [ ] **DC-03**: Discord delivery status tracked (sent/failed) in notifications table
+- [x] **DC-02**: Discord messages support embed formatting (title, body, color) configurable in workflow builder channel node
+- [x] **DC-03**: Discord delivery status tracked (sent/failed) in notifications table
 
 ### Telegram Channel
 
 - [x] **TG-01**: Developer can trigger Telegram message delivery via standard `/events/trigger` API call using subscriber's `telegram_chat_id`
-- [ ] **TG-02**: Telegram messages support Markdown formatting configurable in workflow builder channel node
-- [ ] **TG-03**: Telegram delivery status tracked (sent/failed) in notifications table
+- [x] **TG-02**: Telegram messages support Markdown formatting configurable in workflow builder channel node
+- [x] **TG-03**: Telegram delivery status tracked (sent/failed) in notifications table
 
 ### White-Label & Pricing
 
@@ -139,11 +139,11 @@
 | WA-03 | Phase 4 | Pending |
 | WA-04 | Phase 4 | Pending |
 | DC-01 | Phase 4 | Complete |
-| DC-02 | Phase 4 | Pending |
-| DC-03 | Phase 4 | Pending |
+| DC-02 | Phase 4 | Complete |
+| DC-03 | Phase 4 | Complete |
 | TG-01 | Phase 4 | Complete |
-| TG-02 | Phase 4 | Pending |
-| TG-03 | Phase 4 | Pending |
+| TG-02 | Phase 4 | Complete |
+| TG-03 | Phase 4 | Complete |
 | WL-01 | Phase 5 | Pending |
 | WL-02 | Phase 5 | Pending |
 | WL-03 | Phase 5 | Pending |
