@@ -27,15 +27,29 @@ celery_app.conf.update(
     enable_utc=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    task_routes={
+        "alrt_workers.tasks.channels.email.deliver": {"queue": "email"},
+        "alrt_workers.tasks.channels.slack.deliver": {"queue": "slack"},
+        "alrt_workers.tasks.channels.inapp.deliver": {"queue": "inapp"},
+        "alrt_workers.tasks.channels.whatsapp.deliver": {"queue": "whatsapp"},
+        "alrt_workers.tasks.channels.discord.deliver":  {"queue": "discord"},
+        "alrt_workers.tasks.channels.telegram.deliver": {"queue": "telegram"},
+    },
     imports=["alrt_workers.tasks.workflow", "alrt_workers.tasks.step_runner", "alrt_workers.tasks.delay",
              "alrt_workers.tasks.channels.inapp", "alrt_workers.tasks.channels.email",
-             "alrt_workers.tasks.channels.slack"],
+             "alrt_workers.tasks.channels.slack", "alrt_workers.tasks.retention",
+             "alrt_workers.tasks.channels.whatsapp", "alrt_workers.tasks.channels.discord",
+             "alrt_workers.tasks.channels.telegram"],
 )
 
 celery_app.conf.beat_schedule = {
     "poll-scheduled-steps": {
         "task": "alrt_workers.tasks.delay.poll_scheduled_steps",
         "schedule": 30.0,
+    },
+    "archive-old-notifications": {
+        "task": "alrt_workers.tasks.retention.archive_old_notifications",
+        "schedule": 86400.0,  # 24 hours
     },
 }
 
