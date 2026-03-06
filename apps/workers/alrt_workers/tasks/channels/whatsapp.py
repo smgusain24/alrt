@@ -24,7 +24,8 @@ TEMPLATE_REQUIRED_ERRORS = {131026, 132000}
 # Queries
 Q_GET_SUBSCRIBER = (
     "SELECT id, team_id, external_id, email, name, slack_user_id, phone_number, "
-    "custom_properties, channel_preferences FROM subscribers WHERE id = $1 AND is_deleted = false"
+    "discord_webhook_url, telegram_chat_id, custom_properties, channel_preferences "
+    "FROM subscribers WHERE id = $1 AND is_deleted = false"
 )
 Q_GET_NOTIFICATION = (
     "SELECT id, team_id, subscriber_id, workflow_execution_id, channel, title, body, "
