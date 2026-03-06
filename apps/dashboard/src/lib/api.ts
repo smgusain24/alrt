@@ -94,6 +94,13 @@ export const api = {
     create: (data: any) => request("/providers", { method: "POST", body: JSON.stringify(data) }),
     delete: (id: string) => request(`/providers/${id}`, { method: "DELETE" }),
   },
+  channels: {
+    list: () => request<any[]>("/channels"),
+    activateWhatsApp: () => request("/channels/whatsapp/activate", { method: "POST" }),
+    deactivateWhatsApp: () => request("/channels/whatsapp/deactivate", { method: "POST" }),
+    updateDiscordConfig: (webhookUrl: string) =>
+      request("/channels/discord/config", { method: "PUT", body: JSON.stringify({ webhook_url: webhookUrl }) }),
+  },
   teams: {
     getQuota: (teamId: string) =>
       request<{ over_limit: boolean; monthly_count: number }>(`/teams/${teamId}/quota`),
@@ -107,13 +114,12 @@ export const api = {
   templates: {
     preview: (data: any) => request("/templates/preview", { method: "POST", body: JSON.stringify(data) }),
   },
-  logs: {
+  activity: {
     list: (params?: Record<string, string | number>) => {
       const qs = params ? "?" + new URLSearchParams(
         Object.entries(params).filter(([_, v]) => v !== "" && v !== undefined && v !== null).map(([k, v]) => [k, String(v)])
       ).toString() : "";
-      return request(`/logs${qs}`);
+      return request(`/activity${qs}`);
     },
-    get: (id: string) => request(`/logs/${id}`),
   },
 };

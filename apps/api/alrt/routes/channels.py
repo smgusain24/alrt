@@ -200,6 +200,96 @@ async def slack_events(request: Request):
     return {"ok": True}
 
 
+# --- WhatsApp Activation ---
+
+@router.post("/whatsapp/activate")
+@limiter.limit(settings.rate_limit_write)
+async def activate_whatsapp(
+    request: Request,
+    team_id: uuid.UUID = Depends(get_current_team),
+):
+    """Activate the alrt_hosted WhatsApp channel for the team.
+
+    If no provider row exists yet (e.g. team was created before Phase 4), inserts a placeholder
+    first, then activates it. Uses the ACTIVATE_ALRT_HOSTED_CHANNEL upsert-style UPDATE.
+    """
+    import json as _json
+    extra_config = _json.dumps({"status": "active"})
+    rows = await execute_update_query(
+        prov_q.ACTIVATE_ALRT_HOSTED_CHANNEL,
+        [team_id, "whatsapp", extra_config],
+    )
+    if not rows:
+        # No existing row — insert placeholder and activate
+        await execute_insert_query(
+            prov_q.CREATE_ALRT_HOSTED_WHATSAPP,
+            [uuid.uuid4(), team_id],
+        )
+        await execute_update_query(
+            prov_q.ACTIVATE_ALRT_HOSTED_CHANNEL,
+            [team_id, "whatsapp", extra_config],
+        )
+    return {"channel": "whatsapp", "is_active": True}
+
+
+@router.post("/whatsapp/deactivate")
+@limiter.limit(settings.rate_limit_write)
+async def deactivate_whatsapp(
+    request: Request,
+    team_id: uuid.UUID = Depends(get_current_team),
+):
+    """Deactivate the alrt_hosted WhatsApp channel for the team."""
+    import json as _json
+    await execute_update_query(
+        """UPDATE providers SET is_active = false, updated_at = now()
+           WHERE team_id = $1 AND channel = 'whatsapp' AND provider_type = 'alrt_hosted'""",
+        [team_id],
+    )
+    return {"channel": "whatsapp", "is_active": False}
+
+
+# --- Discord Webhook Config ---
+
+@router.put("/discord/config")
+@limiter.limit(settings.rate_limit_write)
+async def update_discord_config(
+    request: Request,
+    team_id: uuid.UUID = Depends(get_current_team),
+):
+    """Save the Discord webhook URL for the team's alrt_hosted Discord provider.
+
+    Body: { "webhook_url": "https://discord.com/api/webhooks/..." }
+    Inserts a placeholder row if none exists, then stores the encrypted webhook URL.
+    """
+    import json as _json
+    body = await request.json()
+    webhook_url = body.get("webhook_url", "").strip()
+    if not webhook_url:
+        raise HTTPException(status_code=422, detail="webhook_url is required")
+    if not webhook_url.startswith("https://discord.com/api/webhooks/"):
+        raise HTTPException(status_code=422, detail="Invalid Discord webhook URL")
+
+    # Encrypt the webhook URL before storing
+    encrypted_config = _encrypt_config({"webhook_url": webhook_url})
+    extra_config = _json.dumps({"status": "active", **encrypted_config})
+
+    rows = await execute_update_query(
+        prov_q.ACTIVATE_ALRT_HOSTED_CHANNEL,
+        [team_id, "discord", extra_config],
+    )
+    if not rows:
+        # No existing row — insert placeholder first
+        await execute_insert_query(
+            prov_q.CREATE_ALRT_HOSTED_DISCORD,
+            [uuid.uuid4(), team_id],
+        )
+        await execute_update_query(
+            prov_q.ACTIVATE_ALRT_HOSTED_CHANNEL,
+            [team_id, "discord", extra_config],
+        )
+    return {"channel": "discord", "is_active": True}
+
+
 # --- WhatsApp Webhooks ---
 
 @router.get("/webhooks/whatsapp")
