@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     slack_redirect_uri: str = "http://localhost:8000/providers/slack/callback"
     dashboard_url: str = "http://localhost:3000"
 
+    # New channels (WhatsApp / Telegram)
+    whatsapp_token: str = ""                 # Meta System User permanent token (WABA-level)
+    whatsapp_phone_number_id: str = ""       # Meta Phone Number ID for outbound messages
+    whatsapp_app_secret: str = ""            # Meta App Secret for webhook signature verification
+    telegram_bot_token: str = ""             # alrt's shared Telegram bot token
+
     # Cookie security (set COOKIE_SECURE=true in production)
     cookie_secure: bool = False
 

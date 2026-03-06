@@ -79,3 +79,37 @@ GET_CHANNELS_STATUS = """
       AND provider_type = 'alrt_hosted'
     ORDER BY channel
 """
+
+# ─── alrt_hosted provider placeholders for new channels ───
+
+# Insert an alrt_hosted WhatsApp provider placeholder. Activated via toggle in dashboard.
+# $1=id (UUID), $2=team_id (UUID)
+CREATE_ALRT_HOSTED_WHATSAPP = """
+    INSERT INTO providers (id, team_id, channel, provider_type, config, is_active)
+    VALUES ($1, $2, 'whatsapp', 'alrt_hosted', '{"status": "pending"}'::jsonb, false)
+    RETURNING id, channel, provider_type, is_active, created_at
+"""
+
+# Insert an alrt_hosted Discord provider placeholder. Activated via toggle in dashboard.
+# $1=id (UUID), $2=team_id (UUID)
+CREATE_ALRT_HOSTED_DISCORD = """
+    INSERT INTO providers (id, team_id, channel, provider_type, config, is_active)
+    VALUES ($1, $2, 'discord', 'alrt_hosted', '{"status": "pending"}'::jsonb, false)
+    RETURNING id, channel, provider_type, is_active, created_at
+"""
+
+# Insert an alrt_hosted Telegram provider placeholder. Activated via toggle in dashboard.
+# $1=id (UUID), $2=team_id (UUID)
+CREATE_ALRT_HOSTED_TELEGRAM = """
+    INSERT INTO providers (id, team_id, channel, provider_type, config, is_active)
+    VALUES ($1, $2, 'telegram', 'alrt_hosted', '{"status": "pending"}'::jsonb, false)
+    RETURNING id, channel, provider_type, is_active, created_at
+"""
+
+# Activate an alrt_hosted channel provider. Merges additional config (e.g. phone_number_id).
+# $1=team_id (UUID), $2=channel (str), $3=extra_config (JSONB)
+ACTIVATE_ALRT_HOSTED_CHANNEL = """
+    UPDATE providers SET is_active = true, config = config || $3, updated_at = now()
+    WHERE team_id = $1 AND channel = $2 AND provider_type = 'alrt_hosted'
+    RETURNING id, channel, provider_type, is_active, created_at
+"""

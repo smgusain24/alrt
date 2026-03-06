@@ -35,7 +35,7 @@ async def init_pool(database_url: str):
 REQUIRED_TABLES = [
     "teams", "users", "api_keys", "subscribers", "workflows",
     "workflow_executions", "notifications", "providers", "scheduled_steps",
-    "event_logs", "team_quotas",
+    "event_logs", "templates", "team_quotas",
 ]
 
 REQUIRED_INDEXES = [
@@ -56,7 +56,9 @@ REQUIRED_INDEXES = [
     ("idx_event_logs_team_id", "event_logs", "team_id"),
     ("idx_event_logs_created_at", "event_logs", "team_id, created_at DESC"),
     ("idx_notifications_status", "notifications", "team_id, status"),
+    ("idx_templates_team_id", "templates", "team_id"),
     ("idx_team_quotas_team_period", "team_quotas", "team_id, period_start"),
+    ("idx_notifications_execution", "notifications", "workflow_execution_id"),
 ]
 
 SCHEMA_SQL = """
@@ -104,6 +106,9 @@ CREATE TABLE IF NOT EXISTS subscribers (
     email VARCHAR(255),
     name VARCHAR(255),
     slack_user_id VARCHAR(255),
+    phone_number VARCHAR(50),
+    discord_webhook_url VARCHAR(500),
+    telegram_chat_id    VARCHAR(100),
     custom_properties JSONB NOT NULL DEFAULT '{}',
     channel_preferences JSONB NOT NULL DEFAULT '{}',
     is_deleted BOOLEAN NOT NULL DEFAULT false,
@@ -133,6 +138,8 @@ CREATE TABLE IF NOT EXISTS workflow_executions (
     event_payload JSONB NOT NULL DEFAULT '{}',
     channels JSONB,
     overrides JSONB NOT NULL DEFAULT '{}',
+    deliver_at TIMESTAMPTZ,
+    metadata JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'running',
     idempotency_key VARCHAR(255) UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -152,6 +159,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     payload JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     error_reason TEXT,
+    retry_count INTEGER NOT NULL DEFAULT 0,
     sent_at TIMESTAMPTZ,
     is_read BOOLEAN NOT NULL DEFAULT false,
     is_archived BOOLEAN NOT NULL DEFAULT false,
@@ -195,6 +203,20 @@ CREATE TABLE IF NOT EXISTS event_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    name VARCHAR(255) NOT NULL,
+    channel VARCHAR(20) NOT NULL,
+    subject VARCHAR(500),
+    body TEXT NOT NULL,
+    variables JSONB NOT NULL DEFAULT '[]',
+    status VARCHAR(20) NOT NULL DEFAULT 'draft',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, name, channel)
+);
+
 CREATE TABLE IF NOT EXISTS team_quotas (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id      UUID NOT NULL REFERENCES teams(id),
@@ -208,7 +230,29 @@ CREATE TABLE IF NOT EXISTS team_quotas (
 -- Ensure at most one alrt_hosted provider per channel per team (enables ON CONFLICT upsert)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_providers_team_channel_type
     ON providers(team_id, channel, provider_type);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_executions_deliver_at
+    ON workflow_executions(deliver_at) WHERE status = 'scheduled';
+
+CREATE INDEX IF NOT EXISTS idx_notifications_execution
+    ON notifications(workflow_execution_id);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_dead_letter
+    ON notifications(team_id, created_at DESC) WHERE status = 'dead_letter';
+
+CREATE INDEX IF NOT EXISTS idx_notifications_active_window
+    ON notifications(subscriber_id, created_at DESC)
+    WHERE status NOT IN ('archived', 'dead_letter');
 """
+
+SCHEMA_MIGRATIONS = [
+    "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50)",
+    "ALTER TABLE workflow_executions ADD COLUMN IF NOT EXISTS deliver_at TIMESTAMPTZ",
+    "ALTER TABLE workflow_executions ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'",
+    "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS discord_webhook_url VARCHAR(500)",
+    "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR(100)",
+]
 
 
 async def ensure_schema():
@@ -242,6 +286,13 @@ async def ensure_schema():
                 logger.info(f"Created index: {idx_name}")
 
         logger.info("Schema and indexes verified")
+
+        # Run column migrations for existing tables (idempotent)
+        for migration in SCHEMA_MIGRATIONS:
+            try:
+                await conn.execute(migration)
+            except Exception:
+                pass  # Column already exists — idempotent
 
 
 async def close_pool():
