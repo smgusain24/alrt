@@ -1,13 +1,18 @@
 "use client";
 import { Zap, Bell, Mail, MessageSquare, Clock, GitBranch } from "lucide-react";
+import { SiWhatsapp, SiDiscord, SiTelegram } from "@icons-pack/react-simple-icons";
+import { Tooltip } from "@/components/ui";
 
-const NODE_TYPES = [
-  { type: "trigger", label: "Trigger", icon: Zap, color: "bg-navy text-white" },
-  { type: "channel_inapp", label: "In-App", icon: Bell, color: "bg-success text-white" },
-  { type: "channel_email", label: "Email", icon: Mail, color: "bg-accent text-white" },
-  { type: "channel_slack", label: "Slack", icon: MessageSquare, color: "bg-[#1a1a2e] text-white" },
-  { type: "delay", label: "Delay", icon: Clock, color: "bg-warning text-black" },
-  { type: "condition", label: "Condition", icon: GitBranch, color: "bg-danger text-white" },
+const NODE_TYPES: { type: string; label: string; icon: any; accent: string; isSimple?: boolean }[] = [
+  { type: "trigger",           label: "Trigger",   icon: Zap,          accent: "#3b82f6" },
+  { type: "channel_inapp",    label: "In-App",    icon: Bell,         accent: "#22c55e" },
+  { type: "channel_email",    label: "Email",     icon: Mail,         accent: "#a855f7" },
+  { type: "channel_slack",    label: "Slack",     icon: MessageSquare, accent: "#f97316" },
+  { type: "channel_whatsapp", label: "WhatsApp",  icon: SiWhatsapp,   accent: "#25D366", isSimple: true },
+  { type: "channel_discord",  label: "Discord",   icon: SiDiscord,    accent: "#5865F2", isSimple: true },
+  { type: "channel_telegram", label: "Telegram",  icon: SiTelegram,   accent: "#26A5E4", isSimple: true },
+  { type: "delay",             label: "Delay",    icon: Clock,        accent: "#f59e0b" },
+  { type: "condition",         label: "Condition", icon: GitBranch,   accent: "#f43f5e" },
 ];
 
 export default function NodePalette() {
@@ -17,21 +22,30 @@ export default function NodePalette() {
   };
 
   return (
-    <div className="w-48 bevel-outset bg-[#c0c0c0] p-2 space-y-2 overflow-y-auto">
-      <h3 className="font-heading text-xs uppercase tracking-wide text-center px-2 py-1 font-bold">
+    <div className="w-16 bg-[#111113] border-r border-[rgba(255,255,255,0.06)] py-3 flex flex-col items-center gap-1.5 shrink-0">
+      <span className="text-[9px] font-medium text-[#71717a] uppercase tracking-wider mb-1">
         Nodes
-      </h3>
-      <div className="hr-groove" />
+      </span>
       {NODE_TYPES.map((node) => (
-        <div
-          key={node.type}
-          draggable
-          onDragStart={(e) => onDragStart(e, node.type)}
-          className={`bevel-outset ${node.color} px-3 py-2 flex items-center gap-2 cursor-grab active:cursor-grabbing`}
-        >
-          <node.icon className="w-4 h-4" strokeWidth={2} />
-          <span className="font-heading text-xs uppercase tracking-wide font-bold">{node.label}</span>
-        </div>
+        <Tooltip key={node.type} content={node.label} position="right">
+          <div
+            draggable
+            onDragStart={(e) => onDragStart(e, node.type)}
+            className="w-10 h-10 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#18181b]
+              flex items-center justify-center cursor-grab active:cursor-grabbing
+              hover:border-[rgba(255,255,255,0.12)] hover:bg-[#1f1f23] transition-colors duration-150"
+          >
+            {node.isSimple ? (
+              <node.icon size={18} style={{ color: node.accent }} />
+            ) : (
+              <node.icon
+                className="w-4.5 h-4.5"
+                style={{ color: node.accent }}
+                strokeWidth={2}
+              />
+            )}
+          </div>
+        </Tooltip>
       ))}
     </div>
   );

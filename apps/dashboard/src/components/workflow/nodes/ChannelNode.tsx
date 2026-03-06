@@ -1,29 +1,62 @@
 "use client";
 import { Handle, Position } from "reactflow";
 import { Bell, Mail, MessageSquare } from "lucide-react";
+import { SiWhatsapp, SiDiscord, SiTelegram } from "@icons-pack/react-simple-icons";
 
-const CHANNEL_CONFIG: Record<string, { icon: any; bg: string; label: string; borderColor: string }> = {
-  in_app: { icon: Bell, bg: "bg-success", label: "In-App", borderColor: "border-[#006600]" },
-  email: { icon: Mail, bg: "bg-accent", label: "Email", borderColor: "border-[#000080]" },
-  slack: { icon: MessageSquare, bg: "bg-[#1a1a2e]", label: "Slack", borderColor: "border-[#333355]" },
+const CHANNEL_CONFIG: Record<string, { icon: any; accent: string; label: string }> = {
+  in_app:   { icon: Bell,         accent: "#22c55e", label: "In-App" },
+  email:    { icon: Mail,         accent: "#a855f7", label: "Email" },
+  slack:    { icon: MessageSquare, accent: "#f97316", label: "Slack" },
+  whatsapp: { icon: SiWhatsapp,   accent: "#25D366", label: "WhatsApp" },
+  discord:  { icon: SiDiscord,    accent: "#5865F2", label: "Discord" },
+  telegram: { icon: SiTelegram,   accent: "#26A5E4", label: "Telegram" },
 };
+
+const LUCIDE_CHANNELS = new Set(["in_app", "email", "slack"]);
 
 export default function ChannelNode({ data }: { data: any }) {
   const channel = data.channel || "in_app";
   const config = CHANNEL_CONFIG[channel] || CHANNEL_CONFIG.in_app;
   const Icon = config.icon;
 
+  const hasTemplate =
+    data.template?.title ||
+    data.template?.subject ||
+    data.template?.text ||
+    data.template?.body_html ||
+    data.template?.body;
+
+  const iconProps = LUCIDE_CHANNELS.has(channel)
+    ? { className: "w-4 h-4 shrink-0", style: { color: config.accent }, strokeWidth: 2 }
+    : { size: 16, style: { color: config.accent } };
+
   return (
-    <div className={`min-w-[180px] bevel-outset ${config.bg} text-white ${data.selected ? "ring-2 ring-warning" : ""}`}>
-      <Handle type="target" position={Position.Top} className="!bg-white !w-3 !h-3 !border-2 !border-muted" />
-      <div className="px-3 py-2 flex items-center gap-2">
-        <Icon className="w-4 h-4" strokeWidth={2} />
-        <span className="font-heading text-xs uppercase tracking-wide font-bold">{config.label}</span>
+    <div className="min-w-[180px] bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded-md overflow-hidden">
+      <Handle type="target" position={Position.Top} />
+      <div className="flex">
+        <div className="w-1 shrink-0" style={{ backgroundColor: config.accent }} />
+        <div className="flex-1 min-w-0">
+          <div className="px-3 py-2 flex items-center gap-2">
+            <Icon {...iconProps} />
+            <span className="text-xs font-medium text-[#fafafa]">
+              {config.label}
+            </span>
+            <span
+              className={`ml-auto w-2 h-2 rounded-full shrink-0 ${
+                hasTemplate ? "bg-[#22c55e]" : "bg-[#f59e0b]"
+              }`}
+            />
+          </div>
+          <div className="px-3 pb-2 text-xs font-mono text-[#a1a1aa] truncate">
+            {data.template?.title ||
+              data.template?.subject ||
+              data.template?.text ||
+              data.template?.body ||
+              "Configure template..."}
+          </div>
+        </div>
       </div>
-      <div className={`px-3 py-1.5 text-[10px] font-mono border-t ${config.borderColor} opacity-80 truncate`}>
-        {data.template?.title || data.template?.subject || "Configure template..."}
-      </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-white !w-3 !h-3 !border-2 !border-muted" />
+      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 }
