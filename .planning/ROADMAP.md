@@ -157,7 +157,7 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Backend foundation: schema extensions, config, subscriber model, step_runner dispatch, Celery routing (Wave 1)
+- [x] 04-01-PLAN.md — Backend foundation: schema extensions, config, subscriber model, step_runner dispatch, Celery routing (Wave 1)
 - [ ] 04-02-PLAN.md — Discord webhook + Telegram Bot API delivery workers (Wave 2)
 - [ ] 04-03-PLAN.md — WhatsApp Meta Cloud API worker + webhook endpoint for delivery status (Wave 2)
 - [ ] 04-04-PLAN.md — Dashboard: workflow builder 6-channel support + provider settings page redesign (Wave 2)
@@ -192,7 +192,7 @@ Plans:
 | 1 | MVP Completion + Security | Pending | Beta-ready product, secure auth, fixed bugs |
 | 2 | Shared Sending Infrastructure | ✅ Complete | alrt-hosted email + Slack, quota tracking, dashboard banner |
 | 3 | Platform Hardening + API Reliability | ✅ Complete | TRIG-01–04, FIX-02, FIX-03 done; COND-01, COND-02, WF-01, RETRY-01, SCALE-01 done (Batch 1); PREF-01, TMPL-01, DATA-01 done (Batch 2) — all 14 requirements delivered |
-| 4 | WhatsApp + Discord + Telegram | Pending | 3 new channels (6 total), all inherit Phase 3 infra |
+| 4 | WhatsApp + Discord + Telegram | In Progress (1/4) | 3 new channels (6 total), all inherit Phase 3 infra |
 | 5 | White-Label & Pricing | Pending | Revenue model enforced; domain verification; BYOC WABA |
 
 **After this milestone:** alrt is the full-stack notification infrastructure it was designed to be. One API key, 6 channels (in-app, email, Slack, WhatsApp, Discord, Telegram), zero external account setup, production-grade reliability, white-label for paying customers.
@@ -201,5 +201,6 @@ Plans:
 *Roadmap created: 2026-02-28*
 *Updated: 2026-03-01 — Phase 3/5 swapped (Platform Hardening before WhatsApp); added RETRY-01, SCALE-01, FIX-03, PREF-01, TMPL-01, DATA-01 from infrastructure gap analysis; added TRIG-01 through TRIG-04 (inline subscriber upsert, deliver_at scheduling, metadata tagging, bulk trigger); BULK-01 superseded by TRIG-04; TRIG-01–04 + FIX-02 + FIX-03 implemented and marked complete*
 *Updated: 2026-03-06 — Phase 3 Batch 2 complete: PREF-01 (preferences typed response), TMPL-01 (templates CRUD + worker resolution), DATA-01 (retention task + Beat schedule + covering index)*
+*Updated: 2026-03-06 — Phase 4 Plan 01 complete: backend foundation for 3 new channels — VALID_CHANNELS expanded to 6, subscriber model extended, step_runner dispatch wired, Celery routing ready*
 *Strategy: .claude/VISION.md*
 *Requirements: .planning/REQUIREMENTS.md*

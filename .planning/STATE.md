@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02
-status: unknown
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-06T03:01:50.271Z"
+current_phase: 04
+status: in_progress
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-06T03:28:00Z"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 12
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Alrt — Project State
@@ -42,6 +42,26 @@ progress:
 ---
 
 ## Session Log
+
+### 2026-03-06 — Phase 4 Plan 01 Execution
+- **Stopped at:** Completed 04-01-PLAN.md
+- **Decisions made:**
+  - phone_number exposed in Pydantic schemas for the first time (was DB-only before), alongside discord_webhook_url and telegram_chat_id in all three subscriber models
+  - WHATSAPP_RETRY mirrors EMAIL_RETRY (5 retries, 30s, backoff 3600s) — same business criticality; DISCORD and TELEGRAM use lighter 3-retry configuration
+  - ACTIVATE_ALRT_HOSTED_CHANNEL is a generic update query (vs channel-specific upserts) because activation config differs per channel but structure is identical
+  - alrt_hosted placeholders for new channels use status=pending pattern matching existing Slack pattern — activated via dashboard toggle
+- **Artifacts produced:**
+  - schema.sql: discord_webhook_url and telegram_chat_id columns added to subscribers table
+  - apps/api/alrt/db.py: SCHEMA_SQL and SCHEMA_MIGRATIONS updated with new columns
+  - apps/api/alrt/config.py: whatsapp_token, whatsapp_phone_number_id, whatsapp_app_secret, telegram_bot_token Settings fields added
+  - apps/api/alrt/schemas/event.py: VALID_CHANNELS and ChannelType expanded to 6 channels
+  - apps/api/alrt/schemas/subscriber.py: CreateSubscriber, UpdateSubscriber, SubscriberResponse expose phone_number, discord_webhook_url, telegram_chat_id
+  - apps/api/alrt/queries/subscribers.py: All 7 queries updated with new columns
+  - apps/api/alrt/queries/providers.py: CREATE_ALRT_HOSTED_WHATSAPP, CREATE_ALRT_HOSTED_DISCORD, CREATE_ALRT_HOSTED_TELEGRAM, ACTIVATE_ALRT_HOSTED_CHANNEL added
+  - apps/api/alrt/routes/subscribers.py: POST and PATCH handlers pass new fields to queries
+  - apps/workers/alrt_workers/utils/retry.py: WHATSAPP_RETRY, DISCORD_RETRY, TELEGRAM_RETRY added
+  - apps/workers/alrt_workers/celery_app.py: whatsapp/discord/telegram task_routes and imports added
+  - apps/workers/alrt_workers/tasks/step_runner.py: elif branches for whatsapp, discord, telegram added; 'wa' alias in CHANNEL_ALIASES
 
 ### 2026-02-28 — Phase 2 Plan 05 Execution
 - **Stopped at:** Phase 4 context gathered
