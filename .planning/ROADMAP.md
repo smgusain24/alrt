@@ -154,13 +154,14 @@ Plans:
 6. Developer sets `telegram_chat_id` on subscriber and triggers workflow — Telegram message delivered via bot
 7. All three new channels appear in workflow builder channel node dropdown and work end-to-end
 
-**Plans:** 4/4 plans complete
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 04-01-PLAN.md — Backend foundation: schema extensions, config, subscriber model, step_runner dispatch, Celery routing (Wave 1)
-- [ ] 04-02-PLAN.md — Discord webhook + Telegram Bot API delivery workers (Wave 2)
-- [ ] 04-03-PLAN.md — WhatsApp Meta Cloud API worker + webhook endpoint for delivery status (Wave 2)
-- [ ] 04-04-PLAN.md — Dashboard: workflow builder 6-channel support + provider settings page redesign (Wave 2)
+- [x] 04-02-PLAN.md — Discord webhook + Telegram Bot API delivery workers (Wave 2)
+- [x] 04-03-PLAN.md — WhatsApp Meta Cloud API worker + webhook endpoint for delivery status (Wave 2)
+- [x] 04-04-PLAN.md — Dashboard: workflow builder 6-channel support + provider settings page redesign (Wave 2)
+- [x] 04-05-PLAN.md — Gap closure: fix events.py UPSERT param mismatch + DLQ retry for Phase 4 channels (Wave 1) (completed 2026-03-06)
 
 ---
 
@@ -192,7 +193,7 @@ Plans:
 | 1 | MVP Completion + Security | Pending | Beta-ready product, secure auth, fixed bugs |
 | 2 | Shared Sending Infrastructure | ✅ Complete | alrt-hosted email + Slack, quota tracking, dashboard banner |
 | 3 | Platform Hardening + API Reliability | ✅ Complete | TRIG-01–04, FIX-02, FIX-03 done; COND-01, COND-02, WF-01, RETRY-01, SCALE-01 done (Batch 1); PREF-01, TMPL-01, DATA-01 done (Batch 2) — all 14 requirements delivered |
-| 4 | 4/4 | Complete   | 2026-03-06 |
+| 4 | 5/5 | Complete   | 2026-03-06 |
 | 5 | White-Label & Pricing | Pending | Revenue model enforced; domain verification; BYOC WABA |
 
 **After this milestone:** alrt is the full-stack notification infrastructure it was designed to be. One API key, 6 channels (in-app, email, Slack, WhatsApp, Discord, Telegram), zero external account setup, production-grade reliability, white-label for paying customers.

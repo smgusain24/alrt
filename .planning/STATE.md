@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 status: unknown
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-03-06T03:46:19.908Z"
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-03-06T05:43:34.042Z"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 16
-  completed_plans: 10
+  total_plans: 17
+  completed_plans: 11
 ---
 
 # Alrt — Project State
@@ -42,6 +42,14 @@ progress:
 ---
 
 ## Session Log
+
+### 2026-03-06 — Phase 4 Plan 05 Execution
+- **Stopped at:** Completed 04-05-PLAN.md
+- **Decisions made:**
+  - None — both fixes are surgical corrections of clear bugs; no architectural choices required
+- **Artifacts produced:**
+  - apps/api/alrt/routes/events.py: _resolve_subscriber params fixed from 6 to 8 (added None for discord_webhook_url/$6 and telegram_chat_id/$7)
+  - apps/api/alrt/routes/notifications.py: task_map and queue_map extended with whatsapp/discord/telegram entries
 
 ### 2026-03-06 — Phase 4 Plan 04 Execution
 - **Stopped at:** Completed 04-04-PLAN.md
