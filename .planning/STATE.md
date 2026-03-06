@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 status: in_progress
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-03-06T03:34:27Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-03-06T05:35:00Z"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 16
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Alrt — Project State
@@ -42,6 +42,23 @@ progress:
 ---
 
 ## Session Log
+
+### 2026-03-06 — Phase 4 Plan 04 Execution
+- **Stopped at:** Completed 04-04-PLAN.md
+- **Decisions made:**
+  - SiSlack not available in @icons-pack/react-simple-icons v13.12.0 — used MessageSquare (Lucide) for Slack icon in NodePalette and ChannelNode; all 3 new channel icons (SiWhatsapp, SiDiscord, SiTelegram) work correctly
+  - isSimple flag added to NODE_TYPES entries to differentiate Lucide (className/strokeWidth) vs Simple Icons (size prop) rendering in NodePalette
+  - WhatsApp activation endpoint uses UPDATE-first, INSERT-then-UPDATE pattern to handle teams missing the provider row (created before Phase 4)
+  - Discord webhook URL encrypted with Fernet before storing — same security pattern as Slack bot_token
+  - Telegram is instructions-only on providers page — chat_id is set per-subscriber via API, not per-team
+  - Providers page heading renamed to "Channels" but URL /settings/providers preserved for backward compatibility
+- **Artifacts produced:**
+  - apps/dashboard/src/components/workflow/nodes/ChannelNode.tsx: CHANNEL_CONFIG expanded to 6 channels with brand icons for WhatsApp/Discord/Telegram
+  - apps/dashboard/src/components/workflow/NodePalette.tsx: NODE_TYPES expanded to 9 entries with brand icons and isSimple flag
+  - apps/dashboard/src/components/workflow/ConfigPanel.tsx: channel selector expanded to 6; WhatsApp/Discord/Telegram config sections added
+  - apps/dashboard/src/app/(dashboard)/settings/providers/page.tsx: full rewrite as 6-channel card grid with per-card setup flows
+  - apps/dashboard/src/lib/api.ts: api.channels namespace added
+  - apps/api/alrt/routes/channels.py: activate/deactivate WhatsApp and Discord config endpoints added
 
 ### 2026-03-06 — Phase 4 Plan 03 Execution
 - **Stopped at:** Completed 04-03-PLAN.md

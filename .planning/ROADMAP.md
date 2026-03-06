@@ -154,7 +154,7 @@ Plans:
 6. Developer sets `telegram_chat_id` on subscriber and triggers workflow — Telegram message delivered via bot
 7. All three new channels appear in workflow builder channel node dropdown and work end-to-end
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 04-01-PLAN.md — Backend foundation: schema extensions, config, subscriber model, step_runner dispatch, Celery routing (Wave 1)
@@ -192,7 +192,7 @@ Plans:
 | 1 | MVP Completion + Security | Pending | Beta-ready product, secure auth, fixed bugs |
 | 2 | Shared Sending Infrastructure | ✅ Complete | alrt-hosted email + Slack, quota tracking, dashboard banner |
 | 3 | Platform Hardening + API Reliability | ✅ Complete | TRIG-01–04, FIX-02, FIX-03 done; COND-01, COND-02, WF-01, RETRY-01, SCALE-01 done (Batch 1); PREF-01, TMPL-01, DATA-01 done (Batch 2) — all 14 requirements delivered |
-| 4 | 3/4 | In Progress|  |
+| 4 | 4/4 | Complete   | 2026-03-06 |
 | 5 | White-Label & Pricing | Pending | Revenue model enforced; domain verification; BYOC WABA |
 
 **After this milestone:** alrt is the full-stack notification infrastructure it was designed to be. One API key, 6 channels (in-app, email, Slack, WhatsApp, Discord, Telegram), zero external account setup, production-grade reliability, white-label for paying customers.
