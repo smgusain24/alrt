@@ -41,10 +41,10 @@
 
 ### WhatsApp Channel
 
-- [ ] **WA-01**: Developer can trigger WhatsApp message delivery via standard `/events/trigger` API call
+- [x] **WA-01**: Developer can trigger WhatsApp message delivery via standard `/events/trigger` API call
 - [x] **WA-02**: Subscriber profile supports `phone_number` field for WhatsApp delivery
-- [ ] **WA-03**: WhatsApp message templates configurable in the workflow builder channel node
-- [ ] **WA-04**: WhatsApp delivery status tracked (sent/delivered/read/failed) in notifications table
+- [x] **WA-03**: WhatsApp message templates configurable in the workflow builder channel node
+- [x] **WA-04**: WhatsApp delivery status tracked (sent/delivered/read/failed) in notifications table
 
 ### Discord Channel
 
@@ -134,10 +134,10 @@
 | PREF-01 | Phase 3 | Complete |
 | TMPL-01 | Phase 3 | Complete |
 | DATA-01 | Phase 3 | Complete |
-| WA-01 | Phase 4 | Pending |
+| WA-01 | Phase 4 | Complete |
 | WA-02 | Phase 4 | Complete |
-| WA-03 | Phase 4 | Pending |
-| WA-04 | Phase 4 | Pending |
+| WA-03 | Phase 4 | Complete |
+| WA-04 | Phase 4 | Complete |
 | DC-01 | Phase 4 | Complete |
 | DC-02 | Phase 4 | Complete |
 | DC-03 | Phase 4 | Complete |
