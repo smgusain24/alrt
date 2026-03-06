@@ -18,6 +18,15 @@ from alrt.queries import providers as prov_q
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 
+# WhatsApp webhook query: update notification status by wamid stored in payload JSONB
+Q_UPDATE_WHATSAPP_STATUS = """
+    UPDATE notifications
+    SET status = $2,
+        error_reason = COALESCE($3, error_reason),
+        updated_at = now()
+    WHERE payload->>'wamid' = $1
+"""
+
 SLACK_OAUTH_SCOPES = "chat:write,users:read"
 
 
@@ -49,6 +58,22 @@ async def _verify_slack_signature(request: Request) -> bool:
     expected = "v0=" + hmac.new(
         settings.slack_signing_secret.encode(),
         sig_base.encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)
+
+
+async def _verify_whatsapp_signature(request: Request) -> bool:
+    """Verify Meta webhook payload using HMAC-SHA256 (X-Hub-Signature-256)."""
+    if not settings.whatsapp_app_secret:
+        return True  # Dev mode: skip verification if secret not configured
+    signature = request.headers.get("X-Hub-Signature-256", "")
+    if not signature:
+        return False
+    body = await request.body()
+    expected = "sha256=" + hmac.new(
+        settings.whatsapp_app_secret.encode(),
+        body,
         hashlib.sha256,
     ).hexdigest()
     return hmac.compare_digest(expected, signature)
@@ -171,5 +196,69 @@ async def slack_events(request: Request):
                 prov_q.DEACTIVATE_SLACK_BY_WORKSPACE,
                 [workspace_id],
             )
+
+    return {"ok": True}
+
+
+# --- WhatsApp Webhooks ---
+
+@router.get("/webhooks/whatsapp")
+async def whatsapp_webhook_verify(request: Request):
+    """Handle Meta webhook verification challenge (GET hub.challenge)."""
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
+
+    # Reuse whatsapp_app_secret as the verify_token for simplicity
+    verify_token = settings.whatsapp_app_secret
+    if mode == "subscribe" and token == verify_token:
+        return int(challenge)
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@router.post("/webhooks/whatsapp")
+async def whatsapp_webhook(request: Request):
+    """Handle Meta WhatsApp webhook delivery status updates (sent/delivered/read/failed)."""
+    # Verify X-Hub-Signature-256 BEFORE reading body as JSON (same HMAC pattern as Slack)
+    if not await _verify_whatsapp_signature(request):
+        raise HTTPException(status_code=403, detail="Invalid signature")
+
+    body = await request.json()
+
+    if body.get("object") != "whatsapp_business_account":
+        return {"ok": True}
+
+    # Process status updates from each entry in the webhook payload
+    for entry in body.get("entry", []):
+        for change in entry.get("changes", []):
+            value = change.get("value", {})
+            for status_update in value.get("statuses", []):
+                wamid = status_update.get("id")
+                status = status_update.get("status")  # sent | delivered | read | failed
+                if not wamid or not status:
+                    continue
+
+                # Map Meta status to alrt notification status
+                status_map = {
+                    "sent": "sent",
+                    "delivered": "delivered",
+                    "read": "read",
+                    "failed": "failed",
+                }
+                alrt_status = status_map.get(status)
+                if not alrt_status:
+                    continue
+
+                # Extract error reason for failed status
+                error_reason = None
+                if status == "failed":
+                    errors = status_update.get("errors", [])
+                    error_reason = errors[0].get("message", "Unknown error") if errors else "Unknown error"
+
+                # Find and update the notification by wamid stored in payload JSONB
+                await execute_update_query(
+                    Q_UPDATE_WHATSAPP_STATUS,
+                    [wamid, alrt_status, error_reason],
+                )
 
     return {"ok": True}
