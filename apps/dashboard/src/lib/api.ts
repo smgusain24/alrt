@@ -1,17 +1,16 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 function getToken(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|; )alrt_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("alrt_token");
 }
 
 function setToken(token: string) {
-  document.cookie = `alrt_token=${encodeURIComponent(token)}; path=/; max-age=${24 * 3600}; samesite=lax`;
+  localStorage.setItem("alrt_token", token);
 }
 
 function clearToken() {
-  document.cookie = "alrt_token=; path=/; max-age=0";
+  localStorage.removeItem("alrt_token");
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -27,6 +26,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
+    credentials: "include",
   });
 
   if (res.status === 401) {
@@ -94,6 +94,17 @@ export const api = {
     create: (data: any) => request("/providers", { method: "POST", body: JSON.stringify(data) }),
     delete: (id: string) => request(`/providers/${id}`, { method: "DELETE" }),
   },
+  channels: {
+    list: () => request<any[]>("/channels"),
+    activateWhatsApp: () => request("/channels/whatsapp/activate", { method: "POST" }),
+    deactivateWhatsApp: () => request("/channels/whatsapp/deactivate", { method: "POST" }),
+    updateDiscordConfig: (webhookUrl: string) =>
+      request("/channels/discord/config", { method: "PUT", body: JSON.stringify({ webhook_url: webhookUrl }) }),
+  },
+  teams: {
+    getQuota: (teamId: string) =>
+      request<{ over_limit: boolean; monthly_count: number }>(`/teams/${teamId}/quota`),
+  },
   analytics: {
     overview: (days: number = 30) => request(`/analytics/overview?days=${days}`),
     delivery: (days: number = 30) => request(`/analytics/delivery?days=${days}`),
@@ -103,13 +114,12 @@ export const api = {
   templates: {
     preview: (data: any) => request("/templates/preview", { method: "POST", body: JSON.stringify(data) }),
   },
-  logs: {
+  activity: {
     list: (params?: Record<string, string | number>) => {
       const qs = params ? "?" + new URLSearchParams(
         Object.entries(params).filter(([_, v]) => v !== "" && v !== undefined && v !== null).map(([k, v]) => [k, String(v)])
       ).toString() : "";
-      return request(`/logs${qs}`);
+      return request(`/activity${qs}`);
     },
-    get: (id: string) => request(`/logs/${id}`),
   },
 };

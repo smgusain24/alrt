@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  RetroButton,
-  BeveledInput,
-  WindowCard,
+  Button,
+  Input,
+  Card,
   Badge,
-  GrooveDivider,
-  RetroTable,
+  Divider,
+  Table,
   TimezoneSelector,
-} from "@/components/retro";
+} from "@/components/ui";
 import { User, Mail, MessageSquare, Bell, Save, ArrowLeft, Trash2, Clock, Activity } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -166,17 +166,14 @@ export default function SubscriberDetailPage() {
       key: "channel",
       header: "Channel",
       render: (row: Notification) => {
-        const channelVariants: Record<string, "success" | "new" | "default"> = {
+        const channelVariants: Record<string, "success" | "neutral" | "warning"> = {
           in_app: "success",
-          email: "new",
-          slack: "default",
+          email: "neutral",
+          slack: "warning",
         };
         return (
-          <Badge
-            variant={channelVariants[row.channel] || "default"}
-            className={row.channel === "slack" ? "bg-navy text-white" : ""}
-          >
-            {row.channel?.replace("_", "-").toUpperCase()}
+          <Badge variant={channelVariants[row.channel] || "neutral"}>
+            {row.channel?.replace("_", "-")}
           </Badge>
         );
       },
@@ -185,21 +182,21 @@ export default function SubscriberDetailPage() {
       key: "title",
       header: "Title",
       render: (row: Notification) => (
-        <span className="font-bold text-foreground text-xs">{row.title || "—"}</span>
+        <span className="font-medium text-text-primary text-xs">{row.title || "\u2014"}</span>
       ),
     },
     {
       key: "status",
       header: "Status",
       render: (row: Notification) => {
-        const statusVariants: Record<string, "success" | "warning" | "danger" | "default"> = {
+        const statusVariants: Record<string, "success" | "warning" | "danger" | "neutral"> = {
           sent: "success",
           pending: "warning",
           failed: "danger",
         };
         return (
-          <Badge variant={statusVariants[row.status] || "default"}>
-            {row.status?.toUpperCase()}
+          <Badge variant={statusVariants[row.status] || "neutral"}>
+            {row.status}
           </Badge>
         );
       },
@@ -208,8 +205,8 @@ export default function SubscriberDetailPage() {
       key: "read",
       header: "Read",
       render: (row: Notification) => (
-        <Badge variant={row.read ? "success" : "default"}>
-          {row.read ? "READ" : "UNREAD"}
+        <Badge variant={row.read ? "success" : "neutral"}>
+          {row.read ? "read" : "unread"}
         </Badge>
       ),
     },
@@ -217,7 +214,7 @@ export default function SubscriberDetailPage() {
       key: "created_at",
       header: "Timestamp",
       render: (row: Notification) => (
-        <span className="font-mono text-xs text-muted">
+        <span className="font-mono text-xs text-text-muted">
           {new Date(row.created_at).toLocaleString()}
         </span>
       ),
@@ -227,7 +224,7 @@ export default function SubscriberDetailPage() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto">
-        <p className="text-muted font-mono animate-pulse">Loading subscriber...</p>
+        <p className="text-text-muted font-mono text-sm animate-pulse">Loading subscriber...</p>
       </div>
     );
   }
@@ -235,20 +232,21 @@ export default function SubscriberDetailPage() {
   if (notFound || !subscriber) {
     return (
       <div className="max-w-5xl mx-auto">
-        <WindowCard title="SUBSCRIBER NOT FOUND">
-          <div className="text-center py-8">
-            <div className="bevel-outset bg-danger w-16 h-16 flex items-center justify-center mx-auto mb-4">
-              <User className="w-8 h-8 text-white" strokeWidth={2} />
+        <Card className="text-center py-12">
+          <div className="flex flex-col items-center">
+            <div className="bg-danger/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-danger" strokeWidth={1.5} />
             </div>
-            <p className="text-foreground mb-4">
-              No subscriber found with ID <code className="font-mono bg-row-alt px-1.5 py-0.5 bevel-inset">{id}</code>
+            <h3 className="text-lg font-semibold text-text-primary mb-2">Subscriber not found</h3>
+            <p className="text-text-secondary text-sm mb-4">
+              No subscriber found with ID <code className="font-mono bg-elevated rounded-[6px] px-1.5 py-0.5 text-sm">{id}</code>
             </p>
-            <RetroButton onClick={() => router.push("/subscribers")}>
-              <ArrowLeft className="w-4 h-4 inline mr-1" strokeWidth={2} />
-              Back to Subscribers
-            </RetroButton>
+            <Button onClick={() => router.push("/subscribers")}>
+              <ArrowLeft className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+              Back to subscribers
+            </Button>
           </div>
-        </WindowCard>
+        </Card>
       </div>
     );
   }
@@ -259,20 +257,20 @@ export default function SubscriberDetailPage() {
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => router.push("/subscribers")}
-          className="flex items-center gap-1 text-sm font-heading uppercase text-muted hover:text-foreground cursor-pointer"
+          className="flex items-center gap-1 text-sm text-text-muted hover:text-text-primary cursor-pointer transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+          <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />
           Back
         </button>
         <div className="flex gap-2">
-          <RetroButton variant="success" onClick={handleSave} disabled={saving}>
-            <Save className="w-4 h-4 inline mr-1" strokeWidth={2} />
-            {saving ? "Saving..." : saveSuccess ? "Saved!" : "Save Changes"}
-          </RetroButton>
-          <RetroButton variant="danger" onClick={handleDelete} disabled={deleting}>
-            <Trash2 className="w-4 h-4 inline mr-1" strokeWidth={2} />
+          <Button variant="primary" onClick={handleSave} disabled={saving}>
+            <Save className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+            {saving ? "Saving..." : saveSuccess ? "Saved!" : "Save changes"}
+          </Button>
+          <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+            <Trash2 className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
             {deleting ? "Deleting..." : "Delete"}
-          </RetroButton>
+          </Button>
         </div>
       </div>
 
@@ -280,18 +278,18 @@ export default function SubscriberDetailPage() {
         {/* Left Column */}
         <div className="flex flex-col gap-6">
           {/* Profile */}
-          <WindowCard title="SUBSCRIBER PROFILE">
+          <Card title="Subscriber profile">
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+                <label className="block text-sm font-medium text-text-secondary mb-1">
                   External ID
                 </label>
-                <code className="font-mono text-sm bg-row-alt px-2 py-1.5 bevel-inset block">
+                <code className="font-mono text-sm bg-elevated rounded-[6px] px-2 py-1.5 block text-text-primary">
                   {subscriber.external_id}
                 </code>
               </div>
 
-              <BeveledInput
+              <Input
                 id="sub-name"
                 label="Name"
                 placeholder="Subscriber name"
@@ -299,7 +297,7 @@ export default function SubscriberDetailPage() {
                 onChange={(e) => setName(e.target.value)}
               />
 
-              <BeveledInput
+              <Input
                 id="sub-email"
                 label="Email"
                 type="email"
@@ -308,7 +306,7 @@ export default function SubscriberDetailPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
 
-              <BeveledInput
+              <Input
                 id="sub-slack-id"
                 label="Slack User ID"
                 placeholder="U04ABC123"
@@ -317,54 +315,53 @@ export default function SubscriberDetailPage() {
               />
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+                <label className="block text-sm font-medium text-text-secondary mb-1">
                   Created
                 </label>
-                <span className="font-mono text-sm text-muted">
+                <span className="font-mono text-sm text-text-muted">
                   {new Date(subscriber.created_at).toLocaleString()}
                 </span>
               </div>
             </div>
-          </WindowCard>
+          </Card>
 
-          {/* Preferences Area */}
           {/* DND Hours */}
-          <WindowCard title="DO NOT DISTURB">
+          <Card title="Do not disturb">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted font-mono tracking-tighter max-w-[200px]">
+                <p className="text-xs text-text-muted max-w-[200px]">
                   Delay notifications during specific hours.
                 </p>
-                <RetroButton
+                <Button
                   variant={dndEnabled ? "danger" : "default"}
                   onClick={() => setDndEnabled(!dndEnabled)}
                   className="text-xs px-2 py-1"
                 >
                   {dndEnabled ? "Disable" : "Enable"}
-                </RetroButton>
+                </Button>
               </div>
 
               {dndEnabled && (
                 <>
-                  <GrooveDivider />
+                  <Divider />
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+                      <label className="block text-sm font-medium text-text-secondary mb-1">
                         Timezone
                       </label>
                       <TimezoneSelector value={dndTimezone} onChange={setDndTimezone} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <BeveledInput
+                      <Input
                         id="dnd-start"
-                        label="Start Time"
+                        label="Start time"
                         type="time"
                         value={dndStart}
                         onChange={(e) => setDndStart(e.target.value)}
                       />
-                      <BeveledInput
+                      <Input
                         id="dnd-end"
-                        label="End Time"
+                        label="End time"
                         type="time"
                         value={dndEnd}
                         onChange={(e) => setDndEnd(e.target.value)}
@@ -374,90 +371,90 @@ export default function SubscriberDetailPage() {
                 </>
               )}
             </div>
-          </WindowCard>
+          </Card>
         </div>
 
         {/* Right Column */}
         <div className="flex flex-col gap-6">
           {/* Channel Preferences */}
-          <WindowCard title="GLOBAL CHANNELS">
+          <Card title="Global channels">
             <div className="space-y-4">
-              <p className="text-xs text-muted font-mono tracking-tighter">
+              <p className="text-xs text-text-muted">
                 Control which channels this subscriber can receive notifications from globally.
               </p>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 <button
                   type="button"
                   onClick={() => setPrefInApp((v) => !v)}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm font-bold uppercase cursor-pointer ${prefInApp
-                    ? "bevel-inset bg-white text-success"
-                    : "bevel-outset bg-[#c0c0c0] text-muted hover:bg-[#d0d0d0]"
+                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium cursor-pointer rounded-[6px] border transition-colors ${prefInApp
+                    ? "border-accent bg-accent/10 text-text-primary"
+                    : "border-default bg-surface text-text-muted hover:bg-elevated"
                     }`}
                 >
-                  <Bell className="w-4 h-4" strokeWidth={2} />
-                  In-App
+                  <Bell className="w-4 h-4" strokeWidth={1.5} />
+                  In-app
                   {prefInApp && (
-                    <Badge variant="success" className="ml-auto">ON</Badge>
+                    <Badge variant="success" className="ml-auto">on</Badge>
                   )}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setPrefEmail((v) => !v)}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm font-bold uppercase cursor-pointer ${prefEmail
-                    ? "bevel-inset bg-white text-success"
-                    : "bevel-outset bg-[#c0c0c0] text-muted hover:bg-[#d0d0d0]"
+                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium cursor-pointer rounded-[6px] border transition-colors ${prefEmail
+                    ? "border-accent bg-accent/10 text-text-primary"
+                    : "border-default bg-surface text-text-muted hover:bg-elevated"
                     }`}
                 >
-                  <Mail className="w-4 h-4" strokeWidth={2} />
+                  <Mail className="w-4 h-4" strokeWidth={1.5} />
                   Email
                   {prefEmail && (
-                    <Badge variant="success" className="ml-auto">ON</Badge>
+                    <Badge variant="success" className="ml-auto">on</Badge>
                   )}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setPrefSlack((v) => !v)}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm font-bold uppercase cursor-pointer ${prefSlack
-                    ? "bevel-inset bg-white text-success"
-                    : "bevel-outset bg-[#c0c0c0] text-muted hover:bg-[#d0d0d0]"
+                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium cursor-pointer rounded-[6px] border transition-colors ${prefSlack
+                    ? "border-accent bg-accent/10 text-text-primary"
+                    : "border-default bg-surface text-text-muted hover:bg-elevated"
                     }`}
                 >
-                  <MessageSquare className="w-4 h-4" strokeWidth={2} />
+                  <MessageSquare className="w-4 h-4" strokeWidth={1.5} />
                   Slack
                   {prefSlack && (
-                    <Badge variant="success" className="ml-auto">ON</Badge>
+                    <Badge variant="success" className="ml-auto">on</Badge>
                   )}
                 </button>
               </div>
             </div>
-          </WindowCard>
+          </Card>
 
           {/* Frequency Cap */}
-          <WindowCard title="FREQUENCY CAP">
+          <Card title="Frequency cap">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted font-mono tracking-tighter max-w-[200px]">
+                <p className="text-xs text-text-muted max-w-[200px]">
                   Limit max notifications per channel per day.
                 </p>
-                <RetroButton
+                <Button
                   variant={freqEnabled ? "danger" : "default"}
                   onClick={() => setFreqEnabled(!freqEnabled)}
                   className="text-xs px-2 py-1"
                 >
                   {freqEnabled ? "Disable" : "Enable"}
-                </RetroButton>
+                </Button>
               </div>
 
               {freqEnabled && (
                 <>
-                  <GrooveDivider />
+                  <Divider />
                   <div className="space-y-3">
-                    <BeveledInput
+                    <Input
                       id="freq-max-day"
-                      label="Max Per Day"
+                      label="Max per day"
                       type="number"
                       min="1"
                       placeholder="e.g. 5"
@@ -468,28 +465,29 @@ export default function SubscriberDetailPage() {
                 </>
               )}
             </div>
-          </WindowCard>
+          </Card>
         </div>
       </div>
-      < WindowCard title="NOTIFICATION HISTORY" >
+
+      <Card title="Notification history">
         {
           notifications.length === 0 ? (
             <div className="text-center py-8">
-              <div className="bevel-outset bg-navy w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                <Bell className="w-6 h-6 text-white" strokeWidth={2} />
+              <div className="bg-elevated rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                <Bell className="w-6 h-6 text-text-muted" strokeWidth={1.5} />
               </div>
-              <p className="text-muted text-sm font-mono">No notifications logged yet</p>
+              <p className="text-text-muted text-sm">No notifications logged yet</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <RetroTable<Notification>
+              <Table<Notification>
                 columns={notificationColumns}
                 data={notifications}
               />
             </div>
           )
         }
-      </WindowCard >
-    </div >
+      </Card>
+    </div>
   );
 }

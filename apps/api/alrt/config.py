@@ -11,8 +11,23 @@ class Settings(BaseSettings):
     # Slack OAuth
     slack_client_id: str = ""
     slack_client_secret: str = ""
+
+    # alrt-hosted infrastructure
+    resend_api_key: str = ""                # alrt's shared Resend account key
+    slack_signing_secret: str = ""          # Slack app signing secret for Events API verification
+    monthly_quota_limit: int = 1000         # Default notifications/month per team (shared across channels)
+
     slack_redirect_uri: str = "http://localhost:8000/providers/slack/callback"
     dashboard_url: str = "http://localhost:3000"
+
+    # New channels (WhatsApp / Telegram)
+    whatsapp_token: str = ""                 # Meta System User permanent token (WABA-level)
+    whatsapp_phone_number_id: str = ""       # Meta Phone Number ID for outbound messages
+    whatsapp_app_secret: str = ""            # Meta App Secret for webhook signature verification
+    telegram_bot_token: str = ""             # alrt's shared Telegram bot token
+
+    # Cookie security (set COOKIE_SECURE=true in production)
+    cookie_secure: bool = False
 
     # Rate limiting
     rate_limit_write: str = "60/minute"

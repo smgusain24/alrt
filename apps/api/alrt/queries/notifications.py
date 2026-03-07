@@ -48,3 +48,40 @@ UPDATE_STATUS = """
     UPDATE notifications SET status = $2, updated_at = now()
     WHERE id = $1
 """
+
+LIST_DEAD_LETTER = """
+    SELECT id, team_id, subscriber_id, workflow_execution_id, channel,
+           title, body, action_url, payload, status, error_reason,
+           retry_count, created_at
+    FROM notifications
+    WHERE team_id = $1 AND status = 'dead_letter'
+        AND ($2::varchar IS NULL OR channel = $2)
+    ORDER BY created_at DESC
+    LIMIT $3 OFFSET $4
+"""
+
+COUNT_DEAD_LETTER = """
+    SELECT COUNT(*) as total
+    FROM notifications
+    WHERE team_id = $1 AND status = 'dead_letter'
+"""
+
+FIND_BY_ID_AND_TEAM = """
+    SELECT id, team_id, subscriber_id, workflow_execution_id, channel,
+           title, body, action_url, payload, status, error_reason,
+           retry_count, created_at
+    FROM notifications
+    WHERE id = $1 AND team_id = $2
+"""
+
+RETRY_DEAD_LETTER = """
+    UPDATE notifications
+    SET status = 'pending',
+        error_reason = NULL,
+        retry_count = retry_count + 1,
+        updated_at = now()
+    WHERE id = $1 AND team_id = $2 AND status = 'dead_letter'
+    RETURNING id, team_id, subscriber_id, workflow_execution_id, channel,
+              title, body, action_url, payload, status, error_reason,
+              retry_count, created_at
+"""

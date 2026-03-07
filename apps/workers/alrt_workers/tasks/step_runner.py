@@ -1,5 +1,6 @@
 import uuid
 import json
+import re
 from datetime import datetime, timedelta, timezone
 import os
 import redis
@@ -20,7 +21,7 @@ def execute_step(execution_id, node, subscriber_id, team_id, payload, preference
     if node_type == "channel":
         return _handle_channel(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels, overrides, workflow_category)
     elif node_type == "delay":
-        return _handle_delay(execution_id, node, payload)
+        return _handle_delay(execution_id, node, payload, subscriber_id, team_id)
     elif node_type == "condition":
         return _handle_condition(node, payload)
 
@@ -29,7 +30,7 @@ def execute_step(execution_id, node, subscriber_id, team_id, payload, preference
 
 def _handle_channel(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels=None, overrides=None, workflow_category=None):
     channel = node.get("data", {}).get("channel", "in_app")
-    CHANNEL_ALIASES = {"inapp": "in_app", "in-app": "in_app"}
+    CHANNEL_ALIASES = {"inapp": "in_app", "in-app": "in_app", "wa": "whatsapp"}
     channel = CHANNEL_ALIASES.get(channel, channel)
 
     if allowed_channels is not None and channel not in allowed_channels:
@@ -120,23 +121,82 @@ def _handle_channel(execution_id, node, subscriber_id, team_id, payload, prefere
     elif channel == "slack":
         from alrt_workers.tasks.channels.slack import deliver
         deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("slack") if overrides else None)
+    elif channel == "whatsapp":
+        from alrt_workers.tasks.channels.whatsapp import deliver
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("whatsapp") if overrides else None)
+    elif channel == "discord":
+        from alrt_workers.tasks.channels.discord import deliver
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("discord") if overrides else None)
+    elif channel == "telegram":
+        from alrt_workers.tasks.channels.telegram import deliver
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("telegram") if overrides else None)
 
     return "ok"
 
 
-def _handle_delay(execution_id, node, payload):
+def _handle_delay(execution_id, node, payload, subscriber_id=None, team_id=None):
     duration = node.get("data", {}).get("duration_seconds", 60)
     next_step_id = node.get("id")
+
+    stored_payload = {
+        **(payload or {}),
+        "__subscriber_id": str(subscriber_id) if subscriber_id else None,
+        "__team_id": str(team_id) if team_id else None,
+    }
 
     execute_insert_query(Q_CREATE_SCHEDULED_STEP, [
         uuid.uuid4(),
         uuid.UUID(execution_id),
         next_step_id,
-        payload,
+        stored_payload,
         datetime.now(timezone.utc) + timedelta(seconds=duration),
     ])
 
     return "paused"
+
+
+# Condition operator registry (COND-01: numeric, COND-02: string)
+def _op_equals(actual, expected):
+    return actual == expected
+
+def _op_not_equals(actual, expected):
+    return actual != expected
+
+def _op_exists(actual, _expected):
+    return actual is not None
+
+def _op_greater_than(actual, expected):
+    return float(actual) > float(expected)
+
+def _op_less_than(actual, expected):
+    return float(actual) < float(expected)
+
+def _op_between(actual, expected):
+    """expected must be a 2-element list [min, max]."""
+    if not isinstance(expected, list) or len(expected) != 2:
+        return False
+    return float(expected[0]) <= float(actual) <= float(expected[1])
+
+def _op_contains(actual, expected):
+    return str(expected) in str(actual)
+
+def _op_starts_with(actual, expected):
+    return str(actual).startswith(str(expected))
+
+def _op_regex(actual, expected):
+    return bool(re.search(str(expected), str(actual)))
+
+CONDITION_OPERATORS = {
+    "equals": _op_equals,
+    "not_equals": _op_not_equals,
+    "exists": _op_exists,
+    "greater_than": _op_greater_than,
+    "less_than": _op_less_than,
+    "between": _op_between,
+    "contains": _op_contains,
+    "starts_with": _op_starts_with,
+    "regex": _op_regex,
+}
 
 
 def _handle_condition(node, payload):
@@ -147,11 +207,13 @@ def _handle_condition(node, payload):
 
     actual = payload.get(field)
 
-    if operator == "equals":
-        return "ok" if actual == value else "skipped"
-    elif operator == "not_equals":
-        return "ok" if actual != value else "skipped"
-    elif operator == "exists":
-        return "ok" if actual is not None else "skipped"
+    op_fn = CONDITION_OPERATORS.get(operator)
+    if op_fn is None:
+        return "ok"
 
-    return "ok"
+    try:
+        result = op_fn(actual, value)
+    except (TypeError, ValueError, re.error):
+        return "skipped"
+
+    return "ok" if result else "skipped"

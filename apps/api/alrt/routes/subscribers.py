@@ -10,6 +10,7 @@ from alrt.middleware.rate_limit import limiter
 from alrt.queries import subscribers as sub_q
 from alrt.schemas.subscriber import (
     CreateSubscriber,
+    PreferencesResponse,
     SubscriberResponse,
     UpdatePreferences,
     UpdateSubscriber,
@@ -42,6 +43,9 @@ async def create_subscriber(
             body.email,
             body.name,
             body.slack_user_id,
+            body.phone_number,
+            body.discord_webhook_url,
+            body.telegram_chat_id,
             body.custom_properties or {},
             body.channel_preferences or {},
         ],
@@ -110,6 +114,9 @@ async def update_subscriber(
             updates.get("email"),
             updates.get("name"),
             updates.get("slack_user_id"),
+            updates.get("phone_number"),
+            updates.get("discord_webhook_url"),
+            updates.get("telegram_chat_id"),
             custom_props,
             chan_prefs,
         ],
@@ -143,7 +150,13 @@ async def get_preferences(
     subscriber = await _find_subscriber(team_id, external_id)
     if not subscriber:
         raise HTTPException(status_code=404, detail="Subscriber not found")
-    return {"channel_preferences": subscriber["channel_preferences"]}
+    prefs = subscriber["channel_preferences"] or {}
+    return PreferencesResponse(
+        **{"global": prefs.get("global", {}),
+           "categories": prefs.get("categories", {}),
+           "dnd": prefs.get("dnd"),
+           "frequency": prefs.get("frequency")}
+    )
 
 
 @router.patch("/{external_id}/preferences")
@@ -158,10 +171,18 @@ async def update_preferences(
     if not subscriber:
         raise HTTPException(status_code=404, detail="Subscriber not found")
 
+    # Serialize with alias so "global_" becomes "global" in the JSONB
+    prefs_dict = body.channel_preferences.model_dump(by_alias=True)
     row = await execute_insert_query(
         sub_q.UPDATE_PREFERENCES,
-        [subscriber["id"], body.channel_preferences],
+        [subscriber["id"], prefs_dict],
     )
     if not row:
         raise HTTPException(status_code=500, detail="Failed to update preferences")
-    return {"channel_preferences": row["channel_preferences"]}
+    updated_prefs = row["channel_preferences"] or {}
+    return PreferencesResponse(
+        **{"global": updated_prefs.get("global", {}),
+           "categories": updated_prefs.get("categories", {}),
+           "dnd": updated_prefs.get("dnd"),
+           "frequency": updated_prefs.get("frequency")}
+    )

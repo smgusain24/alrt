@@ -2,12 +2,10 @@
 
 import { DocsSidebar, EndpointBlock } from "@/components/docs";
 import {
-  WindowCard,
-  GrooveDivider,
+  Card,
   CodeBlock,
-  RetroLink,
-  Badge,
-} from "@/components/retro";
+} from "@/components/ui";
+import Link from "next/link";
 
 const SECTIONS = [
   { id: "getting-started", label: "Getting Started" },
@@ -15,8 +13,6 @@ const SECTIONS = [
   { id: "events", label: "Events" },
   { id: "subscribers", label: "Subscribers" },
   { id: "notifications", label: "Notifications" },
-  { id: "workflows", label: "Workflows" },
-  { id: "providers", label: "Providers" },
   { id: "websocket", label: "WebSocket" },
 ];
 
@@ -24,79 +20,69 @@ export default function DocsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Top bar */}
-      <nav className="bg-white border-b-2 border-muted px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <span className="font-heading text-2xl">ALRT</span>
-            <span className="font-mono text-sm text-muted">.dev</span>
-            <span className="text-muted mx-2">/</span>
-            <span className="font-heading text-sm uppercase">API Docs</span>
+      <nav className="bg-background/80 backdrop-blur-md border-b border-[rgba(255,255,255,0.06)] px-6 py-3 sticky top-0 z-20">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-1">
+              <span className="font-brand text-lg font-bold text-text-primary">ALRT</span>
+              <span className="font-mono text-xs text-text-muted">.dev</span>
+            </Link>
+            <span className="text-[rgba(255,255,255,0.12)]">/</span>
+            <span className="text-sm text-text-secondary font-medium">Docs</span>
           </div>
-          <div className="flex items-center gap-4">
-            <RetroLink href="/">Home</RetroLink>
-            <RetroLink href="/workflows">Dashboard</RetroLink>
+          <div className="flex items-center gap-6">
+            <Link href="/" className="text-sm text-text-muted hover:text-text-primary transition-colors">Home</Link>
+            <Link href="/workflows" className="text-sm text-text-muted hover:text-text-primary transition-colors">Dashboard</Link>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto flex">
+      <div className="max-w-[1400px] mx-auto flex">
         {/* Sidebar */}
-        <div className="hidden md:block w-56 shrink-0 sticky top-0 h-screen overflow-y-auto py-4 pr-4">
+        <div className="hidden lg:block w-56 shrink-0 sticky top-[49px] h-[calc(100vh-49px)] overflow-y-auto border-r border-[rgba(255,255,255,0.06)]">
           <DocsSidebar sections={SECTIONS} />
         </div>
 
         {/* Content */}
-        <main className="flex-1 py-8 px-4 md:px-8 min-w-0">
-          {/* ───────────────── GETTING STARTED ───────────────── */}
-          <section id="getting-started">
-            <h1 className="font-heading text-3xl mb-2">API Reference</h1>
-            <p className="text-sm text-muted mb-6">
+        <main className="flex-1 py-12 px-8 lg:px-16 min-w-0 max-w-5xl">
+
+          {/* ── GETTING STARTED ── */}
+          <section id="getting-started" className="scroll-mt-20">
+            <h1 className="text-2xl font-semibold text-text-primary mb-1 tracking-tight">
+              API Reference
+            </h1>
+            <p className="text-sm text-text-muted mb-8">
               Base URL:{" "}
-              <code className="font-mono bg-muted/20 px-1.5 py-0.5">
+              <code className="font-mono text-text-secondary bg-elevated rounded px-1.5 py-0.5">
                 https://api.alrt.dev
               </code>
             </p>
 
-            <h2 className="font-heading text-xl mb-4">Quick Start</h2>
-            <p className="text-sm text-foreground mb-4">
-              Get up and running in three steps. Every request uses your server
+            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Quick start</h2>
+            <p className="text-sm text-text-secondary mb-6 max-w-xl">
+              Get up and running in three steps. All requests use your server
               key as a Bearer token.
             </p>
 
-            <div className="space-y-4">
-              <WindowCard title="Step 1 — Create a Team">
-                <p className="text-sm mb-3">
-                  Create a team to get your API keys. The response includes your{" "}
-                  <code className="font-mono text-xs bg-muted/20 px-1">
-                    raw_key
+            <div className="space-y-4 max-w-2xl">
+              <Card title="1. Get your API key">
+                <p className="text-sm text-text-secondary mb-3">
+                  Sign up at{" "}
+                  <code className="font-mono text-xs bg-elevated rounded px-1 text-accent">
+                    alrt.dev
                   </code>{" "}
-                  (shown only once).
+                  to create your team. Your server key (
+                  <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
+                    alrt_sk_...
+                  </code>
+                  ) is shown once on the settings page.
                 </p>
-                <CodeBlock
-                  title="Request"
-                  code={`curl -X POST https://api.alrt.dev/teams \\
-  -H "Content-Type: application/json" \\
-  -d '{"name": "My App"}'`}
-                />
-              </WindowCard>
+              </Card>
 
-              <WindowCard title="Step 2 — Create a Subscriber">
-                <p className="text-sm mb-3">
-                  Register a user who will receive notifications.
-                </p>
-                <CodeBlock
-                  title="Request"
-                  code={`curl -X POST https://api.alrt.dev/subscribers \\
-  -H "Authorization: Bearer $KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{"external_id": "user_1", "email": "jane@example.com"}'`}
-                />
-              </WindowCard>
-
-              <WindowCard title="Step 3 — Trigger a Notification">
-                <p className="text-sm mb-3">
-                  Fire an event that triggers a workflow and delivers
-                  notifications.
+              <Card title="2. Trigger a notification">
+                <p className="text-sm text-text-secondary mb-3">
+                  Fire an event. The subscriber is automatically created or
+                  updated from the inline object.
                 </p>
                 <CodeBlock
                   title="Request"
@@ -105,127 +91,127 @@ export default function DocsPage() {
   -H "Content-Type: application/json" \\
   -d '{
     "workflow": "welcome",
-    "subscriber_id": "user_1",
+    "subscriber": {
+      "id": "user_1",
+      "email": "jane@example.com",
+      "name": "Jane"
+    },
     "payload": {"name": "Jane"}
   }'`}
                 />
-              </WindowCard>
+              </Card>
+
+              <Card title="3. Fetch notifications">
+                <p className="text-sm text-text-secondary mb-3">
+                  Read the in-app feed for a subscriber.
+                </p>
+                <CodeBlock
+                  title="Request"
+                  code={`curl https://api.alrt.dev/subscribers/user_1/notifications \\
+  -H "Authorization: Bearer $KEY"`}
+                />
+              </Card>
             </div>
           </section>
 
-          <GrooveDivider className="my-8" />
+          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
 
-          {/* ───────────────── AUTHENTICATION ───────────────── */}
-          <section id="authentication">
-            <h2 className="font-heading text-xl mb-4">Authentication</h2>
-            <p className="text-sm text-foreground mb-4">
-              All API requests require a Bearer token in the{" "}
-              <code className="font-mono text-xs bg-muted/20 px-1">
+          {/* ── AUTHENTICATION ── */}
+          <section id="authentication" className="scroll-mt-20">
+            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Authentication</h2>
+            <p className="text-sm text-text-secondary mb-6 max-w-xl">
+              All requests require a Bearer token in the{" "}
+              <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
                 Authorization
               </code>{" "}
-              header:
+              header.
             </p>
+
             <CodeBlock
               title="Header"
               code={`Authorization: Bearer alrt_sk_live_abc123...`}
             />
 
-            <div className="mt-6">
-              <h3 className="font-heading text-sm uppercase tracking-wide mb-3">
-                Key Types
-              </h3>
-              <div className="bevel-inset bg-white p-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-muted">
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Prefix
-                      </th>
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Type
-                      </th>
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Access
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-muted/50">
-                      <td className="py-2 font-mono text-xs">
-                        <Badge variant="success">alrt_sk_</Badge>
-                      </td>
-                      <td className="py-2">Server Key</td>
-                      <td className="py-2">Full access (read + write)</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono text-xs">
-                        <Badge variant="warning">alrt_ck_</Badge>
-                      </td>
-                      <td className="py-2">Client Key</td>
-                      <td className="py-2">
-                        Read-only (frontend / WebSocket)
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl">
+              <div>
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                  Key types
+                </h3>
+                <div className="rounded-md border border-[rgba(255,255,255,0.08)] overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[rgba(255,255,255,0.03)]">
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Prefix</th>
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Type</th>
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Access</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-success">alrt_sk_</code></td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Server Key</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Full access (read + write)</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-warning">alrt_ck_</code></td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Client Key</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Read-only (frontend / WebSocket)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-6">
-              <h3 className="font-heading text-sm uppercase tracking-wide mb-3">
-                Rate Limits
-              </h3>
-              <div className="bevel-inset bg-white p-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-muted">
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Tier
-                      </th>
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Limit
-                      </th>
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Applies To
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-muted/50">
-                      <td className="py-2 font-mono text-xs">Write</td>
-                      <td className="py-2">60 req/min</td>
-                      <td className="py-2">POST, PATCH, PUT, DELETE</td>
-                    </tr>
-                    <tr className="border-b border-muted/50">
-                      <td className="py-2 font-mono text-xs">Read</td>
-                      <td className="py-2">120 req/min</td>
-                      <td className="py-2">GET</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono text-xs">Public</td>
-                      <td className="py-2">30 req/min</td>
-                      <td className="py-2">Unauthenticated endpoints</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div>
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                  Rate limits
+                </h3>
+                <div className="rounded-md border border-[rgba(255,255,255,0.08)] overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[rgba(255,255,255,0.03)]">
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Tier</th>
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Limit</th>
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Applies to</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                        <td className="px-3 py-2.5 text-xs font-mono text-text-secondary">Write</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">60 req/min</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">POST, PATCH, PUT, DELETE</td>
+                      </tr>
+                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                        <td className="px-3 py-2.5 text-xs font-mono text-text-secondary">Read</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">120 req/min</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">GET</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2.5 text-xs font-mono text-text-secondary">Public</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">30 req/min</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Unauthenticated</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </section>
 
-          <GrooveDivider className="my-8" />
+          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
 
-          {/* ───────────────── EVENTS ───────────────── */}
-          <section id="events">
-            <h2 className="font-heading text-xl mb-4">Events</h2>
-            <p className="text-sm text-foreground mb-6">
+          {/* ── EVENTS ── */}
+          <section id="events" className="scroll-mt-20">
+            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Events</h2>
+            <p className="text-sm text-text-secondary mb-8 max-w-xl">
               Trigger workflow execution by firing named events. Each event name
-              maps to exactly one workflow.
+              maps to one workflow. Subscribers are automatically upserted on every trigger.
             </p>
 
             <EndpointBlock
               method="POST"
               path="/events/trigger"
-              description="Trigger a workflow by event name. The matched workflow will execute asynchronously and deliver to all configured channels."
+              description="Trigger a workflow for a single subscriber. The subscriber is upserted automatically. The matched workflow executes asynchronously and delivers to all configured channels."
               bodyParams={[
                 {
                   name: "workflow",
@@ -235,18 +221,11 @@ export default function DocsPage() {
                     "The event name mapped to a workflow (e.g. 'welcome', 'invoice.paid').",
                 },
                 {
-                  name: "subscriber_id",
-                  type: "string",
+                  name: "subscriber",
+                  type: "object",
                   required: true,
                   description:
-                    "The external_id of the subscriber to notify.",
-                },
-                {
-                  name: "channels",
-                  type: "string[]",
-                  required: false,
-                  description:
-                    'Optional channel override. Values: "in_app", "email", "slack". If omitted, uses workflow definition.',
+                    "The subscriber to notify. Must include id (your external user ID). Optionally include email, name, phone, and data to upsert subscriber info.",
                 },
                 {
                   name: "payload",
@@ -254,7 +233,36 @@ export default function DocsPage() {
                   required: false,
                   default: "{}",
                   description:
-                    "Key-value data passed to templates for variable substitution.",
+                    "Key-value data passed to templates for variable substitution (e.g. {{payload.name}}).",
+                },
+                {
+                  name: "channels",
+                  type: "string[]",
+                  required: false,
+                  description:
+                    'Optional channel filter. Values: "in_app", "email", "slack". If omitted, all workflow channels fire.',
+                },
+                {
+                  name: "overrides",
+                  type: "object",
+                  required: false,
+                  description:
+                    "Per-channel overrides. Supported keys: email (to, subject, reply_to, cc, bcc), slack (channel_id, thread_ts), in_app (action_url).",
+                },
+                {
+                  name: "deliver_at",
+                  type: "ISO 8601",
+                  required: false,
+                  description:
+                    "Schedule delivery for a future time. The execution is held until the specified time.",
+                },
+                {
+                  name: "metadata",
+                  type: "object",
+                  required: false,
+                  default: "{}",
+                  description:
+                    "Arbitrary metadata stored with the execution for your own tracking.",
                 },
                 {
                   name: "idempotency_key",
@@ -269,9 +277,13 @@ export default function DocsPage() {
   -H "Content-Type: application/json" \\
   -d '{
     "workflow": "welcome",
-    "subscriber_id": "user_1",
-    "channels": ["in_app", "email"],
+    "subscriber": {
+      "id": "user_1",
+      "email": "jane@example.com",
+      "name": "Jane"
+    },
     "payload": {"name": "Jane", "plan": "Pro"},
+    "channels": ["in_app", "email"],
     "idempotency_key": "evt_abc123"
   }'`}
               responseExample={`{
@@ -285,76 +297,135 @@ export default function DocsPage() {
               errors={[
                 {
                   status: "404",
-                  detail: "Workflow not found for event name.",
+                  detail: "No published workflow for this event.",
+                },
+              ]}
+            />
+
+            <EndpointBlock
+              method="POST"
+              path="/events/trigger-bulk"
+              description="Trigger a workflow for up to 1,000 subscribers in a single request. Each subscriber is upserted and processed individually."
+              bodyParams={[
+                {
+                  name: "workflow",
+                  type: "string",
+                  required: true,
+                  description:
+                    "The event name mapped to a workflow.",
                 },
                 {
+                  name: "subscribers",
+                  type: "object[]",
+                  required: true,
+                  description:
+                    "Array of subscriber objects (max 1,000). Each must include id. Optionally include email, name, phone, data.",
+                },
+                {
+                  name: "payload",
+                  type: "object",
+                  required: false,
+                  default: "{}",
+                  description:
+                    "Shared payload passed to all subscribers' templates.",
+                },
+                {
+                  name: "channels",
+                  type: "string[]",
+                  required: false,
+                  description:
+                    "Optional channel filter applied to all subscribers.",
+                },
+                {
+                  name: "overrides",
+                  type: "object",
+                  required: false,
+                  description:
+                    "Per-channel overrides applied to all subscribers.",
+                },
+                {
+                  name: "deliver_at",
+                  type: "ISO 8601",
+                  required: false,
+                  description:
+                    "Schedule delivery for all subscribers at a future time.",
+                },
+                {
+                  name: "metadata",
+                  type: "object",
+                  required: false,
+                  default: "{}",
+                  description:
+                    "Arbitrary metadata stored with each execution.",
+                },
+                {
+                  name: "idempotency_key",
+                  type: "string",
+                  required: false,
+                  description:
+                    "Batch-level idempotency key (24h window).",
+                },
+              ]}
+              requestExample={`curl -X POST https://api.alrt.dev/events/trigger-bulk \\
+  -H "Authorization: Bearer $KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "workflow": "weekly-digest",
+    "subscribers": [
+      {"id": "user_1", "email": "jane@example.com"},
+      {"id": "user_2", "email": "alex@example.com"},
+      {"id": "user_3", "email": "sam@example.com"}
+    ],
+    "payload": {"week": "2025-W03"}
+  }'`}
+              responseExample={`{
+  "batch_id": "batch_01HX...",
+  "status": "accepted",
+  "total": 3,
+  "accepted": 3,
+  "duplicates": 0,
+  "errors": 0,
+  "results": [
+    {"subscriber_id": "user_1", "event_id": "evt_01HX...", "status": "accepted"},
+    {"subscriber_id": "user_2", "event_id": "evt_02HX...", "status": "accepted"},
+    {"subscriber_id": "user_3", "event_id": "evt_03HX...", "status": "accepted"}
+  ]
+}`}
+              responseStatus="202 Accepted"
+              errors={[
+                {
                   status: "404",
-                  detail: "Subscriber not found.",
+                  detail: "No published workflow for this event.",
                 },
               ]}
             />
           </section>
 
-          <GrooveDivider className="my-8" />
+          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
 
-          {/* ───────────────── SUBSCRIBERS ───────────────── */}
-          <section id="subscribers">
-            <h2 className="font-heading text-xl mb-4">Subscribers</h2>
-            <p className="text-sm text-foreground mb-6">
+          {/* ── SUBSCRIBERS ── */}
+          <section id="subscribers" className="scroll-mt-20">
+            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Subscribers</h2>
+            <p className="text-sm text-text-secondary mb-8 max-w-xl">
               Manage the users who receive notifications. Each subscriber is
               identified by a unique{" "}
-              <code className="font-mono text-xs bg-muted/20 px-1">
+              <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
                 external_id
               </code>{" "}
               that you define.
             </p>
 
-            {/* POST /subscribers */}
             <EndpointBlock
               method="POST"
               path="/subscribers"
               description="Create a new subscriber. The external_id must be unique within your team."
               bodyParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description:
-                    "Your application's unique user identifier.",
-                },
-                {
-                  name: "email",
-                  type: "string",
-                  required: false,
-                  description: "Email address for the email channel.",
-                },
-                {
-                  name: "name",
-                  type: "string",
-                  required: false,
-                  description: "Display name used in templates.",
-                },
-                {
-                  name: "slack_user_id",
-                  type: "string",
-                  required: false,
-                  description:
-                    "Slack member ID for the Slack channel.",
-                },
-                {
-                  name: "custom_properties",
-                  type: "object",
-                  required: false,
-                  description:
-                    "Arbitrary key-value metadata for template rendering.",
-                },
-                {
-                  name: "channel_preferences",
-                  type: "object",
-                  required: false,
-                  description:
-                    'Per-channel opt-in/out. E.g. {"email": true, "in_app": true, "slack": false}.',
-                },
+                { name: "external_id", type: "string", required: true, description: "Your application's unique user identifier." },
+                { name: "email", type: "string", required: false, description: "Email address for the email channel." },
+                { name: "name", type: "string", required: false, description: "Display name used in templates." },
+                { name: "phone_number", type: "string", required: false, description: "Phone number for SMS/WhatsApp." },
+                { name: "custom_properties", type: "object", required: false, description: "Arbitrary key-value metadata for template rendering." },
+                { name: "channel_preferences", type: "object", required: false, description: 'Per-channel opt-in/out. E.g. {"email": true, "in_app": true, "slack": false}.' },
               ]}
               requestExample={`curl -X POST https://api.alrt.dev/subscribers \\
   -H "Authorization: Bearer $KEY" \\
@@ -374,38 +445,22 @@ export default function DocsPage() {
   "external_id": "user_1",
   "email": "jane@example.com",
   "name": "Jane Doe",
-  "slack_user_id": null,
-  "custom_properties": {},
   "channel_preferences": {
     "email": true,
     "in_app": true,
     "slack": false
   },
-  "created_at": "2025-01-15T10:30:00Z",
-  "updated_at": "2025-01-15T10:30:00Z"
+  "created_at": "2025-01-15T10:30:00Z"
 }`}
               responseStatus="201 Created"
-              errors={[
-                {
-                  status: "409",
-                  detail: "Subscriber with this external_id already exists.",
-                },
-              ]}
+              errors={[{ status: "409", detail: "Subscriber with this external_id already exists." }]}
             />
 
-            {/* GET /subscribers/{external_id} */}
             <EndpointBlock
               method="GET"
               path="/subscribers/{external_id}"
               description="Retrieve a single subscriber by their external_id."
-              pathParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description: "The subscriber's unique identifier.",
-                },
-              ]}
+              pathParams={[{ name: "external_id", type: "string", required: true, description: "The subscriber's unique identifier." }]}
               requestExample={`curl https://api.alrt.dev/subscribers/user_1 \\
   -H "Authorization: Bearer $KEY"`}
               responseExample={`{
@@ -413,8 +468,6 @@ export default function DocsPage() {
   "external_id": "user_1",
   "email": "jane@example.com",
   "name": "Jane Doe",
-  "slack_user_id": null,
-  "custom_properties": {},
   "channel_preferences": {
     "email": true,
     "in_app": true,
@@ -424,55 +477,20 @@ export default function DocsPage() {
   "updated_at": "2025-01-15T10:30:00Z"
 }`}
               responseStatus="200 OK"
-              errors={[
-                { status: "404", detail: "Subscriber not found." },
-              ]}
+              errors={[{ status: "404", detail: "Subscriber not found." }]}
             />
 
-            {/* PATCH /subscribers/{external_id} */}
             <EndpointBlock
               method="PATCH"
               path="/subscribers/{external_id}"
               description="Update subscriber fields. Only provided fields are changed."
-              pathParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description: "The subscriber's unique identifier.",
-                },
-              ]}
+              pathParams={[{ name: "external_id", type: "string", required: true, description: "The subscriber's unique identifier." }]}
               bodyParams={[
-                {
-                  name: "email",
-                  type: "string",
-                  required: false,
-                  description: "Updated email address.",
-                },
-                {
-                  name: "name",
-                  type: "string",
-                  required: false,
-                  description: "Updated display name.",
-                },
-                {
-                  name: "slack_user_id",
-                  type: "string",
-                  required: false,
-                  description: "Updated Slack member ID.",
-                },
-                {
-                  name: "custom_properties",
-                  type: "object",
-                  required: false,
-                  description: "Merged with existing custom properties.",
-                },
-                {
-                  name: "channel_preferences",
-                  type: "object",
-                  required: false,
-                  description: "Updated channel preferences.",
-                },
+                { name: "email", type: "string", required: false, description: "Updated email address." },
+                { name: "name", type: "string", required: false, description: "Updated display name." },
+                { name: "phone_number", type: "string", required: false, description: "Updated phone number." },
+                { name: "custom_properties", type: "object", required: false, description: "Merged with existing custom properties." },
+                { name: "channel_preferences", type: "object", required: false, description: "Updated channel preferences." },
               ]}
               requestExample={`curl -X PATCH https://api.alrt.dev/subscribers/user_1 \\
   -H "Authorization: Bearer $KEY" \\
@@ -483,56 +501,29 @@ export default function DocsPage() {
   "external_id": "user_1",
   "email": "jane.smith@example.com",
   "name": "Jane Smith",
-  "slack_user_id": null,
-  "custom_properties": {},
-  "channel_preferences": {
-    "email": true,
-    "in_app": true,
-    "slack": false
-  },
   "created_at": "2025-01-15T10:30:00Z",
   "updated_at": "2025-01-15T12:00:00Z"
 }`}
               responseStatus="200 OK"
-              errors={[
-                { status: "404", detail: "Subscriber not found." },
-              ]}
+              errors={[{ status: "404", detail: "Subscriber not found." }]}
             />
 
-            {/* DELETE /subscribers/{external_id} */}
             <EndpointBlock
               method="DELETE"
               path="/subscribers/{external_id}"
               description="Permanently delete a subscriber and all their notifications."
-              pathParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description: "The subscriber's unique identifier.",
-                },
-              ]}
+              pathParams={[{ name: "external_id", type: "string", required: true, description: "The subscriber's unique identifier." }]}
               requestExample={`curl -X DELETE https://api.alrt.dev/subscribers/user_1 \\
   -H "Authorization: Bearer $KEY"`}
               responseStatus="204 No Content"
-              errors={[
-                { status: "404", detail: "Subscriber not found." },
-              ]}
+              errors={[{ status: "404", detail: "Subscriber not found." }]}
             />
 
-            {/* GET /subscribers/{external_id}/preferences */}
             <EndpointBlock
               method="GET"
               path="/subscribers/{external_id}/preferences"
               description="Retrieve a subscriber's per-channel notification preferences."
-              pathParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description: "The subscriber's unique identifier.",
-                },
-              ]}
+              pathParams={[{ name: "external_id", type: "string", required: true, description: "The subscriber's unique identifier." }]}
               requestExample={`curl https://api.alrt.dev/subscribers/user_1/preferences \\
   -H "Authorization: Bearer $KEY"`}
               responseExample={`{
@@ -543,33 +534,15 @@ export default function DocsPage() {
   }
 }`}
               responseStatus="200 OK"
-              errors={[
-                { status: "404", detail: "Subscriber not found." },
-              ]}
+              errors={[{ status: "404", detail: "Subscriber not found." }]}
             />
 
-            {/* PATCH /subscribers/{external_id}/preferences */}
             <EndpointBlock
               method="PATCH"
               path="/subscribers/{external_id}/preferences"
-              description="Replace a subscriber's channel preferences entirely. This is a full replacement, not a merge."
-              pathParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description: "The subscriber's unique identifier.",
-                },
-              ]}
-              bodyParams={[
-                {
-                  name: "channel_preferences",
-                  type: "object",
-                  required: true,
-                  description:
-                    'Full replacement of channel preferences. E.g. {"email": true, "in_app": true, "slack": true}.',
-                },
-              ]}
+              description="Replace a subscriber's channel preferences. This is a full replacement, not a merge."
+              pathParams={[{ name: "external_id", type: "string", required: true, description: "The subscriber's unique identifier." }]}
+              bodyParams={[{ name: "channel_preferences", type: "object", required: true, description: 'Full replacement of channel preferences. E.g. {"email": true, "in_app": true, "slack": true}.' }]}
               requestExample={`curl -X PATCH https://api.alrt.dev/subscribers/user_1/preferences \\
   -H "Authorization: Bearer $KEY" \\
   -H "Content-Type: application/json" \\
@@ -588,86 +561,43 @@ export default function DocsPage() {
   }
 }`}
               responseStatus="200 OK"
-              errors={[
-                { status: "404", detail: "Subscriber not found." },
-              ]}
+              errors={[{ status: "404", detail: "Subscriber not found." }]}
             />
 
-            {/* POST /subscribers/{external_id}/token */}
             <EndpointBlock
               method="POST"
               path="/subscribers/{external_id}/token"
               description="Generate a short-lived JWT for WebSocket authentication. The token expires after 24 hours."
-              pathParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description: "The subscriber's unique identifier.",
-                },
-              ]}
+              pathParams={[{ name: "external_id", type: "string", required: true, description: "The subscriber's unique identifier." }]}
               requestExample={`curl -X POST https://api.alrt.dev/subscribers/user_1/token \\
   -H "Authorization: Bearer $KEY"`}
               responseExample={`{
   "token": "eyJhbGciOiJIUzI1NiIs..."
 }`}
               responseStatus="200 OK"
-              errors={[
-                { status: "404", detail: "Subscriber not found." },
-              ]}
+              errors={[{ status: "404", detail: "Subscriber not found." }]}
             />
           </section>
 
-          <GrooveDivider className="my-8" />
+          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
 
-          {/* ───────────────── NOTIFICATIONS ───────────────── */}
-          <section id="notifications">
-            <h2 className="font-heading text-xl mb-4">Notifications</h2>
-            <p className="text-sm text-foreground mb-6">
+          {/* ── NOTIFICATIONS ── */}
+          <section id="notifications" className="scroll-mt-20">
+            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Notifications</h2>
+            <p className="text-sm text-text-secondary mb-8 max-w-xl">
               Query and manage a subscriber&apos;s in-app notification feed.
             </p>
 
-            {/* GET /subscribers/{external_id}/notifications */}
             <EndpointBlock
               method="GET"
               path="/subscribers/{external_id}/notifications"
               description="List notifications for a subscriber with filtering and pagination."
-              pathParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description: "The subscriber's unique identifier.",
-                },
-              ]}
+              pathParams={[{ name: "external_id", type: "string", required: true, description: "The subscriber's unique identifier." }]}
               queryParams={[
-                {
-                  name: "channel",
-                  type: "string",
-                  required: false,
-                  description:
-                    'Filter by channel: "in_app", "email", or "slack".',
-                },
-                {
-                  name: "is_read",
-                  type: "boolean",
-                  required: false,
-                  description: "Filter by read status.",
-                },
-                {
-                  name: "limit",
-                  type: "integer",
-                  required: false,
-                  default: "20",
-                  description: "Number of results to return. Max 100.",
-                },
-                {
-                  name: "offset",
-                  type: "integer",
-                  required: false,
-                  default: "0",
-                  description: "Number of results to skip.",
-                },
+                { name: "channel", type: "string", required: false, description: 'Filter by channel: "in_app", "email", or "slack".' },
+                { name: "is_read", type: "boolean", required: false, description: "Filter by read status." },
+                { name: "limit", type: "integer", required: false, default: "20", description: "Number of results to return. Max 100." },
+                { name: "offset", type: "integer", required: false, default: "0", description: "Number of results to skip." },
               ]}
               requestExample={`curl "https://api.alrt.dev/subscribers/user_1/notifications?is_read=false&limit=10" \\
   -H "Authorization: Bearer $KEY"`}
@@ -684,43 +614,20 @@ export default function DocsPage() {
   }
 ]`}
               responseStatus="200 OK"
-              errors={[
-                { status: "404", detail: "Subscriber not found." },
-              ]}
+              errors={[{ status: "404", detail: "Subscriber not found." }]}
             />
 
-            {/* PATCH /subscribers/{external_id}/notifications/{notification_id} */}
             <EndpointBlock
               method="PATCH"
               path="/subscribers/{external_id}/notifications/{notification_id}"
               description="Update a single notification's read or archived status."
               pathParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description: "The subscriber's unique identifier.",
-                },
-                {
-                  name: "notification_id",
-                  type: "string",
-                  required: true,
-                  description: "The notification ID.",
-                },
+                { name: "external_id", type: "string", required: true, description: "The subscriber's unique identifier." },
+                { name: "notification_id", type: "string", required: true, description: "The notification ID." },
               ]}
               bodyParams={[
-                {
-                  name: "is_read",
-                  type: "boolean",
-                  required: false,
-                  description: "Mark as read or unread.",
-                },
-                {
-                  name: "is_archived",
-                  type: "boolean",
-                  required: false,
-                  description: "Mark as archived or unarchived.",
-                },
+                { name: "is_read", type: "boolean", required: false, description: "Mark as read or unread." },
+                { name: "is_archived", type: "boolean", required: false, description: "Mark as archived or unarchived." },
               ]}
               requestExample={`curl -X PATCH https://api.alrt.dev/subscribers/user_1/notifications/ntf_01HX \\
   -H "Authorization: Bearer $KEY" \\
@@ -737,492 +644,105 @@ export default function DocsPage() {
   "created_at": "2025-01-15T10:31:00Z"
 }`}
               responseStatus="200 OK"
-              errors={[
-                { status: "404", detail: "Notification not found." },
-              ]}
+              errors={[{ status: "404", detail: "Notification not found." }]}
             />
 
-            {/* POST /subscribers/{external_id}/notifications/mark-all-read */}
             <EndpointBlock
               method="POST"
               path="/subscribers/{external_id}/notifications/mark-all-read"
               description="Mark all of a subscriber's notifications as read in one batch."
-              pathParams={[
-                {
-                  name: "external_id",
-                  type: "string",
-                  required: true,
-                  description: "The subscriber's unique identifier.",
-                },
-              ]}
+              pathParams={[{ name: "external_id", type: "string", required: true, description: "The subscriber's unique identifier." }]}
               requestExample={`curl -X POST https://api.alrt.dev/subscribers/user_1/notifications/mark-all-read \\
   -H "Authorization: Bearer $KEY"`}
               responseStatus="204 No Content"
-              errors={[
-                { status: "404", detail: "Subscriber not found." },
-              ]}
+              errors={[{ status: "404", detail: "Subscriber not found." }]}
             />
           </section>
 
-          <GrooveDivider className="my-8" />
+          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
 
-          {/* ───────────────── WORKFLOWS ───────────────── */}
-          <section id="workflows">
-            <h2 className="font-heading text-xl mb-4">Workflows</h2>
-            <p className="text-sm text-foreground mb-6">
-              Create and manage notification workflows. Each workflow is
-              triggered by a unique event name and defines a sequence of
-              notification steps.
-            </p>
-
-            {/* POST /workflows */}
-            <EndpointBlock
-              method="POST"
-              path="/workflows"
-              description="Create a new workflow. The event_name must be unique within your team."
-              bodyParams={[
-                {
-                  name: "name",
-                  type: "string",
-                  required: true,
-                  description:
-                    "Human-readable name for the workflow.",
-                },
-                {
-                  name: "event_name",
-                  type: "string",
-                  required: true,
-                  description:
-                    "Unique event name that triggers this workflow.",
-                },
-                {
-                  name: "definition",
-                  type: "object",
-                  required: false,
-                  description:
-                    "Workflow definition (nodes and edges from the visual builder).",
-                },
-              ]}
-              requestExample={`curl -X POST https://api.alrt.dev/workflows \\
-  -H "Authorization: Bearer $KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "name": "Welcome Flow",
-    "event_name": "welcome",
-    "definition": {}
-  }'`}
-              responseExample={`{
-  "id": "wf_01HX...",
-  "name": "Welcome Flow",
-  "event_name": "welcome",
-  "definition": {},
-  "status": "draft",
-  "created_at": "2025-01-15T10:30:00Z",
-  "updated_at": "2025-01-15T10:30:00Z"
-}`}
-              responseStatus="201 Created"
-              errors={[
-                {
-                  status: "409",
-                  detail:
-                    "A workflow with this event_name already exists.",
-                },
-              ]}
-            />
-
-            {/* GET /workflows */}
-            <EndpointBlock
-              method="GET"
-              path="/workflows"
-              description="List all workflows for the current team."
-              requestExample={`curl https://api.alrt.dev/workflows \\
-  -H "Authorization: Bearer $KEY"`}
-              responseExample={`[
-  {
-    "id": "wf_01HX...",
-    "name": "Welcome Flow",
-    "event_name": "welcome",
-    "status": "published",
-    "created_at": "2025-01-15T10:30:00Z",
-    "updated_at": "2025-01-15T12:00:00Z"
-  }
-]`}
-              responseStatus="200 OK"
-            />
-
-            {/* GET /workflows/{workflow_id} */}
-            <EndpointBlock
-              method="GET"
-              path="/workflows/{workflow_id}"
-              description="Retrieve a single workflow including its full definition."
-              pathParams={[
-                {
-                  name: "workflow_id",
-                  type: "string",
-                  required: true,
-                  description: "The workflow ID.",
-                },
-              ]}
-              requestExample={`curl https://api.alrt.dev/workflows/wf_01HX \\
-  -H "Authorization: Bearer $KEY"`}
-              responseExample={`{
-  "id": "wf_01HX...",
-  "name": "Welcome Flow",
-  "event_name": "welcome",
-  "definition": {
-    "nodes": [...],
-    "edges": [...]
-  },
-  "status": "published",
-  "created_at": "2025-01-15T10:30:00Z",
-  "updated_at": "2025-01-15T12:00:00Z"
-}`}
-              responseStatus="200 OK"
-              errors={[
-                { status: "404", detail: "Workflow not found." },
-              ]}
-            />
-
-            {/* PUT /workflows/{workflow_id} */}
-            <EndpointBlock
-              method="PUT"
-              path="/workflows/{workflow_id}"
-              description="Update a workflow's name, event_name, or definition. Published workflows cannot be edited — create a new version instead."
-              pathParams={[
-                {
-                  name: "workflow_id",
-                  type: "string",
-                  required: true,
-                  description: "The workflow ID.",
-                },
-              ]}
-              bodyParams={[
-                {
-                  name: "name",
-                  type: "string",
-                  required: false,
-                  description: "Updated workflow name.",
-                },
-                {
-                  name: "event_name",
-                  type: "string",
-                  required: false,
-                  description: "Updated event name.",
-                },
-                {
-                  name: "definition",
-                  type: "object",
-                  required: false,
-                  description: "Updated workflow definition.",
-                },
-              ]}
-              requestExample={`curl -X PUT https://api.alrt.dev/workflows/wf_01HX \\
-  -H "Authorization: Bearer $KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "name": "Welcome Flow v2",
-    "definition": {
-      "nodes": [...],
-      "edges": [...]
-    }
-  }'`}
-              responseExample={`{
-  "id": "wf_01HX...",
-  "name": "Welcome Flow v2",
-  "event_name": "welcome",
-  "definition": {
-    "nodes": [...],
-    "edges": [...]
-  },
-  "status": "draft",
-  "created_at": "2025-01-15T10:30:00Z",
-  "updated_at": "2025-01-15T14:00:00Z"
-}`}
-              responseStatus="200 OK"
-              errors={[
-                {
-                  status: "400",
-                  detail:
-                    "Cannot edit a published workflow.",
-                },
-                { status: "404", detail: "Workflow not found." },
-              ]}
-            />
-
-            {/* POST /workflows/{workflow_id}/publish */}
-            <EndpointBlock
-              method="POST"
-              path="/workflows/{workflow_id}/publish"
-              description="Validate and publish a workflow. The definition must contain a trigger node and no more than 10 steps."
-              pathParams={[
-                {
-                  name: "workflow_id",
-                  type: "string",
-                  required: true,
-                  description: "The workflow ID.",
-                },
-              ]}
-              requestExample={`curl -X POST https://api.alrt.dev/workflows/wf_01HX/publish \\
-  -H "Authorization: Bearer $KEY"`}
-              responseExample={`{
-  "id": "wf_01HX...",
-  "name": "Welcome Flow",
-  "event_name": "welcome",
-  "status": "published",
-  "published_at": "2025-01-15T14:05:00Z"
-}`}
-              responseStatus="200 OK"
-              errors={[
-                {
-                  status: "400",
-                  detail: "Workflow has no nodes.",
-                },
-                {
-                  status: "400",
-                  detail: "Workflow must have a trigger node.",
-                },
-                {
-                  status: "400",
-                  detail:
-                    "Workflow exceeds maximum of 10 steps.",
-                },
-                { status: "404", detail: "Workflow not found." },
-              ]}
-            />
-
-            {/* DELETE /workflows/{workflow_id} */}
-            <EndpointBlock
-              method="DELETE"
-              path="/workflows/{workflow_id}"
-              description="Permanently delete a workflow."
-              pathParams={[
-                {
-                  name: "workflow_id",
-                  type: "string",
-                  required: true,
-                  description: "The workflow ID.",
-                },
-              ]}
-              requestExample={`curl -X DELETE https://api.alrt.dev/workflows/wf_01HX \\
-  -H "Authorization: Bearer $KEY"`}
-              responseStatus="204 No Content"
-              errors={[
-                { status: "404", detail: "Workflow not found." },
-              ]}
-            />
-          </section>
-
-          <GrooveDivider className="my-8" />
-
-          {/* ───────────────── PROVIDERS ───────────────── */}
-          <section id="providers">
-            <h2 className="font-heading text-xl mb-4">Providers</h2>
-            <p className="text-sm text-foreground mb-6">
-              Configure delivery providers for each channel (e.g. SendGrid for
-              email, Slack API for Slack). Provider config is encrypted at rest
-              and never returned in API responses.
-            </p>
-
-            {/* POST /providers */}
-            <EndpointBlock
-              method="POST"
-              path="/providers"
-              description="Add a new delivery provider. The config object is encrypted and will not be returned in any response."
-              bodyParams={[
-                {
-                  name: "channel",
-                  type: "string",
-                  required: true,
-                  description:
-                    'The channel this provider serves: "email", "slack", or "in_app".',
-                },
-                {
-                  name: "provider_type",
-                  type: "string",
-                  required: true,
-                  description:
-                    'Provider identifier (e.g. "sendgrid", "ses", "resend", "slack").',
-                },
-                {
-                  name: "config",
-                  type: "object",
-                  required: true,
-                  description:
-                    "Provider-specific configuration (API keys, tokens, etc). Encrypted at rest.",
-                },
-              ]}
-              requestExample={`curl -X POST https://api.alrt.dev/providers \\
-  -H "Authorization: Bearer $KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "channel": "email",
-    "provider_type": "sendgrid",
-    "config": {
-      "api_key": "SG.xxxx...",
-      "from_email": "noreply@myapp.com",
-      "from_name": "My App"
-    }
-  }'`}
-              responseExample={`{
-  "id": "prv_01HX...",
-  "channel": "email",
-  "provider_type": "sendgrid",
-  "is_active": true,
-  "created_at": "2025-01-15T10:30:00Z"
-}`}
-              responseStatus="201 Created"
-            />
-
-            {/* GET /providers */}
-            <EndpointBlock
-              method="GET"
-              path="/providers"
-              description="List all configured providers. Config objects are never included in the response."
-              requestExample={`curl https://api.alrt.dev/providers \\
-  -H "Authorization: Bearer $KEY"`}
-              responseExample={`[
-  {
-    "id": "prv_01HX...",
-    "channel": "email",
-    "provider_type": "sendgrid",
-    "is_active": true,
-    "created_at": "2025-01-15T10:30:00Z"
-  },
-  {
-    "id": "prv_02HX...",
-    "channel": "slack",
-    "provider_type": "slack",
-    "is_active": true,
-    "created_at": "2025-01-16T09:00:00Z"
-  }
-]`}
-              responseStatus="200 OK"
-            />
-
-            {/* DELETE /providers/{provider_id} */}
-            <EndpointBlock
-              method="DELETE"
-              path="/providers/{provider_id}"
-              description="Remove a delivery provider."
-              pathParams={[
-                {
-                  name: "provider_id",
-                  type: "string",
-                  required: true,
-                  description: "The provider ID.",
-                },
-              ]}
-              requestExample={`curl -X DELETE https://api.alrt.dev/providers/prv_01HX \\
-  -H "Authorization: Bearer $KEY"`}
-              responseStatus="204 No Content"
-              errors={[
-                { status: "404", detail: "Provider not found." },
-              ]}
-            />
-          </section>
-
-          <GrooveDivider className="my-8" />
-
-          {/* ───────────────── WEBSOCKET ───────────────── */}
-          <section id="websocket">
-            <h2 className="font-heading text-xl mb-4">WebSocket</h2>
-            <p className="text-sm text-foreground mb-6">
+          {/* ── WEBSOCKET ── */}
+          <section id="websocket" className="scroll-mt-20">
+            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">WebSocket</h2>
+            <p className="text-sm text-text-secondary mb-8 max-w-xl">
               Receive real-time in-app notifications over a persistent WebSocket
               connection. Authenticate using a subscriber-scoped JWT.
             </p>
 
-            <WindowCard title="Connection">
-              <div className="space-y-3">
-                <div>
-                  <h4 className="font-heading text-xs uppercase tracking-wide mb-2">
-                    Endpoint
-                  </h4>
-                  <code className="font-mono text-sm bg-muted/20 px-2 py-1 block">
-                    ws://api.alrt.dev/ws?token=&lt;jwt&gt;
-                  </code>
-                </div>
-                <div>
-                  <h4 className="font-heading text-xs uppercase tracking-wide mb-2">
-                    Authentication
-                  </h4>
-                  <p className="text-sm text-foreground">
+            <div className="max-w-2xl space-y-8">
+              {/* Connection info */}
+              <div>
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                  Connection
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-text-muted mb-1.5">Endpoint</p>
+                    <code className="font-mono text-sm text-text-primary bg-elevated rounded-md px-3 py-1.5 block">
+                      wss://api.alrt.dev/ws?token=&lt;jwt&gt;
+                    </code>
+                  </div>
+                  <p className="text-sm text-text-secondary leading-relaxed">
                     Obtain a JWT via{" "}
-                    <code className="font-mono text-xs bg-muted/20 px-1">
+                    <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
                       POST /subscribers/{"{external_id}"}/token
                     </code>{" "}
                     using your server key. Pass the token as the{" "}
-                    <code className="font-mono text-xs bg-muted/20 px-1">
+                    <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
                       token
                     </code>{" "}
                     query parameter. Tokens expire after 24 hours.
                   </p>
                 </div>
               </div>
-            </WindowCard>
 
-            <div className="mt-6">
-              <h3 className="font-heading text-sm uppercase tracking-wide mb-3">
-                Client Messages
-              </h3>
-              <div className="bevel-inset bg-white p-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-muted">
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Type
-                      </th>
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Payload
-                      </th>
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Description
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-muted/50">
-                      <td className="py-2 font-mono text-xs">ping</td>
-                      <td className="py-2 font-mono text-xs">&mdash;</td>
-                      <td className="py-2">
-                        Server responds with{" "}
-                        <code className="font-mono text-xs bg-muted/20 px-1">
-                          pong
-                        </code>
-                        . Use as a keep-alive.
-                      </td>
-                    </tr>
-                    <tr className="border-b border-muted/50">
-                      <td className="py-2 font-mono text-xs">mark_read</td>
-                      <td className="py-2 font-mono text-xs">
-                        notification_id
-                      </td>
-                      <td className="py-2">
-                        Mark a single notification as read.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono text-xs">mark_all_read</td>
-                      <td className="py-2 font-mono text-xs">&mdash;</td>
-                      <td className="py-2">
-                        Mark all notifications as read.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              {/* Client messages */}
+              <div>
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                  Client messages
+                </h3>
+                <div className="rounded-md border border-[rgba(255,255,255,0.08)] overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[rgba(255,255,255,0.03)]">
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)] w-[120px]">Type</th>
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)] w-[120px]">Payload</th>
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-text-primary">ping</code></td>
+                        <td className="px-3 py-2.5 text-xs text-text-muted">&mdash;</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Server responds with <code className="font-mono text-xs bg-elevated rounded px-1">pong</code>. Use as a keep-alive.</td>
+                      </tr>
+                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-text-primary">mark_read</code></td>
+                        <td className="px-3 py-2.5"><code className="font-mono text-[11px] text-text-muted">notification_id</code></td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Mark a single notification as read.</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-text-primary">mark_all_read</code></td>
+                        <td className="px-3 py-2.5 text-xs text-text-muted">&mdash;</td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Mark all notifications as read.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-6">
-              <h3 className="font-heading text-sm uppercase tracking-wide mb-3">
-                Server Messages
-              </h3>
-              <p className="text-sm text-foreground mb-3">
-                When a notification is delivered to the in-app channel, the
-                server pushes the full notification object:
-              </p>
-              <CodeBlock
-                title="Server Push"
-                code={`{
+              {/* Server messages */}
+              <div>
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                  Server messages
+                </h3>
+                <p className="text-sm text-text-secondary mb-3">
+                  When a notification is delivered to the in-app channel, the
+                  server pushes the full notification object:
+                </p>
+                <CodeBlock
+                  title="Server Push"
+                  code={`{
   "type": "notification",
   "data": {
     "id": "ntf_01HX...",
@@ -1234,56 +754,45 @@ export default function DocsPage() {
     "created_at": "2025-01-15T10:31:00Z"
   }
 }`}
-              />
-            </div>
-
-            <div className="mt-6">
-              <h3 className="font-heading text-sm uppercase tracking-wide mb-3">
-                Error Codes
-              </h3>
-              <div className="bevel-inset bg-white p-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-muted">
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Code
-                      </th>
-                      <th className="text-left py-2 font-heading text-xs uppercase">
-                        Meaning
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-muted/50">
-                      <td className="py-2 font-mono text-xs font-bold text-danger">
-                        4001
-                      </td>
-                      <td className="py-2">
-                        Invalid or expired JWT. Re-fetch a token and reconnect.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono text-xs font-bold text-danger">
-                        4000
-                      </td>
-                      <td className="py-2">
-                        Connection replaced. A new WebSocket connection was
-                        opened for the same subscriber, so this one was closed.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                />
               </div>
-            </div>
 
-            <div className="mt-6">
-              <h3 className="font-heading text-sm uppercase tracking-wide mb-3">
-                Example Client
-              </h3>
-              <CodeBlock
-                title="websocket-client.ts"
-                code={`const token = await fetch("/api/ws-token").then(r => r.json());
-const ws = new WebSocket("ws://api.alrt.dev/ws?token=" + token);
+              {/* Error codes */}
+              <div>
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                  Error codes
+                </h3>
+                <div className="rounded-md border border-[rgba(255,255,255,0.08)] overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[rgba(255,255,255,0.03)]">
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)] w-[60px]">Code</th>
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Meaning</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-semibold text-danger">4001</code></td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Invalid or expired JWT. Re-fetch a token and reconnect.</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-semibold text-danger">4000</code></td>
+                        <td className="px-3 py-2.5 text-xs text-text-secondary">Connection replaced. A new WebSocket connection was opened for the same subscriber.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Example */}
+              <div>
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                  Example client
+                </h3>
+                <CodeBlock
+                  title="websocket-client.ts"
+                  code={`const token = await fetch("/api/ws-token").then(r => r.json());
+const ws = new WebSocket("wss://api.alrt.dev/ws?token=" + token);
 
 ws.onmessage = (event) => {
   const msg = JSON.parse(event.data);
@@ -1300,7 +809,8 @@ ws.send(JSON.stringify({
   type: "mark_read",
   notification_id: "ntf_01HX..."
 }));`}
-              />
+                />
+              </div>
             </div>
           </section>
 

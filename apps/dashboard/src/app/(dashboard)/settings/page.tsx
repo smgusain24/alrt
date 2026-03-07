@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  RetroButton,
-  RetroTable,
+  Button,
+  Table,
   Badge,
-  GrooveDivider,
-  WindowCard,
-  BeveledInput,
-  RetroModal,
-} from "@/components/retro";
+  Divider,
+  Card,
+  Input,
+  Modal,
+} from "@/components/ui";
 import { Key, Plus, Trash2, Copy, Check, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -136,16 +136,16 @@ export default function SettingsPage() {
       key: "name",
       header: "Name",
       render: (row: ApiKeyRow) => (
-        <span className="font-bold text-sm">
-          {row.name || <span className="text-muted">Unnamed</span>}
+        <span className="font-medium text-sm text-text-primary">
+          {row.name || <span className="text-text-muted">Unnamed</span>}
         </span>
       ),
     },
     {
       key: "key_prefix",
-      header: "Key Prefix",
+      header: "Key prefix",
       render: (row: ApiKeyRow) => (
-        <code className="font-mono text-xs bg-row-alt px-1.5 py-0.5 bevel-inset">
+        <code className="font-mono text-xs bg-elevated rounded px-1.5 py-0.5 text-text-secondary">
           {row.key_prefix}
         </code>
       ),
@@ -154,7 +154,7 @@ export default function SettingsPage() {
       key: "key_type",
       header: "Type",
       render: (row: ApiKeyRow) => (
-        <Badge variant={row.key_type === "server" ? "new" : "warning"}>
+        <Badge variant={row.key_type === "server" ? "neutral" : "warning"}>
           {row.key_type}
         </Badge>
       ),
@@ -163,16 +163,16 @@ export default function SettingsPage() {
       key: "is_active",
       header: "Status",
       render: (row: ApiKeyRow) => (
-        <Badge variant={row.is_active ? "success" : "default"}>
+        <Badge variant={row.is_active ? "success" : "neutral"}>
           {row.is_active ? "active" : "revoked"}
         </Badge>
       ),
     },
     {
       key: "last_used_at",
-      header: "Last Used",
+      header: "Last used",
       render: (row: ApiKeyRow) => (
-        <span className="font-mono text-xs text-muted">
+        <span className="font-mono text-xs text-text-muted">
           {row.last_used_at ? relativeDate(row.last_used_at) : "Never"}
         </span>
       ),
@@ -181,7 +181,7 @@ export default function SettingsPage() {
       key: "created_at",
       header: "Created",
       render: (row: ApiKeyRow) => (
-        <span className="font-mono text-xs text-muted">
+        <span className="font-mono text-xs text-text-muted">
           {new Date(row.created_at).toLocaleDateString()}
         </span>
       ),
@@ -190,7 +190,7 @@ export default function SettingsPage() {
       key: "actions",
       header: "Actions",
       render: (row: ApiKeyRow) => (
-        <RetroButton
+        <Button
           variant="danger"
           className="!px-2 !py-1 !text-xs"
           disabled={!row.is_active}
@@ -199,9 +199,9 @@ export default function SettingsPage() {
             setShowRevokeConfirm(row.id);
           }}
         >
-          <Trash2 className="w-3.5 h-3.5 inline mr-1" strokeWidth={2} />
+          <Trash2 className="w-3.5 h-3.5 inline mr-1" strokeWidth={1.5} />
           Revoke
-        </RetroButton>
+        </Button>
       ),
     },
   ];
@@ -209,158 +209,154 @@ export default function SettingsPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-heading text-2xl uppercase">
-          Settings — API Keys
+        <h1 className="text-2xl font-semibold text-text-primary">
+          Settings &mdash; API keys
         </h1>
-        <RetroButton variant="accent" onClick={openCreateModal}>
-          <Plus className="w-4 h-4 inline mr-1" strokeWidth={2} />
-          Create API Key
-        </RetroButton>
+        <Button variant="primary" onClick={openCreateModal}>
+          <Plus className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+          Create API key
+        </Button>
       </div>
 
-      <p className="text-foreground mb-4">
+      <p className="text-text-secondary text-sm mb-4">
         API keys authenticate requests to the Alrt API. Server keys have full
         access. Client keys are read-only.
       </p>
 
-      <GrooveDivider />
+      <Divider />
 
       <div className="mt-4">
         {loading ? (
-          <p className="text-muted">Loading API keys...</p>
+          <p className="text-text-muted text-sm">Loading API keys...</p>
         ) : error ? (
-          <WindowCard title="Error">
-            <p className="text-red-500">{error}</p>
-          </WindowCard>
+          <Card>
+            <p className="text-red-500 text-sm">{error}</p>
+          </Card>
         ) : (
-          <RetroTable<ApiKeyRow> columns={columns} data={apiKeys} />
+          <Table<ApiKeyRow> columns={columns} data={apiKeys} />
         )}
       </div>
 
       {/* Create API Key Modal */}
-      <RetroModal
-        title={createStep === 1 ? "CREATE API KEY" : "SAVE YOUR API KEY"}
+      <Modal
+        title={createStep === 1 ? "Create API key" : "Save your API key"}
         open={showCreateModal}
         onClose={closeCreateModal}
       >
         {createStep === 1 ? (
           <div className="flex flex-col gap-4">
-            <BeveledInput
+            <Input
               id="key-name"
-              label="Key Name"
+              label="Key name"
               placeholder="e.g. Production, CI/CD"
               value={newKeyName}
               onChange={(e) => setNewKeyName(e.target.value)}
             />
 
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-                Key Type
+              <span className="text-sm font-medium text-text-secondary">
+                Key type
               </span>
               <div className="flex gap-2">
-                <RetroButton
-                  variant={newKeyType === "server" ? "accent" : "default"}
-                  className={newKeyType === "server" ? "bevel-inset" : ""}
+                <Button
+                  variant={newKeyType === "server" ? "primary" : "default"}
                   onClick={() => setNewKeyType("server")}
                 >
-                  <Key className="w-3.5 h-3.5 inline mr-1" strokeWidth={2} />
-                  Server Key
-                </RetroButton>
-                <RetroButton
-                  variant={newKeyType === "client" ? "accent" : "default"}
-                  className={newKeyType === "client" ? "bevel-inset" : ""}
+                  <Key className="w-3.5 h-3.5 inline mr-1" strokeWidth={1.5} />
+                  Server key
+                </Button>
+                <Button
+                  variant={newKeyType === "client" ? "primary" : "default"}
                   onClick={() => setNewKeyType("client")}
                 >
-                  <Key className="w-3.5 h-3.5 inline mr-1" strokeWidth={2} />
-                  Client Key
-                </RetroButton>
+                  <Key className="w-3.5 h-3.5 inline mr-1" strokeWidth={1.5} />
+                  Client key
+                </Button>
               </div>
-              <p className="text-xs text-muted">
+              <p className="text-xs text-text-muted">
                 {newKeyType === "server"
                   ? "Full read/write access"
                   : "Read-only (frontend/WebSocket)"}
               </p>
             </div>
 
-            <RetroButton
-              variant="accent"
+            <Button
+              variant="primary"
               onClick={handleCreate}
               disabled={creating}
               className="w-full"
             >
-              {creating ? "Creating..." : "Create Key"}
-            </RetroButton>
+              {creating ? "Creating..." : "Create key"}
+            </Button>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" strokeWidth={2} />
-              <p className="text-danger font-bold text-sm">
+              <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+              <p className="text-danger text-sm">
                 This key will only be shown once. Copy it now and store it
                 securely.
               </p>
             </div>
 
-            <div className="bevel-inset bg-navy p-4 break-all">
-              <code className="font-mono text-sm text-[#00ff00]">
-                {createdRawKey}
-              </code>
+            <div className="bg-elevated border border-default rounded-md p-3 font-mono text-accent text-sm break-all">
+              {createdRawKey}
             </div>
 
-            <RetroButton onClick={handleCopyKey} className="w-full">
+            <Button onClick={handleCopyKey} className="w-full">
               {copied ? (
                 <>
-                  <Check className="w-4 h-4 inline mr-1" strokeWidth={2} />
+                  <Check className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
                   Copied!
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4 inline mr-1" strokeWidth={2} />
-                  Copy to Clipboard
+                  <Copy className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+                  Copy to clipboard
                 </>
               )}
-            </RetroButton>
+            </Button>
 
-            <RetroButton
-              variant="accent"
+            <Button
+              variant="primary"
               className="w-full"
               onClick={closeCreateModal}
             >
-              I've Saved My Key
-            </RetroButton>
+              I've saved my key
+            </Button>
           </div>
         )}
-      </RetroModal>
+      </Modal>
 
       {/* Revoke Confirmation Modal */}
-      <RetroModal
-        title="REVOKE API KEY"
+      <Modal
+        title="Revoke API key"
         open={showRevokeConfirm !== null}
         onClose={() => setShowRevokeConfirm(null)}
       >
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" strokeWidth={2} />
-            <p className="text-sm">
+            <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+            <p className="text-sm text-text-secondary">
               This action cannot be undone. Any services using this key will lose
               access.
             </p>
           </div>
 
           <div className="flex gap-2 justify-end">
-            <RetroButton onClick={() => setShowRevokeConfirm(null)}>
+            <Button onClick={() => setShowRevokeConfirm(null)}>
               Cancel
-            </RetroButton>
-            <RetroButton
+            </Button>
+            <Button
               variant="danger"
               onClick={handleRevoke}
               disabled={revoking}
             >
-              {revoking ? "Revoking..." : "Revoke Key"}
-            </RetroButton>
+              {revoking ? "Revoking..." : "Revoke key"}
+            </Button>
           </div>
         </div>
-      </RetroModal>
+      </Modal>
     </div>
   );
 }

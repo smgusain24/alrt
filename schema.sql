@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS subscribers (
     email VARCHAR(255),
     name VARCHAR(255),
     slack_user_id VARCHAR(255),
+    phone_number VARCHAR(50),
+    discord_webhook_url VARCHAR(500),
+    telegram_chat_id    VARCHAR(100),
     custom_properties JSONB NOT NULL DEFAULT '{}',
     channel_preferences JSONB NOT NULL DEFAULT '{}',
     is_deleted BOOLEAN NOT NULL DEFAULT false,
@@ -74,6 +77,8 @@ CREATE TABLE IF NOT EXISTS workflow_executions (
     event_payload JSONB NOT NULL DEFAULT '{}',
     channels JSONB,
     overrides JSONB NOT NULL DEFAULT '{}',
+    deliver_at TIMESTAMPTZ,
+    metadata JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'running',
     idempotency_key VARCHAR(255) UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -93,6 +98,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     payload JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     error_reason TEXT,
+    retry_count INTEGER NOT NULL DEFAULT 0,
     is_read BOOLEAN NOT NULL DEFAULT false,
     is_archived BOOLEAN NOT NULL DEFAULT false,
     sent_at TIMESTAMPTZ,
@@ -135,3 +141,62 @@ CREATE TABLE IF NOT EXISTS event_logs (
     user_agent VARCHAR(500),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    name VARCHAR(255) NOT NULL,
+    channel VARCHAR(20) NOT NULL,
+    subject VARCHAR(500),
+    body TEXT NOT NULL,
+    variables JSONB NOT NULL DEFAULT '[]',
+    status VARCHAR(20) NOT NULL DEFAULT 'draft',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, name, channel)
+);
+
+CREATE TABLE IF NOT EXISTS team_invites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    email VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'viewer',
+    token_hash VARCHAR(64) NOT NULL,
+    invited_by UUID NOT NULL REFERENCES users(id),
+    accepted_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, email)
+);
+
+CREATE TABLE IF NOT EXISTS team_quotas (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id      UUID NOT NULL REFERENCES teams(id),
+    period_start TIMESTAMPTZ NOT NULL,
+    monthly_count INTEGER NOT NULL DEFAULT 0,
+    over_limit   BOOLEAN NOT NULL DEFAULT false,
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, period_start)
+);
+CREATE INDEX IF NOT EXISTS idx_team_quotas_team_period
+    ON team_quotas(team_id, period_start);
+
+-- Ensure at most one alrt_hosted provider per channel per team
+CREATE UNIQUE INDEX IF NOT EXISTS idx_providers_team_channel_type
+    ON providers(team_id, channel, provider_type);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_executions_deliver_at
+    ON workflow_executions(deliver_at) WHERE status = 'scheduled';
+
+CREATE INDEX IF NOT EXISTS idx_notifications_execution
+    ON notifications(workflow_execution_id);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_dead_letter
+    ON notifications(team_id, created_at DESC) WHERE status = 'dead_letter';
+
+CREATE INDEX IF NOT EXISTS idx_templates_team_id
+    ON templates(team_id);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_active_window
+    ON notifications(subscriber_id, created_at DESC)
+    WHERE status NOT IN ('archived', 'dead_letter');

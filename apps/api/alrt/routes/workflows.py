@@ -92,6 +92,98 @@ async def update_workflow(
     return WorkflowResponse.model_validate(row)
 
 
+def _validate_workflow_graph(definition: dict) -> list[str]:
+    """Validate workflow graph structure. Returns list of error strings (empty = valid)."""
+    errors = []
+    nodes = definition.get("nodes", [])
+    edges = definition.get("edges", [])
+
+    if not nodes:
+        errors.append("Workflow must have at least one node")
+        return errors
+
+    node_ids = {n["id"] for n in nodes if "id" in n}
+    node_map = {n["id"]: n for n in nodes if "id" in n}
+
+    # 1. Exactly one trigger node
+    trigger_nodes = [n for n in nodes if n.get("type") == "trigger"]
+    if len(trigger_nodes) == 0:
+        errors.append("Workflow must have a trigger node")
+    elif len(trigger_nodes) > 1:
+        errors.append(f"Workflow must have exactly one trigger node, found {len(trigger_nodes)}")
+
+    # 2. No dangling edges
+    for edge in edges:
+        src = edge.get("source")
+        tgt = edge.get("target")
+        if src not in node_ids:
+            errors.append(f"Edge references non-existent source node '{src}'")
+        if tgt not in node_ids:
+            errors.append(f"Edge references non-existent target node '{tgt}'")
+
+    # Build adjacency list for graph traversal
+    children_map: dict[str, list[str]] = {}
+    for edge in edges:
+        src = edge.get("source")
+        if src and src in node_ids:
+            children_map.setdefault(src, []).append(edge.get("target"))
+
+    # 3. Cycle detection (DFS)
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color = {nid: WHITE for nid in node_ids}
+
+    def has_cycle(nid: str) -> bool:
+        color[nid] = GRAY
+        for child in children_map.get(nid, []):
+            if child not in color:
+                continue
+            if color[child] == GRAY:
+                return True
+            if color[child] == WHITE and has_cycle(child):
+                return True
+        color[nid] = BLACK
+        return False
+
+    for nid in node_ids:
+        if color[nid] == WHITE:
+            if has_cycle(nid):
+                errors.append("Workflow contains a cycle")
+                break
+
+    # 4. Orphan nodes (not reachable from trigger)
+    if trigger_nodes:
+        trigger_id = trigger_nodes[0]["id"]
+        reachable = set()
+        stack = [trigger_id]
+        while stack:
+            curr = stack.pop()
+            if curr in reachable:
+                continue
+            reachable.add(curr)
+            stack.extend(children_map.get(curr, []))
+
+        orphans = node_ids - reachable
+        for orphan_id in orphans:
+            node = node_map.get(orphan_id)
+            node_type = node.get("type", "unknown") if node else "unknown"
+            errors.append(f"Node '{orphan_id}' ({node_type}) is not reachable from the trigger")
+
+    # 5. Required data fields per node type
+    for node in nodes:
+        ntype = node.get("type")
+        data = node.get("data", {})
+        nid = node.get("id", "?")
+
+        if ntype == "channel" and not data.get("channel"):
+            errors.append(f"Channel node '{nid}' is missing required 'channel' field")
+        if ntype == "condition" and not data.get("field"):
+            errors.append(f"Condition node '{nid}' is missing required 'field' field")
+        if ntype == "delay" and not data.get("duration_seconds"):
+            errors.append(f"Delay node '{nid}' is missing required 'duration_seconds' field")
+
+    return errors
+
+
 @router.post("/{workflow_id}/publish", response_model=WorkflowResponse)
 @limiter.limit(settings.rate_limit_write)
 async def publish_workflow(
@@ -106,15 +198,12 @@ async def publish_workflow(
     definition = workflow["definition"] or {}
     nodes = definition.get("nodes", [])
 
-    if not nodes:
-        raise HTTPException(status_code=400, detail="Workflow must have at least one node")
-
-    trigger_nodes = [n for n in nodes if n.get("type") == "trigger"]
-    if not trigger_nodes:
-        raise HTTPException(status_code=400, detail="Workflow must have a trigger node")
-
     if len(nodes) > 10:
         raise HTTPException(status_code=400, detail="Workflow cannot exceed 10 steps")
+
+    validation_errors = _validate_workflow_graph(definition)
+    if validation_errors:
+        raise HTTPException(status_code=422, detail=validation_errors)
 
     row = await execute_insert_query(wf_q.PUBLISH, [workflow_id, team_id])
     if not row:
