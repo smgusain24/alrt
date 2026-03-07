@@ -33,3 +33,23 @@ class NotificationResponse(BaseModel):
 class UpdateNotification(BaseModel):
     is_read: bool | None = None
     is_archived: bool | None = None
+
+
+class DeadLetterResponse(BaseModel):
+    id: uuid.UUID
+    team_id: uuid.UUID
+    subscriber_id: uuid.UUID
+    workflow_execution_id: uuid.UUID | None
+    channel: str
+    title: str | None
+    body: str | None
+    error_reason: str | None
+    retry_count: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DeadLetterListResponse(BaseModel):
+    items: list[DeadLetterResponse]
+    total: int

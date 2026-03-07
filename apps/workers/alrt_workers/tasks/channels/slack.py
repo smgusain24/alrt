@@ -34,6 +34,8 @@ Q_CREATE_NOTIFICATION = """
 """
 Q_MARK_SENT = "UPDATE notifications SET status = 'sent', sent_at = now(), updated_at = now() WHERE id = $1"
 Q_MARK_FAILED = "UPDATE notifications SET status = 'failed', error_reason = $2, updated_at = now() WHERE id = $1"
+Q_MARK_DEAD_LETTER = "UPDATE notifications SET status = 'dead_letter', error_reason = $2, retry_count = $3, updated_at = now() WHERE id = $1"
+Q_GET_TEMPLATE = "SELECT id, name, channel, subject, body, variables FROM templates WHERE id = $1"
 
 
 @celery_app.task(bind=True, **SLACK_RETRY.as_task_kwargs())
@@ -68,6 +70,13 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
         f = get_fernet()
         config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
         bot_token = config["bot_token"]
+
+    # Resolve template_id → template content (fallback to inline)
+    template_id = template_data.get("template_id")
+    if template_id:
+        tmpl = execute_read_one_query(Q_GET_TEMPLATE, [uuid.UUID(template_id)])
+        if tmpl:
+            template_data = {**template_data, "subject": tmpl.get("subject", ""), "body": tmpl.get("body", "")}
 
     text, blocks = _build_message(template_data, payload, subscriber)
 
@@ -107,11 +116,11 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     except _PermanentSlackError as exc:
         log.error(f"Permanent Slack error for notification {nid}: {exc}")
         if nid:
-            execute_update_query(Q_MARK_FAILED, [nid, str(exc)])
+            execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries])
     except Exception as exc:
         log.error(f"Slack delivery failed for notification {nid}: {exc}")
         if nid and self.request.retries >= self.max_retries:
-            execute_update_query(Q_MARK_FAILED, [nid, str(exc)])
+            execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise
         if nid:
             raise self.retry(exc=exc, kwargs={

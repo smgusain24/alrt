@@ -1,12 +1,12 @@
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE" | "WS";
 
 const METHOD_STYLES: Record<Method, string> = {
-  GET: "bg-accent text-white bevel-accent",
-  POST: "bg-success text-white bevel-success",
-  PATCH: "bg-warning text-black border-2 border-[#cc9900]",
-  PUT: "bg-warning text-black border-2 border-[#cc9900]",
-  DELETE: "bg-danger text-white bevel-danger",
-  WS: "bg-navy text-white border-2 border-[#5555ff]",
+  GET:    "bg-green-500/15 text-green-400 border-green-500/20",
+  POST:   "bg-blue-500/15 text-blue-400 border-blue-500/20",
+  PATCH:  "bg-amber-500/15 text-amber-400 border-amber-500/20",
+  PUT:    "bg-amber-500/15 text-amber-400 border-amber-500/20",
+  DELETE: "bg-red-500/15 text-red-400 border-red-500/20",
+  WS:     "bg-purple-500/15 text-purple-400 border-purple-500/20",
 };
 
 interface MethodBadgeProps {
@@ -17,7 +17,7 @@ interface MethodBadgeProps {
 export default function MethodBadge({ method, className = "" }: MethodBadgeProps) {
   return (
     <span
-      className={`inline-block px-3 py-1 font-mono text-sm font-bold uppercase tracking-wider ${METHOD_STYLES[method]} ${className}`}
+      className={`inline-block rounded px-2 py-0.5 font-mono text-[11px] font-semibold tracking-wide border ${METHOD_STYLES[method]} ${className}`}
     >
       {method}
     </span>

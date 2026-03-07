@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import {
-  RetroButton,
-  RetroTable,
-  WindowCard,
+  Button,
+  Table,
+  Card,
   Badge,
-  BeveledInput,
-  RetroModal,
-  GrooveDivider,
-} from "@/components/retro";
+  Input,
+  Modal,
+  Divider,
+} from "@/components/ui";
 import { Users, Plus, Search } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -25,11 +25,11 @@ interface SubscriberRow {
 
 const CHANNEL_CONFIG: Record<
   string,
-  { label: string; variant: "success" | "new" | "default" }
+  { label: string; variant: "success" | "neutral" | "warning" }
 > = {
-  in_app: { label: "IN-APP", variant: "success" },
-  email: { label: "EMAIL", variant: "new" },
-  slack: { label: "SLACK", variant: "default" },
+  in_app: { label: "in-app", variant: "success" },
+  email: { label: "email", variant: "neutral" },
+  slack: { label: "slack", variant: "warning" },
 };
 
 const columns = [
@@ -37,7 +37,7 @@ const columns = [
     key: "external_id",
     header: "External ID",
     render: (row: SubscriberRow) => (
-      <code className="font-mono text-xs bg-row-alt px-1.5 py-0.5 bevel-inset">
+      <code className="font-mono text-xs bg-elevated rounded px-1.5 py-0.5 text-text-secondary">
         {row.external_id}
       </code>
     ),
@@ -46,14 +46,14 @@ const columns = [
     key: "name",
     header: "Name",
     render: (row: SubscriberRow) => (
-      <span className="font-bold text-foreground">{row.name}</span>
+      <span className="font-medium text-text-primary">{row.name}</span>
     ),
   },
   {
     key: "email",
     header: "Email",
     render: (row: SubscriberRow) => (
-      <span className="font-mono text-xs text-muted">{row.email}</span>
+      <span className="font-mono text-xs text-text-muted">{row.email}</span>
     ),
   },
   {
@@ -71,7 +71,7 @@ const columns = [
             const config = CHANNEL_CONFIG[ch];
             if (!config) return null;
             return (
-              <Badge key={ch} variant={config.variant} className={ch === "slack" ? "bg-navy text-white" : ""}>
+              <Badge key={ch} variant={config.variant}>
                 {config.label}
               </Badge>
             );
@@ -84,7 +84,7 @@ const columns = [
     key: "created_at",
     header: "Created",
     render: (row: SubscriberRow) => (
-      <span className="font-mono text-xs text-muted">
+      <span className="font-mono text-xs text-text-muted">
         {new Date(row.created_at).toLocaleDateString()}
       </span>
     ),
@@ -93,17 +93,18 @@ const columns = [
 
 function EmptyState() {
   return (
-    <WindowCard title="No Subscribers Yet">
-      <div className="text-center py-8">
-        <div className="bevel-outset bg-navy w-16 h-16 flex items-center justify-center mx-auto mb-4">
-          <Users className="w-8 h-8 text-white" strokeWidth={2} />
+    <Card className="text-center py-12">
+      <div className="flex flex-col items-center">
+        <div className="bg-elevated rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+          <Users className="w-8 h-8 text-text-muted" strokeWidth={1.5} />
         </div>
-        <p className="text-foreground">
-          No subscribers yet. Click <strong>&quot;Add Subscriber&quot;</strong> above to create one for testing,
+        <h3 className="text-lg font-semibold text-text-primary mb-2">No subscribers yet</h3>
+        <p className="text-text-secondary text-sm max-w-sm">
+          Click <strong>&quot;Add subscriber&quot;</strong> above to create one for testing,
           or use the API to create subscribers programmatically.
         </p>
       </div>
-    </WindowCard>
+    </Card>
   );
 }
 
@@ -195,33 +196,33 @@ export default function SubscribersPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-heading text-2xl uppercase">Subscribers</h1>
-        <RetroButton variant="accent" onClick={openCreateModal}>
-          <Plus className="w-4 h-4 inline mr-1" strokeWidth={2} />
-          Add Subscriber
-        </RetroButton>
+        <h1 className="text-2xl font-semibold text-text-primary">Subscribers</h1>
+        <Button variant="primary" onClick={openCreateModal}>
+          <Plus className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+          Add subscriber
+        </Button>
       </div>
 
-      <div className="bevel-inset bg-panel-yellow px-4 py-3 mb-6 text-sm">
-        <strong className="font-heading text-xs uppercase">Note:</strong>{" "}
+      <div className="bg-accent/10 border border-accent/20 rounded-md p-4 mb-6 text-sm text-text-secondary">
+        <strong className="text-text-primary text-xs font-medium">Note:</strong>{" "}
         In production, subscribers are created automatically via the API when users sign up in your app.
         Use this page to manage existing subscribers and test notification delivery.{" "}
-        <a href="/docs#subscribers" className="text-accent underline hover:text-danger">See API docs</a>.
+        <a href="/docs#subscribers" className="text-accent hover:underline">See API docs</a>.
       </div>
 
       {loading ? (
-        <p className="text-muted">Loading subscribers...</p>
+        <p className="text-text-muted text-sm">Loading subscribers...</p>
       ) : error ? (
-        <WindowCard title="Error">
-          <p className="text-red-500">{error}</p>
-        </WindowCard>
+        <Card>
+          <p className="text-red-500 text-sm">{error}</p>
+        </Card>
       ) : isEmpty ? (
         <EmptyState />
       ) : (
         <>
           <div className="mb-4 relative max-w-sm">
-            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-            <BeveledInput
+            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <Input
               placeholder="Search by name or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -229,7 +230,7 @@ export default function SubscribersPage() {
             />
           </div>
 
-          <RetroTable<SubscriberRow>
+          <Table<SubscriberRow>
             columns={columns}
             data={filtered}
             onRowClick={(row) => (window.location.href = `/subscribers/${row.external_id}`)}
@@ -238,41 +239,41 @@ export default function SubscribersPage() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
-              <span className="text-xs font-mono text-muted">
+              <span className="text-xs font-mono text-text-muted">
                 {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total} subscribers
               </span>
               <div className="flex gap-1">
-                <RetroButton
+                <Button
                   variant="default"
                   className="text-xs px-3 py-1"
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                 >
                   Prev
-                </RetroButton>
+                </Button>
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                   const start = Math.max(0, Math.min(page - 2, totalPages - 5));
                   const pageNum = start + i;
                   if (pageNum >= totalPages) return null;
                   return (
-                    <RetroButton
+                    <Button
                       key={pageNum}
                       variant="default"
-                      className={`text-xs px-3 py-1 ${pageNum === page ? "bevel-inset bg-white text-accent font-bold" : ""}`}
+                      className={`text-xs px-3 py-1 ${pageNum === page ? "bg-elevated text-accent font-medium" : ""}`}
                       onClick={() => setPage(pageNum)}
                     >
                       {pageNum + 1}
-                    </RetroButton>
+                    </Button>
                   );
                 })}
-                <RetroButton
+                <Button
                   variant="default"
                   className="text-xs px-3 py-1"
                   onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                   disabled={page >= totalPages - 1}
                 >
                   Next
-                </RetroButton>
+                </Button>
               </div>
             </div>
           )}
@@ -280,16 +281,16 @@ export default function SubscribersPage() {
       )}
 
       {/* Create Subscriber Modal */}
-      <RetroModal
-        title="CREATE SUBSCRIBER"
+      <Modal
+        title="Create subscriber"
         open={showCreate}
         onClose={() => setShowCreate(false)}
       >
         <form onSubmit={handleCreate} className="space-y-4">
-          <p className="text-xs text-muted bg-surface px-2 py-1.5 bevel-inset">
+          <p className="text-xs text-text-muted bg-elevated rounded-md px-3 py-2">
             For testing only. In production, create subscribers via <code className="font-mono text-accent">POST /subscribers</code> in your backend.
           </p>
-          <BeveledInput
+          <Input
             id="sub-external-id"
             label="External ID"
             placeholder="Your app's user ID (e.g. user_123)"
@@ -298,7 +299,7 @@ export default function SubscribersPage() {
             required
             disabled={creating}
           />
-          <BeveledInput
+          <Input
             id="sub-name"
             label="Name"
             placeholder="Jane Doe"
@@ -306,7 +307,7 @@ export default function SubscribersPage() {
             onChange={(e) => setNewName(e.target.value)}
             disabled={creating}
           />
-          <BeveledInput
+          <Input
             id="sub-email"
             label="Email"
             type="email"
@@ -315,7 +316,7 @@ export default function SubscribersPage() {
             onChange={(e) => setNewEmail(e.target.value)}
             disabled={creating}
           />
-          <BeveledInput
+          <Input
             id="sub-slack-id"
             label="Slack User ID"
             placeholder="U04ABC123 (optional)"
@@ -324,32 +325,32 @@ export default function SubscribersPage() {
             disabled={creating}
           />
 
-          <GrooveDivider className="!my-3" />
+          <Divider className="!my-3" />
 
           <div>
-            <label className="block text-xs font-bold uppercase text-muted mb-2">
-              Channel Preferences
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Channel preferences
             </label>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setPrefInApp((v) => !v)}
-                className={`px-3 py-1.5 text-xs font-bold uppercase ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors ${
                   prefInApp
-                    ? "bevel-inset text-green-700"
-                    : "bevel-outset text-muted"
+                    ? "bg-accent text-white"
+                    : "bg-elevated text-text-secondary hover:text-text-primary"
                 }`}
                 disabled={creating}
               >
-                In-App
+                In-app
               </button>
               <button
                 type="button"
                 onClick={() => setPrefEmail((v) => !v)}
-                className={`px-3 py-1.5 text-xs font-bold uppercase ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors ${
                   prefEmail
-                    ? "bevel-inset text-green-700"
-                    : "bevel-outset text-muted"
+                    ? "bg-accent text-white"
+                    : "bg-elevated text-text-secondary hover:text-text-primary"
                 }`}
                 disabled={creating}
               >
@@ -358,10 +359,10 @@ export default function SubscribersPage() {
               <button
                 type="button"
                 onClick={() => setPrefSlack((v) => !v)}
-                className={`px-3 py-1.5 text-xs font-bold uppercase ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors ${
                   prefSlack
-                    ? "bevel-inset text-green-700"
-                    : "bevel-outset text-muted"
+                    ? "bg-accent text-white"
+                    : "bg-elevated text-text-secondary hover:text-text-primary"
                 }`}
                 disabled={creating}
               >
@@ -371,19 +372,19 @@ export default function SubscribersPage() {
           </div>
 
           {createError && (
-            <div className="text-danger text-sm font-bold">{createError}</div>
+            <div className="text-danger text-sm">{createError}</div>
           )}
 
-          <RetroButton
+          <Button
             type="submit"
-            variant="accent"
+            variant="primary"
             className="w-full"
             disabled={creating}
           >
-            {creating ? "Creating..." : "Create Subscriber"}
-          </RetroButton>
+            {creating ? "Creating..." : "Create subscriber"}
+          </Button>
         </form>
-      </RetroModal>
+      </Modal>
     </div>
   );
 }

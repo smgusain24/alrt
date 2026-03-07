@@ -60,10 +60,11 @@ async def _update(query: str, params: list | None = None) -> bool:
     pool = await _ensure_pool()
     async with pool.acquire() as conn:
         if params:
-            await conn.execute(query, *params)
+            result = await conn.execute(query, *params)
         else:
-            await conn.execute(query)
-        return True
+            result = await conn.execute(query)
+        # asyncpg returns e.g. "UPDATE 1" or "UPDATE 0"
+        return result != "UPDATE 0"
 
 
 def _run(coro):

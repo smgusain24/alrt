@@ -1,17 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  RetroButton,
-  WindowCard,
-  GrooveDivider,
-  CodeBlock,
-  StatsCounter,
-  MarqueeBar,
-  Badge,
-  RetroLink,
-} from "@/components/retro";
+import { CodeBlock } from "@/components/ui";
 import {
   Bell,
   Mail,
@@ -23,141 +14,154 @@ import {
   Check,
 } from "lucide-react";
 
-/* ─── Nav ─── */
-function TopBar() {
-  const isLoggedIn = typeof document !== "undefined" && document.cookie.includes("alrt_token=");
+/* --- Nav --- */
+function TopNav() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("alrt_token"));
+  }, []);
 
   return (
-    <nav className="bg-white border-b-2 border-muted px-4 py-3">
-      <div className="max-w-5xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <span className="font-heading text-2xl text-foreground">ALRT</span>
-          <span className="font-mono text-sm text-muted">.dev</span>
+    <nav className="sticky top-0 z-50 bg-[#0a0a0b]/80 backdrop-blur-xl border-b border-white/5">
+      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-1">
+            <span className="font-brand text-base font-bold text-white tracking-tight">ALRT</span>
+            <span className="font-mono text-[10px] text-[#71717a]">.dev</span>
+          </div>
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#a1a1aa]">
+            <a href="#features" className="hover:text-white transition-colors">features</a>
+            <a href="#pricing" className="hover:text-white transition-colors">pricing</a>
+            <Link href="/docs" className="hover:text-white transition-colors">docs</Link>
+          </div>
         </div>
-        <div className="hidden md:flex items-center gap-6">
-          <RetroLink href="#features">Features</RetroLink>
-          <RetroLink href="#pricing">Pricing</RetroLink>
-          <RetroLink href="/docs">Docs</RetroLink>
-        </div>
-        <div className="flex items-center gap-2">
-          {isLoggedIn ? (
-            <Link href="/workflows"><RetroButton variant="accent">Dashboard</RetroButton></Link>
-          ) : (
-            <>
-              <Link href="/login"><RetroButton variant="default">Log In</RetroButton></Link>
-              <Link href="/signup"><RetroButton variant="accent">Get Started</RetroButton></Link>
-            </>
-          )}
-        </div>
+        {isLoggedIn ? (
+          <Link href="/workflows">
+            <button className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-sm font-bold px-5 py-2 rounded-full transition-all active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+              Dashboard
+            </button>
+          </Link>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Link href="/login">
+              <button className="text-sm font-medium text-[#a1a1aa] hover:text-white transition-colors">
+                Log In
+              </button>
+            </Link>
+            <Link href="/signup">
+              <button className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-sm font-bold px-5 py-2 rounded-full transition-all active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+                Get Started
+              </button>
+            </Link>
+          </div>
+        )}
       </div>
     </nav>
   );
 }
 
-/* ─── Marquee ─── */
-const SAUL_LINES = [
-  "Notifications not reaching your users? THAT sounds satisfying to your competitors",
-  "You don't NEED a notification platform. You need THE notification platform",
-  "Has THIS ever happened to YOU? *silent notifications* — NEVER AGAIN",
-  "I once had a client who built notifications from scratch. He's still building them",
-  "Act now and your first 1000 notifications are FREE. I'm not kidding. I'm a lawyer— wait no I'm not",
-  "Your notifications deserve better representation",
-  "Don't let your emails end up in the spam folder of LIFE",
-  "Results not guaranteed but also kind of guaranteed — 99.9% uptime baby",
-  "Call now! Actually don't call. Just POST to our API. It's easier",
-  "Other platforms charge you per notification. We charge you per SMILE",
-  "Is your notification provider giving you the OLD RUNAROUND? Switch to ALRT",
-  "FREE CONSULTATION— I mean FREE TIER. 1000 notifications. No strings attached. Okay maybe one string. It's an API key",
-  "You want notifications? I KNOW notifications. I AM notifications",
-  "Side effects may include: higher engagement, happier users, and an overwhelming sense of productivity",
-  "As seen on... well you're seeing it right now aren't you",
-];
-
-const STATIC_ITEMS = [
-  { text: "★ MULTI-CHANNEL NOTIFICATIONS", color: "text-green-500" },
-  { text: "IN-APP + EMAIL + SLACK", color: "text-yellow-400" },
-  { text: "ONE API CALL", color: "text-cyan-400" },
-  { text: "15 MIN SETUP", color: "text-red-500" },
-  { text: "FREE TIER: 1000 NOTIFICATIONS/MO", color: "text-pink-500" },
-];
-
-function AnnouncementBar() {
-  const items = SAUL_LINES.map((line, index) => [
-    STATIC_ITEMS[index % STATIC_ITEMS.length],
-    { text: `★ ${line}`, color: "text-yellow-500" },
-  ]).flat();
-
-  return (
-    <MarqueeBar speed={40}>
-      {items.map((item, index) => (
-        <span key={index} className="whitespace-nowrap">
-          <span className={`${item.color} font-bold`}>{item.text}</span>
-          <span className="text-white mx-2">//</span>
-        </span>
-      ))}
-    </MarqueeBar>
-  );
-}
-
-/* ─── Hero ─── */
+/* --- Hero --- */
 function Hero() {
   return (
-    <section className="py-16 px-4">
-      <div className="max-w-5xl mx-auto text-center">
-        <h1 className="font-heading text-5xl md:text-7xl text-rainbow leading-tight">
-          NOTIFICATIONS
-          <br />
-          INFRASTRUCTURE
+    <section className="pt-24 pb-12 px-6 max-w-7xl mx-auto flex flex-col items-center">
+      <div className="text-center max-w-3xl mb-20 relative">
+        {/* Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#3b82f6]/20 blur-[100px] rounded-full pointer-events-none" />
+
+        <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-6 relative z-10 leading-[1.1]">
+          One API<br />All the noise
         </h1>
-        <p className="mt-4 text-lg md:text-xl text-foreground max-w-2xl mx-auto font-body">
-          One API call. Three channels. In-app, email, and Slack &mdash; all
-          integrated in under 15 minutes.
+        <p className="text-lg md:text-xl text-[#a1a1aa] max-w-2xl mx-auto relative z-10">
+          Notifications shouldn't be a couple of sprints. Replace your notification technical debt with a single key. Route to multiple channels through a visual builder your PM can actually use.
         </p>
-        <div className="mt-8 flex items-center justify-center gap-4 flex-wrap">
-          <Link href="/signup"><RetroButton variant="accent">Get Started Free</RetroButton></Link>
-          <Link href="/docs"><RetroButton variant="default">View Docs</RetroButton></Link>
+        <div className="mt-8 flex items-center justify-center gap-3 relative z-10">
+          <Link href="/signup">
+            <button className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-sm font-bold px-6 py-3 rounded-full transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.4)]">
+              Get Started Free
+            </button>
+          </Link>
+          <Link href="/docs">
+            <button className="border border-white/10 text-[#a1a1aa] hover:text-white text-sm font-medium px-6 py-3 rounded-full transition-colors hover:bg-white/5">
+              View Docs
+            </button>
+          </Link>
         </div>
-        <div className="mt-10 flex justify-center">
-          <StatsCounter
-            stats={[
-              { label: "Free/Mo", value: "1000" },
-              { label: "Channels", value: "3" },
-              { label: "Setup", value: "15min" },
-            ]}
-          />
+      </div>
+
+      {/* Code → Hub → Channels flow */}
+      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-0 mb-12 relative">
+        {/* Code snippet */}
+        <div className="bg-[#121214] border border-white/5 rounded-xl p-5 shadow-2xl relative z-10">
+          <div className="flex gap-1.5 mb-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#333]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#333]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#333]" />
+          </div>
+          <pre className="font-mono text-[13px] leading-relaxed text-[#e4e4e7] overflow-x-auto"><code><span className="text-[#c084fc]">await</span>{` fetch(`}<span className="text-[#4ade80]">&quot;/events/trigger&quot;</span>{`, {
+  `}<span className="text-[#60a5fa]">method</span>{`: `}<span className="text-[#4ade80]">&quot;POST&quot;</span>{`,
+  `}<span className="text-[#60a5fa]">body</span>{`: JSON.stringify({
+    `}<span className="text-[#60a5fa]">workflow</span>{`: `}<span className="text-[#4ade80]">&quot;user.signup&quot;</span>{`,
+    `}<span className="text-[#60a5fa]">subscriber_id</span>{`: `}<span className="text-[#4ade80]">&quot;user_987&quot;</span>{`,
+    `}<span className="text-[#60a5fa]">payload</span>{`: { `}<span className="text-[#60a5fa]">name</span>{`: `}<span className="text-[#4ade80]">&quot;alice&quot;</span>{` }
+  })
+});`}</code></pre>
+        </div>
+
+        {/* Connector: left line + hub + right line */}
+        <div className="hidden md:flex items-center justify-center px-2">
+          <div className="w-8 h-px bg-gradient-to-r from-white/10 to-[#3b82f6]/50" />
+          <div className="relative shrink-0 mx-1">
+            <div className="absolute inset-0 bg-[#3b82f6]/30 blur-xl rounded-full" />
+            <div className="w-16 h-16 bg-[#121214] border border-[#3b82f6] rounded-2xl flex items-center justify-center relative shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+              <Zap className="w-7 h-7 text-[#3b82f6]" strokeWidth={1.5} />
+            </div>
+          </div>
+          <div className="w-8 h-px bg-gradient-to-r from-[#3b82f6]/50 to-white/10" />
+        </div>
+
+        {/* Mobile hub (shown only on mobile) */}
+        <div className="flex md:hidden items-center justify-center py-4">
+          <div className="relative">
+            <div className="absolute inset-0 bg-[#3b82f6]/30 blur-xl rounded-full" />
+            <div className="w-14 h-14 bg-[#121214] border border-[#3b82f6] rounded-2xl flex items-center justify-center relative shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+              <Zap className="w-6 h-6 text-[#3b82f6]" strokeWidth={1.5} />
+            </div>
+          </div>
+        </div>
+
+        {/* Channel cards */}
+        <div className="grid grid-cols-2 gap-3 relative z-10">
+          {[
+            { icon: Bell, color: "#22c55e", label: "In-App" },
+            { icon: Mail, color: "#a855f7", label: "Email" },
+            { icon: MessageSquare, color: "#f97316", label: "Slack" },
+            { icon: Zap, color: "#3b82f6", label: "Webhooks" },
+          ].map((ch) => (
+            <div key={ch.label} className="bg-[#121214] border border-white/5 rounded-lg p-3 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${ch.color}15` }}>
+                <ch.icon className="w-4 h-4" style={{ color: ch.color }} strokeWidth={2} />
+              </div>
+              <span className="text-sm font-medium text-[#a1a1aa]">{ch.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-/* ─── Code Example ─── */
+/* --- Code Examples --- */
 const CODE_EXAMPLES: { lang: string; title: string; code: string }[] = [
   {
     lang: "curl",
     title: "terminal",
-    code: `# Send to all channels defined in the workflow
-curl -X POST https://api.alrt.dev/events/trigger \\
+    code: `curl -X POST https://api.alrt.dev/events/trigger \\
   -H "Authorization: Bearer \${ALRT_API_KEY}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "workflow": "new-comment",
     "subscriber_id": "user_123",
-    "payload": {
-      "commenter_name": "Sarah",
-      "comment_preview": "Looks great!",
-      "post_url": "https://app.example.com/posts/456"
-    }
-  }'
-
-# Or override channels at trigger time
-curl -X POST https://api.alrt.dev/events/trigger \\
-  -H "Authorization: Bearer \${ALRT_API_KEY}" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "workflow": "new-comment",
-    "subscriber_id": "user_123",
-    "channels": ["in_app", "slack"],
     "payload": {
       "commenter_name": "Sarah",
       "comment_preview": "Looks great!",
@@ -168,10 +172,7 @@ curl -X POST https://api.alrt.dev/events/trigger \\
   {
     lang: "TypeScript",
     title: "app.ts",
-    code: `const ALRT_API_KEY = process.env.ALRT_API_KEY;
-
-// Send to all channels defined in the workflow
-const res = await fetch("https://api.alrt.dev/events/trigger", {
+    code: `const res = await fetch("https://api.alrt.dev/events/trigger", {
   method: "POST",
   headers: {
     "Authorization": \`Bearer \${ALRT_API_KEY}\`,
@@ -180,25 +181,6 @@ const res = await fetch("https://api.alrt.dev/events/trigger", {
   body: JSON.stringify({
     workflow: "new-comment",
     subscriber_id: "user_123",
-    payload: {
-      commenter_name: "Sarah",
-      comment_preview: "Looks great!",
-      post_url: "https://app.example.com/posts/456",
-    },
-  }),
-});
-
-// Or override channels — only in-app and Slack
-const filtered = await fetch("https://api.alrt.dev/events/trigger", {
-  method: "POST",
-  headers: {
-    "Authorization": \`Bearer \${ALRT_API_KEY}\`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    workflow: "new-comment",
-    subscriber_id: "user_123",
-    channels: ["in_app", "slack"],
     payload: {
       commenter_name: "Sarah",
       comment_preview: "Looks great!",
@@ -210,135 +192,81 @@ const filtered = await fetch("https://api.alrt.dev/events/trigger", {
   {
     lang: "Python",
     title: "app.py",
-    code: `import os
-import requests
+    code: `import requests
 
-API_KEY = os.environ["ALRT_API_KEY"]
-URL = "https://api.alrt.dev/events/trigger"
-HEADERS = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json",
-}
-
-# Send to all channels defined in the workflow
-requests.post(URL, headers=HEADERS, json={
-    "workflow": "new-comment",
-    "subscriber_id": "user_123",
-    "payload": {
-        "commenter_name": "Sarah",
-        "comment_preview": "Looks great!",
-        "post_url": "https://app.example.com/posts/456",
+requests.post("https://api.alrt.dev/events/trigger",
+    headers={"Authorization": f"Bearer {API_KEY}"},
+    json={
+        "workflow": "new-comment",
+        "subscriber_id": "user_123",
+        "payload": {
+            "commenter_name": "Sarah",
+            "comment_preview": "Looks great!",
+            "post_url": "https://app.example.com/posts/456",
+        },
     },
-})
-
-# Or override channels — only in-app and Slack
-requests.post(URL, headers=HEADERS, json={
-    "workflow": "new-comment",
-    "subscriber_id": "user_123",
-    "channels": ["in_app", "slack"],
-    "payload": {
-        "commenter_name": "Sarah",
-        "comment_preview": "Looks great!",
-        "post_url": "https://app.example.com/posts/456",
-    },
-})`,
+)`,
   },
   {
     lang: "Go",
     title: "main.go",
-    code: `package main
+    code: `body, _ := json.Marshal(map[string]any{
+    "workflow":      "new-comment",
+    "subscriber_id": "user_123",
+    "payload": map[string]string{
+        "commenter_name":  "Sarah",
+        "comment_preview": "Looks great!",
+        "post_url":        "https://app.example.com/posts/456",
+    },
+})
 
-import (
-    "bytes"
-    "encoding/json"
-    "net/http"
-    "os"
-)
-
-func main() {
-    apiKey := os.Getenv("ALRT_API_KEY")
-    url := "https://api.alrt.dev/events/trigger"
-
-    // Send to all channels defined in the workflow
-    body, _ := json.Marshal(map[string]any{
-        "workflow":      "new-comment",
-        "subscriber_id": "user_123",
-        "payload": map[string]string{
-            "commenter_name":  "Sarah",
-            "comment_preview": "Looks great!",
-            "post_url":        "https://app.example.com/posts/456",
-        },
-    })
-
-    req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
-    req.Header.Set("Authorization", "Bearer "+apiKey)
-    req.Header.Set("Content-Type", "application/json")
-    http.DefaultClient.Do(req)
-
-    // Or override channels — only in-app and Slack
-    filtered, _ := json.Marshal(map[string]any{
-        "workflow":      "new-comment",
-        "subscriber_id": "user_123",
-        "channels":     []string{"in_app", "slack"},
-        "payload": map[string]string{
-            "commenter_name":  "Sarah",
-            "comment_preview": "Looks great!",
-            "post_url":        "https://app.example.com/posts/456",
-        },
-    })
-
-    req2, _ := http.NewRequest("POST", url, bytes.NewBuffer(filtered))
-    req2.Header.Set("Authorization", "Bearer "+apiKey)
-    req2.Header.Set("Content-Type", "application/json")
-    http.DefaultClient.Do(req2)
-}`,
+req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
+req.Header.Set("Authorization", "Bearer "+apiKey)
+req.Header.Set("Content-Type", "application/json")
+http.DefaultClient.Do(req)`,
   },
 ];
+
+const MAX_CODE_LINES = Math.max(...CODE_EXAMPLES.map((ex) => ex.code.split("\n").length));
 
 function CodeExample() {
   const [activeLang, setActiveLang] = useState(0);
   const active = CODE_EXAMPLES[activeLang];
 
+  // Pad code to max lines so height stays fixed
+  const padded = active.code + "\n".repeat(MAX_CODE_LINES - active.code.split("\n").length);
+
   return (
-    <section className="py-16 px-4 bg-surface">
-      <div className="max-w-3xl mx-auto">
-        <h2 className="font-heading text-3xl md:text-4xl text-center mb-8 uppercase">
-          Ship Notifications in Minutes
-        </h2>
+    <section className="py-20 px-6 max-w-4xl mx-auto">
+      <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white text-center mb-10">
+        Integrate in Minutes
+      </h2>
 
-        {/* Language tabs */}
-        <div className="flex gap-1 mb-0">
-          {CODE_EXAMPLES.map((ex, i) => (
-            <button
-              key={ex.lang}
-              onClick={() => setActiveLang(i)}
-              className={`
-                px-4 py-2 font-heading text-xs uppercase tracking-wide font-bold
-                transition-none cursor-pointer focus-retro
-                ${
-                  i === activeLang
-                    ? "bevel-inset bg-[#1e1e2e] text-[#cdd6f4]"
-                    : "bevel-outset bg-[#c0c0c0] text-foreground hover:bg-[#d0d0d0]"
-                }
-              `}
-            >
-              {ex.lang}
-            </button>
-          ))}
-        </div>
-
-        <CodeBlock title={active.title} code={active.code} />
+      <div className="flex gap-0 mb-0 border-b border-white/5">
+        {CODE_EXAMPLES.map((ex, i) => (
+          <button
+            key={ex.lang}
+            onClick={() => setActiveLang(i)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer relative
+              ${i === activeLang ? "text-white" : "text-[#71717a] hover:text-[#a1a1aa]"}`}
+          >
+            {ex.lang}
+            {i === activeLang && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3b82f6]" />}
+          </button>
+        ))}
       </div>
+
+      <CodeBlock title={active.title} code={padded} />
     </section>
   );
 }
 
-/* ─── Features ─── */
+/* --- Features --- */
 const FEATURES = [
   {
     icon: Workflow,
     title: "Visual Workflow Builder",
-    desc: "Drag-and-drop notification flows. Triggers, channels, delays, and conditions — no code needed.",
+    desc: "Drag-and-drop notification flows. Triggers, channels, delays, and conditions \u2014 no code needed.",
   },
   {
     icon: Zap,
@@ -363,66 +291,66 @@ const FEATURES = [
   {
     icon: Code2,
     title: "API-First Design",
-    desc: "REST API + TypeScript SDK. Auto-generated types. Idempotent triggers. Batch support.",
+    desc: "REST API with auto-generated types. Idempotent triggers. Batch support. Built for developers.",
   },
 ];
 
 function Features() {
   return (
-    <section id="features" className="py-16 px-4">
-      <div className="max-w-5xl mx-auto">
-        <h2 className="font-heading text-3xl md:text-4xl text-center mb-10 uppercase">
-          Everything You Need
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FEATURES.map((f) => (
-            <WindowCard key={f.title} title={f.title}>
-              <div className="flex flex-col gap-3">
-                <div className="bevel-outset bg-navy w-10 h-10 flex items-center justify-center">
-                  <f.icon className="w-6 h-6 text-white" strokeWidth={2} />
-                </div>
-                <p className="text-sm text-foreground leading-relaxed">
-                  {f.desc}
-                </p>
+    <section id="features" className="py-20 px-6 max-w-6xl mx-auto">
+      <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-10 px-2">
+        Features
+      </h2>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {FEATURES.map((f) => (
+          <div
+            key={f.title}
+            className="bg-[#121214] border border-white/5 rounded-2xl p-8 relative overflow-hidden group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-[#3b82f6]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-[#3b82f6]/10 flex items-center justify-center mb-4">
+                <f.icon className="w-5 h-5 text-[#3b82f6]" strokeWidth={1.5} />
               </div>
-            </WindowCard>
-          ))}
-        </div>
+              <h3 className="text-base font-bold text-white mb-2">{f.title}</h3>
+              <p className="text-sm text-[#a1a1aa] leading-relaxed">{f.desc}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
 }
 
-/* ─── Pricing ─── */
+/* --- Pricing --- */
 interface PricingTier {
   name: string;
   price: string;
   period: string;
   features: string[];
   cta: string;
-  variant: "default" | "accent";
-  badge?: string;
+  highlighted?: boolean;
 }
 
 const TIERS: PricingTier[] = [
   {
     name: "Free",
     price: "$0",
-    period: "forever",
+    period: "/mo",
     features: [
-      "1000 notifications/mo",
+      "1,000 notifications/mo",
       "3 channels (in-app, email, Slack)",
       "Visual workflow builder",
       "1 team member",
       "Community support",
     ],
     cta: "Get Started",
-    variant: "default",
+    highlighted: true,
   },
   {
     name: "Pro",
     price: "$29",
-    period: "/month",
+    period: "/mo",
     features: [
       "100K notifications/mo",
       "All channels",
@@ -432,12 +360,10 @@ const TIERS: PricingTier[] = [
       "Analytics dashboard",
     ],
     cta: "Start Pro Trial",
-    variant: "accent",
-    badge: "HOT!",
   },
   {
     name: "Enterprise",
-    price: "Custom",
+    price: "custom",
     period: "",
     features: [
       "Unlimited notifications",
@@ -449,158 +375,77 @@ const TIERS: PricingTier[] = [
       "SSO / SAML",
     ],
     cta: "Contact Sales",
-    variant: "default",
   },
 ];
 
 function Pricing() {
   return (
-    <section id="pricing" className="py-16 px-4 bg-surface">
-      <div className="max-w-5xl mx-auto">
-        <h2 className="font-heading text-3xl md:text-4xl text-center mb-10 uppercase">
-          Simple Pricing
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {TIERS.map((tier) => (
-            <div key={tier.name} className="bevel-outset bg-[#c0c0c0] flex flex-col">
-              <div className="bg-title-bar px-3 py-2 flex items-center gap-2">
-                <span className="font-heading text-sm text-white font-bold">
-                  {tier.name}
-                </span>
-                {tier.badge && (
-                  <Badge variant="hot" pulse>
-                    {tier.badge}
-                  </Badge>
-                )}
+    <section id="pricing" className="py-20 px-6 max-w-6xl mx-auto">
+      <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-10 px-2">
+        Pricing
+      </h2>
+      <div className="grid md:grid-cols-3 gap-6">
+        {TIERS.map((tier) => (
+          <div
+            key={tier.name}
+            className={`rounded-2xl p-8 flex flex-col relative ${
+              tier.highlighted
+                ? "bg-[#0f172a] border border-[#3b82f6]/30 shadow-[0_0_30px_rgba(59,130,246,0.1)]"
+                : "bg-[#121214] border border-white/5"
+            }`}
+          >
+            {tier.highlighted && (
+              <div className="absolute top-0 right-0 bg-[#3b82f6] text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr-2xl">
+                Free
               </div>
-              <div className="bevel-inset bg-white m-1 p-4 flex flex-col flex-1">
-                <div className="text-center mb-4">
-                  <span className="font-heading text-4xl text-foreground">
-                    {tier.price}
-                  </span>
-                  {tier.period && (
-                    <span className="text-muted text-sm">{tier.period}</span>
-                  )}
-                </div>
-                <GrooveDivider />
-                <ul className="flex-1 space-y-2 mb-4">
-                  {tier.features.map((f, i) => (
-                    <li
-                      key={i}
-                      className={`flex items-start gap-2 text-sm px-2 py-1 ${
-                        i % 2 === 0 ? "bg-white" : "bg-row-alt"
-                      }`}
-                    >
-                      <Check className="w-4 h-4 text-success flex-shrink-0 mt-0.5" strokeWidth={3} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <RetroButton variant={tier.variant} className="w-full">
-                  {tier.cta}
-                </RetroButton>
-              </div>
+            )}
+            <h3 className="text-xl font-bold text-white mb-2">{tier.name}</h3>
+            <div className="mb-6">
+              <span className="text-4xl font-black text-white">{tier.price}</span>
+              {tier.period && <span className="text-base text-[#71717a] font-normal">{tier.period}</span>}
             </div>
-          ))}
-        </div>
+            <ul className="space-y-3 mb-8 flex-1">
+              {tier.features.map((f, i) => (
+                <li key={i} className="flex items-center gap-3 text-sm text-[#a1a1aa]">
+                  <Check className="w-4 h-4 text-[#3b82f6] shrink-0" strokeWidth={2} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <button
+              className={`w-full py-3 rounded-lg text-sm font-bold transition-colors ${
+                tier.highlighted
+                  ? "border border-[#3b82f6]/50 text-[#3b82f6] hover:bg-[#3b82f6] hover:text-white"
+                  : "bg-white/5 hover:bg-white/10 text-white"
+              }`}
+            >
+              {tier.cta}
+            </button>
+          </div>
+        ))}
       </div>
     </section>
   );
 }
 
-/* ─── CTA ─── */
-function FinalCTA() {
-  return (
-    <section className="py-16 px-4 bg-construction">
-      <div className="max-w-3xl mx-auto text-center">
-        <div className="bevel-outset bg-white p-8">
-          <h2 className="font-heading text-3xl md:text-4xl uppercase mb-4">
-            Ready to Send Your First Notification?
-          </h2>
-          <p className="text-foreground mb-6 font-body">
-            Set up multi-channel notifications in 15 minutes. Free tier included.
-          </p>
-          <Link href="/signup"><RetroButton variant="accent">Get Started Free</RetroButton></Link>
-        </div>
-      </div>
-    </section>
-  );
-
-}
-
-/* ─── Footer ─── */
+/* --- Footer --- */
 function Footer() {
   return (
-    <footer className="bg-navy py-8 px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-white">
-          <div>
-            <span className="font-heading text-xl">ALRT</span>
-            <span className="font-mono text-xs text-white/60">.dev</span>
-            <p className="mt-2 text-sm text-white/80">
-              Multi-channel notifications for startups.
-            </p>
-          </div>
-          <div>
-            <h3 className="font-heading text-sm uppercase mb-2">Product</h3>
-            <ul className="space-y-1 text-sm">
-              <li>
-                <a href="#features" className="text-[#88aaff] underline hover:text-danger">
-                  Features
-                </a>
-              </li>
-              <li>
-                <a href="#pricing" className="text-[#88aaff] underline hover:text-danger">
-                  Pricing
-                </a>
-              </li>
-              <li>
-                <a href="/docs" className="text-[#88aaff] underline hover:text-danger">
-                  Documentation
-                </a>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-heading text-sm uppercase mb-2">Company</h3>
-            <ul className="space-y-1 text-sm">
-              <li>
-                <a href="/about" className="text-[#88aaff] underline hover:text-danger">
-                  About
-                </a>
-              </li>
-              <li>
-                <a href="https://github.com/alrt-dev" className="text-[#88aaff] underline hover:text-danger">
-                  GitHub
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <GrooveDivider className="!border-muted" />
-        <div className="flex items-center justify-between text-xs text-white/60 font-mono">
-          <span>&copy; 2026 Alrt. All rights reserved.</span>
-          <span>Built with retro love</span>
-        </div>
-      </div>
+    <footer className="border-t border-white/5 py-12 px-6 mt-12 text-center text-[#71717a] text-sm font-mono">
+      &copy; 2026 ALRT Inc.
     </footer>
   );
 }
 
-/* ─── Page ─── */
+/* --- Page --- */
 export default function LandingPage() {
   return (
-    <main className="bg-background min-h-screen">
-      <TopBar />
-      <AnnouncementBar />
+    <main className="bg-[#0a0a0b] min-h-screen text-white antialiased overflow-x-hidden">
+      <TopNav />
       <Hero />
-      <GrooveDivider className="max-w-5xl mx-auto" />
       <CodeExample />
-      <GrooveDivider className="max-w-5xl mx-auto" />
       <Features />
-      <GrooveDivider className="max-w-5xl mx-auto" />
       <Pricing />
-      <FinalCTA />
       <Footer />
     </main>
   );

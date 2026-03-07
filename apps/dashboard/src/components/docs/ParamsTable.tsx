@@ -17,51 +17,63 @@ export default function ParamsTable({ title, params, className = "" }: ParamsTab
 
   return (
     <div className={`mb-4 ${className}`}>
-      <h4 className="font-heading text-sm uppercase tracking-wide mb-2 text-foreground font-bold">
+      <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-2">
         {title}
       </h4>
-      <div className="bevel-inset bg-white">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-[#c0c0c0]">
-              <th className="text-left px-3 py-2 font-heading text-xs uppercase tracking-wide font-bold border-r border-b border-muted">
-                Field
-              </th>
-              <th className="text-left px-3 py-2 font-heading text-xs uppercase tracking-wide font-bold border-r border-b border-muted">
-                Type
-              </th>
-              <th className="text-left px-3 py-2 font-heading text-xs uppercase tracking-wide font-bold border-r border-b border-muted">
-                Req
-              </th>
-              <th className="text-left px-3 py-2 font-heading text-xs uppercase tracking-wide font-bold border-b border-muted">
-                Description
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {params.map((p, i) => (
-              <tr key={p.name} className={i % 2 === 0 ? "bg-white" : "bg-row-alt"}>
-                <td className="px-3 py-2 font-mono font-bold text-accent border-r border-muted/30">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-[rgba(255,255,255,0.08)]">
+            <th className="text-left pb-2 text-[11px] font-medium text-text-muted w-[130px]">
+              Name
+            </th>
+            <th className="text-left pb-2 text-[11px] font-medium text-text-muted w-[70px]">
+              Type
+            </th>
+            <th className="text-left pb-2 text-[11px] font-medium text-text-muted w-[64px]">
+            </th>
+            <th className="text-left pb-2 text-[11px] font-medium text-text-muted">
+              Description
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {params.map((p, i) => (
+            <tr
+              key={p.name}
+              className={
+                i < params.length - 1
+                  ? "border-b border-[rgba(255,255,255,0.06)]"
+                  : ""
+              }
+            >
+              <td className="py-2.5 align-top pr-2">
+                <code className="text-[13px] font-mono font-medium text-text-primary">
                   {p.name}
-                </td>
-                <td className="px-3 py-2 font-mono text-foreground border-r border-muted/30">
+                </code>
+              </td>
+              <td className="py-2.5 align-top pr-2">
+                <span className="text-[11px] font-mono text-text-muted">
                   {p.type}
-                </td>
-                <td className="px-3 py-2 border-r border-muted/30">
-                  {p.required ? (
-                    <span className="text-danger font-bold">Yes</span>
-                  ) : (
-                    <span className="text-muted">
-                      No{p.default !== undefined ? ` (${p.default})` : ""}
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-foreground">{p.description}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </span>
+              </td>
+              <td className="py-2.5 align-top pr-2">
+                {p.required ? (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-danger">
+                    required
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-text-muted">
+                    {p.default !== undefined ? `= ${p.default}` : "optional"}
+                  </span>
+                )}
+              </td>
+              <td className="py-2.5 align-top text-xs text-text-secondary leading-relaxed">
+                {p.description}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

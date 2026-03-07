@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { WindowCard, RetroTable, Badge } from "@/components/retro";
+import { Card, Table, Badge } from "@/components/ui";
 import { api } from "@/lib/api";
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Legend,
-    PieChart, Pie, Cell, Sector
 } from "recharts";
 
 interface OverviewMetrics {
@@ -40,8 +39,36 @@ interface TimelinePoint {
     failed: number;
 }
 
+function StatCard({
+    label,
+    value,
+    highlight,
+}: {
+    label: string;
+    value: string | number;
+    highlight?: "danger" | "success" | "warning";
+}) {
+    const colorMap = {
+        danger: "text-danger",
+        success: "text-success",
+        warning: "text-warning",
+    };
+    const valueClass = highlight ? colorMap[highlight] : "text-text-primary";
+
+    return (
+        <div className="flex-1 bg-surface border border-default rounded-md p-4 flex flex-col items-center justify-center min-w-[140px] gap-1">
+            <div className={`font-mono text-3xl font-semibold ${valueClass}`}>
+                {typeof value === "number" ? value.toLocaleString() : value}
+            </div>
+            <div className="text-xs text-text-muted">
+                {label}
+            </div>
+        </div>
+    );
+}
+
 export default function AnalyticsDashboard() {
-    const [days, setDays] = useState(30);
+    const [days, setDays] = useState(7);
     const [overview, setOverview] = useState<OverviewMetrics | null>(null);
     const [channels, setChannels] = useState<ChannelMetrics[]>([]);
     const [workflows, setWorkflows] = useState<WorkflowMetrics[]>([]);
@@ -81,43 +108,38 @@ export default function AnalyticsDashboard() {
         formattedDate: formatDate(t.date),
     }));
 
-    const channelCols = [
-        { key: "channel", header: "Channel", render: (r: ChannelMetrics) => <Badge variant="default">{r.channel.replace("_", "-").toUpperCase()}</Badge> },
-        { key: "sent", header: "Sent" },
-        { key: "failed", header: "Failed" },
-        { key: "pending", header: "Pending" },
-        {
-            key: "success_rate", header: "Success Rate", render: (r: ChannelMetrics) => (
-                <span className={r.success_rate > 90 ? "text-success font-bold" : r.success_rate < 50 ? "text-danger font-bold" : "text-warning font-bold"}>
-                    {r.success_rate.toFixed(1)}%
-                </span>
-            )
-        }
-    ];
+    // Derived: failure rate
+    const failureRate =
+        overview && overview.total_sent > 0
+            ? ((overview.total_failed / overview.total_sent) * 100)
+            : 0;
+    const failureRateHighlight: "danger" | undefined =
+        failureRate > 5 ? "danger" : undefined;
 
-    const workflowCols = [
-        { key: "workflow_name", header: "Workflow", render: (r: WorkflowMetrics) => <span className="font-bold text-navy">{r.workflow_name}</span> },
-        { key: "total_executions", header: "Total Execs" },
-        {
-            key: "success_rate", header: "Success Rate", render: (r: WorkflowMetrics) => (
-                <Badge variant={r.success_rate > 90 ? "success" : r.success_rate < 50 ? "danger" : "warning"}>{r.success_rate.toFixed(1)}%</Badge>
-            )
-        },
-        { key: "avg_duration_ms", header: "Avg Time", render: (r: WorkflowMetrics) => <span className="font-mono text-xs">{r.avg_duration_ms.toFixed(0)} ms</span> }
-    ];
+    // Derived: delivered = sent - failed - pending
+    const totalDelivered =
+        overview
+            ? Math.max(0, overview.total_sent - overview.total_failed - overview.total_pending)
+            : 0;
 
-    // Custom Tooltip for Recharts
+    // Channel bar chart data
+    const channelBarData = channels.map((c) => ({
+        channel: c.channel.replace("_", "-"),
+        Sent: c.sent,
+        Failed: c.failed,
+    }));
+
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-navy/95 backdrop-blur-md text-white p-3 border-2 border-muted shadow-[4px_4px_0px_rgba(0,0,0,0.3)]">
-                    <p className="font-bold border-b border-muted/50 pb-1 mb-2 font-mono tracking-tighter text-[#00ff00] text-xs">
+                <div className="bg-elevated border border-default rounded-md shadow-lg p-3">
+                    <p className="font-mono text-xs text-text-primary border-b border-default pb-1 mb-2">
                         {label}
                     </p>
                     {payload.map((entry: any, index: number) => (
                         <div key={index} className="flex justify-between items-center gap-4 text-xs font-mono mb-1 last:mb-0">
-                            <span style={{ color: entry.color }}>{entry.name}:</span>
-                            <span className="font-bold">{entry.value.toLocaleString()}</span>
+                            <span style={{ color: entry.color }} className="text-text-secondary">{entry.name}:</span>
+                            <span className="font-medium text-text-primary">{entry.value.toLocaleString()}</span>
                         </div>
                     ))}
                 </div>
@@ -126,200 +148,119 @@ export default function AnalyticsDashboard() {
         return null;
     };
 
-    const renderTimelineChart = () => {
-        if (!timeline.length) return <div className="text-muted text-center py-16 flex items-center justify-center font-mono text-sm uppercase tracking-widest bg-row-alt/50 bevel-inset">NO DATA AVAILABLE</div>;
-
-        return (
-            <div className="w-full h-72 pt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={formattedTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#444" vertical={false} opacity={0.3} />
-                        <XAxis
-                            dataKey="formattedDate"
-                            tick={{ fontSize: 10, fill: '#666', fontFamily: 'monospace' }}
-                            axisLine={false}
-                            tickLine={false}
-                            dy={10}
-                        />
-                        <YAxis
-                            tick={{ fontSize: 10, fill: '#666', fontFamily: 'monospace' }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}
-                        />
-                        <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} content={<CustomTooltip />} />
-                        <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace', paddingTop: '10px' }} iconType="circle" />
-                        <Bar dataKey="sent" name="Sent" stackId="a" fill="#22c55e" radius={[timeline.every(t => t.failed === 0) ? 2 : 0, timeline.every(t => t.failed === 0) ? 2 : 0, 0, 0]} />
-                        <Bar dataKey="failed" name="Failed" stackId="a" fill="#ef4444" radius={[2, 2, 0, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
-        );
-    };
-
-    // Custom Tooltip for Pie
-    const CustomPieTooltip = ({ active, payload }: any) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-navy/95 backdrop-blur-md text-white px-3 py-2 border-2 border-muted shadow-[4px_4px_0px_rgba(0,0,0,0.3)]">
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 border border-white" style={{ backgroundColor: payload[0].payload.fill }} />
-                        <span className="font-bold text-xs uppercase tracking-wider">{payload[0].name.replace("_", " ")}</span>
-                    </div>
-                    <div className="font-mono text-sm mt-1">{payload[0].value.toLocaleString()} sent</div>
-                </div>
-            );
-        }
-        return null;
-    };
-
-    const renderChannelPieChart = () => {
-        if (!channels.length) return <div className="text-muted text-center py-16 flex items-center justify-center font-mono text-sm uppercase tracking-widest bg-row-alt/50 bevel-inset h-full">NO DATA</div>;
-
-        const pieData = channels.map((c, i) => ({
-            name: c.channel,
-            value: c.sent,
-            fill: ["#22c55e", "#3b82f6", "#eab308", "#f97316", "#a855f7"][i % 5]
-        }));
-
-        return (
-            <div className="w-full h-64 pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={pieData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                            stroke="none"
-                        >
-                            {pieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                        </Pie>
-                        <RechartsTooltip content={<CustomPieTooltip />} />
-                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace', paddingTop: '0px' }} iconType="circle" />
-                    </PieChart>
-                </ResponsiveContainer>
-            </div>
-        );
-    };
-
-    // Animate numbers for stats
-    const AnimatedCounter = ({ value, label, colorClass }: { value: number; label: string; colorClass: string }) => {
-        const [count, setCount] = useState(0);
-
-        useEffect(() => {
-            let start = 0;
-            const end = value;
-            if (end === 0) return;
-            const duration = 1000;
-            const incrementTime = Math.max(16, duration / end);
-
-            const timer = setInterval(() => {
-                start += Math.ceil(end / (duration / 16));
-                if (start >= end) {
-                    setCount(end);
-                    clearInterval(timer);
-                } else {
-                    setCount(start);
-                }
-            }, incrementTime);
-
-            return () => clearInterval(timer);
-        }, [value]);
-
-        return (
-            <div className="flex-1 bg-white border-b-4 border-r-4 border-t border-l border-t-white/50 border-l-white/50 border-b-muted border-r-muted p-4 shadow-sm flex flex-col items-center justify-center min-w-[150px] transform transition-transform hover:-translate-y-1 duration-200">
-                <div className={`text-4xl font-mono font-bold tracking-tighter ${colorClass} drop-shadow-sm`}>
-                    {count.toLocaleString()}
-                </div>
-                <div className="text-[10px] font-heading text-muted mt-1 uppercase tracking-widest font-bold">
-                    {label}
-                </div>
-            </div>
-        );
-    };
+    const workflowCols = [
+        { key: "workflow_name", header: "Workflow", render: (r: WorkflowMetrics) => <span className="font-medium text-text-primary">{r.workflow_name}</span> },
+        { key: "total_executions", header: "Total execs" },
+        {
+            key: "success_rate", header: "Success rate", render: (r: WorkflowMetrics) => (
+                <Badge variant={r.success_rate > 90 ? "success" : r.success_rate < 50 ? "danger" : "warning"}>{r.success_rate.toFixed(1)}%</Badge>
+            )
+        },
+        { key: "avg_duration_ms", header: "Avg time", render: (r: WorkflowMetrics) => <span className="font-mono text-xs text-text-secondary">{r.avg_duration_ms.toFixed(0)} ms</span> }
+    ];
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-6">
                 <div>
-                    <h1 className="text-3xl font-heading mb-2 uppercase text-navy">Analytics Telemetry</h1>
-                    <p className="text-muted font-mono text-sm max-w-xl">
-                        Monitor notification delivery, workflow performance, and channel health metrics across the stack.
+                    <h1 className="text-2xl font-semibold text-text-primary mb-1">Analytics</h1>
+                    <p className="text-text-muted text-sm">
+                        Notification delivery stats and channel performance.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase text-muted tracking-wider">Time Range:</span>
+                    <span className="text-xs text-text-muted">Range:</span>
                     <select
                         value={days}
                         onChange={(e) => setDays(Number(e.target.value))}
-                        className="bevel-inset bg-white text-sm font-bold uppercase cursor-pointer outline-none bg-row-alt px-2 py-1"
+                        className="bg-surface border border-bright rounded-[6px] text-sm text-text-primary cursor-pointer outline-none px-2 py-1 font-mono"
                     >
-                        <option value={7}>Last 7 Days</option>
-                        <option value={30}>Last 30 Days</option>
-                        <option value={90}>Last 90 Days</option>
+                        <option value={7}>Last 7 days</option>
+                        <option value={30}>Last 30 days</option>
+                        <option value={90}>Last 90 days</option>
                     </select>
                 </div>
             </div>
 
             {loading ? (
-                <div className="py-12 text-center text-muted flex flex-col items-center">
-                    <div className="bevel-inset p-4 bg-navy w-16 h-16 mb-4 flex items-center justify-center">
-                        <div className="w-8 h-8 rounded-full border-4 border-white border-t-[#00ff00] animate-spin" />
-                    </div>
-                    <p className="font-mono text-xs uppercase tracking-widest animate-pulse">Loading telemetry data...</p>
+                <div className="py-12 text-center text-text-muted flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full border-2 border-text-muted border-t-accent animate-spin mb-4" />
+                    <p className="text-sm text-text-muted animate-pulse">Loading...</p>
                 </div>
             ) : (
                 <>
-                    {/* Animated Overview Metrics */}
+                    {/* Stat cards */}
                     {overview && (
-                        <div className="mb-8 flex flex-wrap gap-4 justify-center bg-[#c0c0c0] p-4 bevel-outset">
-                            <AnimatedCounter value={overview.total_sent} label="Total Sent" colorClass="text-success" />
-                            <AnimatedCounter value={overview.total_failed} label="Total Failed" colorClass="text-danger" />
-                            <AnimatedCounter value={overview.total_pending} label="In Flight" colorClass="text-warning" />
+                        <div className="flex flex-wrap gap-4">
+                            <StatCard label="Total sent" value={overview.total_sent} />
+                            <StatCard label="Delivered" value={totalDelivered} highlight="success" />
+                            <StatCard label="Failed" value={overview.total_failed} highlight={overview.total_failed > 0 ? "danger" : undefined} />
+                            <StatCard
+                                label="Failure rate"
+                                value={`${failureRate.toFixed(1)}%`}
+                                highlight={failureRateHighlight}
+                            />
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                        <div className="xl:col-span-3">
-                            <WindowCard title="DELIVERY TIMELINE">
-                                {renderTimelineChart()}
-                            </WindowCard>
-                        </div>
-
-                        <div className="xl:col-span-1 flex flex-col gap-6">
-                            <WindowCard title="CHANNEL USAGE" className="flex-1">
-                                {renderChannelPieChart()}
-                            </WindowCard>
-                        </div>
-
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        {/* Delivery timeline */}
                         <div className="xl:col-span-2">
-                            <WindowCard title="CHANNEL PERFORMANCE">
-                                {channels.length === 0 ? (
-                                    <div className="text-center py-12 text-muted font-mono text-xs uppercase bg-row-alt/50 bevel-inset">No channel data</div>
+                            <Card title="Delivery timeline">
+                                {timeline.length === 0 ? (
+                                    <div className="text-text-muted text-center py-16 text-sm">No data available</div>
                                 ) : (
-                                    <div className="overflow-x-auto">
-                                        <RetroTable<ChannelMetrics> columns={channelCols} data={channels} />
+                                    <div className="w-full h-64 pt-4">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={formattedTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                                <XAxis dataKey="formattedDate" tick={{ fontSize: 10, fill: '#71717a', fontFamily: 'monospace' }} axisLine={false} tickLine={false} dy={10} />
+                                                <YAxis tick={{ fontSize: 10, fill: '#71717a', fontFamily: 'monospace' }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v} />
+                                                <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} content={<CustomTooltip />} />
+                                                <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace', paddingTop: '10px' }} iconType="circle" />
+                                                <Bar dataKey="sent" name="Sent" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
+                                                <Bar dataKey="failed" name="Failed" stackId="a" fill="#ef4444" radius={[2, 2, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
                                     </div>
                                 )}
-                            </WindowCard>
+                            </Card>
                         </div>
 
-                        <div className="xl:col-span-3">
-                            <WindowCard title="WORKFLOW METRICS">
-                                {workflows.length === 0 ? (
-                                    <div className="text-center py-12 text-muted font-mono text-xs uppercase bg-row-alt/50 bevel-inset">No workflow data</div>
+                        {/* Channel breakdown bar chart */}
+                        <div>
+                            <Card title="Channel breakdown">
+                                {channels.length === 0 ? (
+                                    <div className="text-text-muted text-center py-16 text-sm">No data</div>
                                 ) : (
-                                    <div className="overflow-x-auto">
-                                        <RetroTable<WorkflowMetrics> columns={workflowCols} data={workflows} />
+                                    <div className="w-full h-64 pt-4">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={channelBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                                <XAxis dataKey="channel" tick={{ fontSize: 10, fill: '#71717a', fontFamily: 'monospace' }} axisLine={false} tickLine={false} dy={10} />
+                                                <YAxis tick={{ fontSize: 10, fill: '#71717a', fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                                                <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} content={<CustomTooltip />} />
+                                                <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace', paddingTop: '10px' }} iconType="circle" />
+                                                <Bar dataKey="Sent" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                                                <Bar dataKey="Failed" fill="#ef4444" radius={[2, 2, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
                                     </div>
                                 )}
-                            </WindowCard>
+                            </Card>
+                        </div>
+
+                        {/* Workflow metrics */}
+                        <div>
+                            <Card title="Workflow metrics">
+                                {workflows.length === 0 ? (
+                                    <div className="text-center py-12 text-text-muted text-sm">No workflow data</div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <Table<WorkflowMetrics> columns={workflowCols} data={workflows} />
+                                    </div>
+                                )}
+                            </Card>
                         </div>
                     </div>
                 </>
