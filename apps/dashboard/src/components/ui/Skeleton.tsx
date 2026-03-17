@@ -1,12 +1,16 @@
 interface SkeletonProps {
   className?: string;
+  variant?: "line" | "box";
 }
 
-export default function Skeleton({ className = "h-4 w-full" }: SkeletonProps) {
+export default function Skeleton({
+  className = "",
+  variant = "line",
+}: SkeletonProps) {
   return (
     <div
-      className={`bg-[#18181b] rounded animate-pulse ${className}`}
-      aria-hidden="true"
+      role="status"
+      className={`skeleton ${variant} ${className}`.trim()}
     />
   );
 }

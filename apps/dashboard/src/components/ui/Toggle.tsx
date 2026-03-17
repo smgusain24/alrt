@@ -14,32 +14,22 @@ export default function Toggle({
   className = "",
 }: ToggleProps) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`
-        relative inline-flex items-center
-        h-5 w-9 shrink-0 rounded-full
-        transition-colors duration-200 ease-in-out
-        focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#3b82f6]
-        disabled:opacity-50 disabled:cursor-not-allowed
-        cursor-pointer
-        ${checked ? "bg-[#3b82f6]" : "bg-[#18181b]"}
-        ${className}
-      `}
+    <label
+      className={className || undefined}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+      }}
     >
-      <span
-        className={`
-          pointer-events-none inline-block
-          h-3.5 w-3.5 rounded-full bg-white
-          shadow-sm
-          transition-transform duration-200 ease-in-out
-          ${checked ? "translate-x-[18px]" : "translate-x-[3px]"}
-        `}
+      <input
+        type="checkbox"
+        role="switch"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
       />
-    </button>
+    </label>
   );
 }

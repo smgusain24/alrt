@@ -1,10 +1,10 @@
 "use client";
 
-import { Fragment, useEffect, useState, useCallback } from "react";
-import { Card, Badge, Button, Input } from "@/components/ui";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Badge } from "@/components/ui";
 import { api } from "@/lib/api";
-import { ChevronLeft, ChevronRight, X, ChevronDown, ChevronUp, Mail, MessageSquare, Bell } from "lucide-react";
-import Link from "next/link";
+import { ChevronLeft, ChevronRight, X, Mail, MessageSquare, Bell } from "lucide-react";
+import { SiWhatsapp, SiDiscord, SiTelegram } from "@icons-pack/react-simple-icons";
 
 interface ChannelStatus {
   channel: string;
@@ -34,16 +34,31 @@ interface ActivityResponse {
 }
 
 const STATUS_OPTIONS = ["", "running", "completed", "failed", "scheduled"];
-const CHANNEL_OPTIONS = ["", "email", "slack", "inapp"];
+const CHANNEL_OPTIONS = ["", "in_app", "email", "slack", "whatsapp", "discord", "telegram"];
 
-const CHANNEL_ICONS: Record<string, typeof Mail> = {
-  email: Mail,
-  slack: MessageSquare,
-  inapp: Bell,
+const CHANNEL_DISPLAY: Record<string, string> = {
+  in_app: "In-App",
+  email: "Email",
+  slack: "Slack",
+  whatsapp: "WhatsApp",
+  discord: "Discord",
+  telegram: "Telegram",
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CHANNEL_ICONS: Record<string, any> = {
+  email: Mail,
+  slack: MessageSquare,
+  in_app: Bell,
+  whatsapp: SiWhatsapp,
+  discord: SiDiscord,
+  telegram: SiTelegram,
+};
+
+const SIMPLE_ICONS = new Set(["whatsapp", "discord", "telegram"]);
+
 function StatusBadge({ status }: { status: string | null }) {
-  if (!status) return <span className="text-text-muted text-xs">--</span>;
+  if (!status) return <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>--</span>;
   const variant =
     status === "completed" || status === "delivered"
       ? "success"
@@ -57,23 +72,38 @@ function StatusBadge({ status }: { status: string | null }) {
 
 function ChannelBadges({ channels }: { channels: ChannelStatus[] }) {
   return (
-    <div className="flex gap-1.5">
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {channels.map((ch, i) => {
         const Icon = CHANNEL_ICONS[ch.channel] || Bell;
+        const isSimple = SIMPLE_ICONS.has(ch.channel);
         const color =
           ch.status === "delivered" || ch.status === "completed"
-            ? "text-[#22c55e]"
+            ? "var(--color-success)"
             : ch.status === "failed"
-              ? "text-[#ef4444]"
-              : "text-[#f59e0b]";
+              ? "var(--color-danger)"
+              : "var(--color-warning)";
+        const displayName = CHANNEL_DISPLAY[ch.channel] || ch.channel;
         return (
           <span
             key={i}
-            title={`${ch.channel}: ${ch.status}${ch.error_reason ? ` — ${ch.error_reason}` : ""}`}
-            className={`inline-flex items-center gap-1 rounded-md bg-white/[0.03] px-1.5 py-0.5 text-xs ${color}`}
+            title={`${displayName}: ${ch.status}${ch.error_reason ? ` -- ${ch.error_reason}` : ""}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              borderRadius: 6,
+              background: "rgba(255,255,255,0.03)",
+              padding: "2px 6px",
+              fontSize: "0.75rem",
+              color,
+            }}
           >
-            <Icon className="w-3 h-3" strokeWidth={1.5} />
-            <span className="font-mono">{ch.channel}</span>
+            {isSimple ? (
+              <Icon size={12} />
+            ) : (
+              <Icon style={{ width: 12, height: 12 }} strokeWidth={1.5} />
+            )}
+            <span style={{ fontFamily: "monospace" }}>{displayName}</span>
           </span>
         );
       })}
@@ -88,7 +118,10 @@ export default function ActivityPage() {
   const [page, setPage] = useState(1);
   const [perPage] = useState(50);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Track new row IDs for slide-in animation
+  const prevIds = useRef<Set<string>>(new Set());
+  const newIds = useRef<Set<string>>(new Set());
 
   // Filters
   const [status, setStatus] = useState("");
@@ -124,6 +157,49 @@ export default function ActivityPage() {
     fetchActivity();
   }, [fetchActivity]);
 
+  // Update prevIds whenever items change from initial fetch
+  useEffect(() => {
+    prevIds.current = new Set(items.map((i) => i.execution_id));
+  }, [items]);
+
+  // 5-second polling on page 1 (silent, no loading spinner)
+  useEffect(() => {
+    if (page !== 1) return;
+    const interval = setInterval(async () => {
+      if (loading) return;
+      try {
+        const params: Record<string, string | number> = { page: 1, per_page: perPage };
+        if (status) params.status = status;
+        if (channel) params.channel = channel;
+        if (eventName) params.event_name = eventName;
+        if (subscriber) params.subscriber = subscriber;
+        if (startDate) params.start_date = new Date(startDate).toISOString();
+        if (endDate) params.end_date = new Date(endDate).toISOString();
+
+        const res = (await api.activity.list(params)) as ActivityResponse;
+        if (res.items.length > 0 && items.length > 0 && res.items[0].execution_id !== items[0].execution_id) {
+          // Detect new rows for animation
+          const incoming = new Set(res.items.map((i) => i.execution_id));
+          const fresh = new Set<string>();
+          incoming.forEach((id) => {
+            if (!prevIds.current.has(id)) fresh.add(id);
+          });
+          newIds.current = fresh;
+          setItems(res.items);
+          setTotal(res.total);
+          setTotalPages(res.total_pages);
+          // Clear animation markers after 2 seconds
+          setTimeout(() => {
+            newIds.current = new Set();
+          }, 2000);
+        }
+      } catch {
+        // Silent failure on poll
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [page, perPage, status, channel, eventName, subscriber, startDate, endDate, items, loading]);
+
   const clearFilters = () => {
     setStatus("");
     setChannel("");
@@ -149,255 +225,174 @@ export default function ActivityPage() {
   const hasFilters = status || channel || eventName || subscriber || startDate || endDate;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div style={{ maxWidth: 1152, margin: "0 auto" }} className="vstack">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      ` }} />
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary mb-1">Activity</h1>
-        <p className="text-text-muted text-sm max-w-xl">
+        <h1 className="alrt-page-title">Activity</h1>
+        <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", maxWidth: 560 }}>
           Notification delivery history across all channels.
         </p>
       </div>
 
       {/* Filters */}
-      <Card title="Filters">
-        <div className="flex flex-wrap gap-3 items-end p-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-text-muted">Status</label>
+      <article className="card">
+        <header><h3>Filters</h3></header>
+        <div className="alrt-filters">
+          <label data-field>
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-muted)" }}>Status</span>
             <select
               value={status}
               onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-              className="bg-surface border border-bright rounded-[6px] text-sm text-text-primary cursor-pointer outline-none px-2 py-1.5 min-w-[120px] font-mono"
             >
               <option value="">All</option>
               {STATUS_OPTIONS.filter(Boolean).map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
-          </div>
+          </label>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-text-muted">Channel</label>
+          <label data-field>
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-muted)" }}>Channel</span>
             <select
               value={channel}
               onChange={(e) => { setChannel(e.target.value); setPage(1); }}
-              className="bg-surface border border-bright rounded-[6px] text-sm text-text-primary cursor-pointer outline-none px-2 py-1.5 min-w-[120px] font-mono"
             >
               <option value="">All</option>
               {CHANNEL_OPTIONS.filter(Boolean).map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{CHANNEL_DISPLAY[c] || c}</option>
               ))}
             </select>
-          </div>
+          </label>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-text-muted">Event</label>
-            <Input
+          <label data-field>
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-muted)" }}>Event</span>
+            <input
               value={eventName}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEventName(e.target.value)}
               placeholder="user.signup"
-              className="text-sm min-w-[150px]"
             />
-          </div>
+          </label>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-text-muted">Subscriber</label>
-            <Input
+          <label data-field>
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-muted)" }}>Subscriber</span>
+            <input
               value={subscriber}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSubscriber(e.target.value)}
               placeholder="ID or name"
-              className="text-sm min-w-[140px]"
             />
-          </div>
+          </label>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-text-muted">From</label>
+          <label data-field>
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-muted)" }}>From</span>
             <input
               type="date"
               value={startDate}
               onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-              className="bg-surface border border-bright rounded-[6px] text-sm text-text-primary px-2 py-1.5 outline-none font-mono"
             />
-          </div>
+          </label>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-text-muted">To</label>
+          <label data-field>
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-muted)" }}>To</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-              className="bg-surface border border-bright rounded-[6px] text-sm text-text-primary px-2 py-1.5 outline-none font-mono"
             />
-          </div>
+          </label>
 
           {hasFilters && (
-            <Button variant="danger" onClick={clearFilters} className="text-xs px-3 py-1.5">
-              <X className="w-3 h-3 inline mr-1" />
+            <button data-variant="danger" className="small" onClick={clearFilters}>
+              <X style={{ width: 12, height: 12, display: "inline", marginRight: 4 }} />
               Clear
-            </Button>
+            </button>
           )}
         </div>
-      </Card>
+      </article>
 
       {/* Results */}
-      <Card title={`Activity (${total.toLocaleString()} total)`}>
+      <article className="card">
+        <header><h3>Activity ({total.toLocaleString()} total)</h3></header>
         {loading ? (
-          <div className="py-12 text-center text-text-muted flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full border-2 border-text-muted border-t-accent animate-spin mb-4" />
-            <p className="text-sm animate-pulse">Loading activity...</p>
+          <div style={{ padding: "3rem 0", textAlign: "center" }}>
+            <div aria-busy="true" data-spinner="large"></div>
           </div>
         ) : items.length === 0 ? (
-          <div className="text-center py-12 text-text-muted text-sm">
+          <div className="alrt-empty" style={{ padding: "3rem 0" }}>
             No activity found. Trigger an event to see notifications here.
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="table">
+              <table>
                 <thead>
-                  <tr className="bg-surface border-b border-default">
-                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary w-8" />
-                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary">Timestamp</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary">Event</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary">Subscriber</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary">Workflow</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary">Channels</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary">Status</th>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Event</th>
+                    <th>Subscriber</th>
+                    <th>Workflow</th>
+                    <th>Channels</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => {
-                    const isExpanded = expandedId === item.execution_id;
-                    return (
-                      <Fragment key={item.execution_id}>
-                        <tr
-                          onClick={() => setExpandedId(isExpanded ? null : item.execution_id)}
-                          className={`
-                            cursor-pointer border-b border-default transition-colors
-                            ${isExpanded ? "bg-elevated" : "hover:bg-elevated"}
-                          `}
-                        >
-                          <td className="px-3 py-2 text-text-muted">
-                            {isExpanded
-                              ? <ChevronUp className="w-3.5 h-3.5" strokeWidth={1.5} />
-                              : <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.5} />}
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="font-mono text-xs text-text-secondary">
-                              {formatTimestamp(item.created_at)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="font-mono text-xs text-accent">
-                              {item.event_name || "--"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="text-xs text-text-secondary">
-                              {item.subscriber_name || item.subscriber_external_id || "--"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="text-xs text-text-secondary">
-                              {item.workflow_name || "--"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <ChannelBadges channels={item.channels} />
-                          </td>
-                          <td className="px-3 py-2">
-                            <StatusBadge status={item.execution_status} />
-                          </td>
-                        </tr>
-
-                        {/* Expanded detail */}
-                        {isExpanded && (
-                          <tr className="bg-elevated/50 border-b border-default">
-                            <td colSpan={7} className="px-4 py-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Channel timeline */}
-                                <div>
-                                  <h4 className="text-xs font-medium text-text-muted mb-2">Channel delivery</h4>
-                                  <div className="space-y-2">
-                                    {item.channels.map((ch, i) => {
-                                      const Icon = CHANNEL_ICONS[ch.channel] || Bell;
-                                      return (
-                                        <div
-                                          key={i}
-                                          className="flex items-start gap-3 bg-surface border border-default rounded-md px-3 py-2"
-                                        >
-                                          <Icon className="w-4 h-4 text-text-muted mt-0.5 shrink-0" strokeWidth={1.5} />
-                                          <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between gap-2">
-                                              <span className="text-xs font-medium text-text-primary capitalize">
-                                                {ch.channel === "inapp" ? "In-App" : ch.channel}
-                                              </span>
-                                              <StatusBadge status={ch.status} />
-                                            </div>
-                                            {ch.error_reason && (
-                                              <p className="text-xs text-[#ef4444] mt-1 font-mono break-all">
-                                                {ch.error_reason}
-                                              </p>
-                                            )}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-
-                                  {/* Subscriber link */}
-                                  {item.subscriber_external_id && (
-                                    <div className="mt-3">
-                                      <h4 className="text-xs font-medium text-text-muted mb-1">Subscriber</h4>
-                                      <div className="text-xs text-text-secondary">
-                                        <span className="font-mono">{item.subscriber_external_id}</span>
-                                        {item.subscriber_name && (
-                                          <span className="text-text-muted ml-1">({item.subscriber_name})</span>
-                                        )}
-                                        <Link
-                                          href={`/subscribers/${item.subscriber_external_id}`}
-                                          className="ml-2 text-accent hover:underline"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          View
-                                        </Link>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Event payload */}
-                                <div>
-                                  <h4 className="text-xs font-medium text-text-muted mb-2">Event payload</h4>
-                                  <pre className="bg-surface border border-default rounded-md p-3 text-xs font-mono overflow-auto max-h-48 whitespace-pre-wrap text-text-secondary">
-                                    {item.event_payload
-                                      ? JSON.stringify(item.event_payload, null, 2)
-                                      : "No payload"}
-                                  </pre>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })}
+                  {items.map((item) => (
+                    <tr
+                      key={item.execution_id}
+                      style={newIds.current.has(item.execution_id) ? { animation: "slideIn 0.3s ease-out" } : undefined}
+                    >
+                      <td>
+                        <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
+                          {formatTimestamp(item.created_at)}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--color-accent)" }}>
+                          {item.event_name || "--"}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
+                          {item.subscriber_name || item.subscriber_external_id || "--"}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
+                          {item.workflow_name || "--"}
+                        </span>
+                      </td>
+                      <td>
+                        <ChannelBadges channels={item.channels} />
+                      </td>
+                      <td>
+                        <StatusBadge status={item.execution_status} />
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-default mt-0">
-                <span className="font-mono text-xs text-text-muted">
+              <nav aria-label="Pagination" className="alrt-pagination">
+                <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
                   Page {page} of {totalPages}
                 </span>
-                <div className="flex gap-1">
-                  <Button
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page <= 1}
-                    className="text-xs px-2 py-1"
-                  >
-                    <ChevronLeft className="w-3 h-3" />
-                  </Button>
+                <menu className="buttons" style={{ display: "flex", gap: 4 }}>
+                  <li>
+                    <button
+                      className="outline small"
+                      onClick={() => setPage(Math.max(1, page - 1))}
+                      disabled={page <= 1}
+                    >
+                      <ChevronLeft style={{ width: 12, height: 12 }} />
+                    </button>
+                  </li>
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum: number;
                     if (totalPages <= 5) {
@@ -410,29 +405,31 @@ export default function ActivityPage() {
                       pageNum = page - 2 + i;
                     }
                     return (
-                      <Button
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        variant={pageNum === page ? "primary" : "default"}
-                        className="text-xs px-2 py-1 min-w-[28px]"
-                      >
-                        {pageNum}
-                      </Button>
+                      <li key={pageNum}>
+                        <button
+                          onClick={() => setPage(pageNum)}
+                          className={pageNum === page ? "small" : "outline small"}
+                        >
+                          {pageNum}
+                        </button>
+                      </li>
                     );
                   })}
-                  <Button
-                    onClick={() => setPage(Math.min(totalPages, page + 1))}
-                    disabled={page >= totalPages}
-                    className="text-xs px-2 py-1"
-                  >
-                    <ChevronRight className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
+                  <li>
+                    <button
+                      className="outline small"
+                      onClick={() => setPage(Math.min(totalPages, page + 1))}
+                      disabled={page >= totalPages}
+                    >
+                      <ChevronRight style={{ width: 12, height: 12 }} />
+                    </button>
+                  </li>
+                </menu>
+              </nav>
             )}
           </>
         )}
-      </Card>
+      </article>
     </div>
   );
 }

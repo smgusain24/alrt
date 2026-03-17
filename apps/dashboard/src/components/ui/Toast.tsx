@@ -24,10 +24,10 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const borderColors: Record<ToastVariant, string> = {
-  success: "border-l-[#22c55e]",
-  error: "border-l-[#ef4444]",
-  info: "border-l-[#3b82f6]",
+const variantColors: Record<ToastVariant, string> = {
+  success: "var(--color-success)",
+  error: "var(--color-danger)",
+  info: "var(--color-accent)",
 };
 
 let idCounter = 0;
@@ -44,11 +44,17 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
 
   return (
     <div
-      className={`
-        bg-[#111113] border border-[rgba(255,255,255,0.06)] border-l-2 ${borderColors[toast.variant]}
-        rounded-md shadow-lg px-4 py-3 text-sm text-[#fafafa]
-        animate-in slide-in-from-right
-      `}
+      style={{
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-border)",
+        borderLeft: `3px solid ${variantColors[toast.variant]}`,
+        borderRadius: "6px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+        padding: "12px 16px",
+        fontSize: "0.875rem",
+        color: "var(--color-text-primary)",
+        animation: "slideInRight 0.2s ease-out",
+      }}
     >
       {toast.message}
     </div>
@@ -70,7 +76,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast: addToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+      <div
+        style={{
+          position: "fixed",
+          bottom: "1rem",
+          right: "1rem",
+          zIndex: 100,
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.5rem",
+          maxWidth: "24rem",
+        }}
+      >
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
         ))}

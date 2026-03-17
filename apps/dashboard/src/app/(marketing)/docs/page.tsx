@@ -1,10 +1,7 @@
 "use client";
 
 import { DocsSidebar, EndpointBlock } from "@/components/docs";
-import {
-  Card,
-  CodeBlock,
-} from "@/components/ui";
+import { CodeBlock } from "@/components/ui";
 import Link from "next/link";
 
 const SECTIONS = [
@@ -18,69 +15,210 @@ const SECTIONS = [
 
 export default function DocsPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div style={{ minHeight: "100vh", background: "var(--color-background)" }}>
       {/* Top bar */}
-      <nav className="bg-background/80 backdrop-blur-md border-b border-[rgba(255,255,255,0.06)] px-6 py-3 sticky top-0 z-20">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-1">
-              <span className="font-brand text-lg font-bold text-text-primary">ALRT</span>
-              <span className="font-mono text-xs text-text-muted">.dev</span>
+      <nav
+        style={{
+          background: "rgba(10,10,11,0.8)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid var(--color-border)",
+          padding: "12px 24px",
+          position: "sticky",
+          top: 0,
+          zIndex: 20,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "1400px",
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <Link
+              href="/"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                textDecoration: "none",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-brand)",
+                  fontSize: "18px",
+                  fontWeight: 700,
+                  color: "var(--color-text-primary)",
+                }}
+              >
+                ALRT
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "12px",
+                  color: "var(--color-text-muted)",
+                }}
+              >
+                .dev
+              </span>
             </Link>
-            <span className="text-[rgba(255,255,255,0.12)]">/</span>
-            <span className="text-sm text-text-secondary font-medium">Docs</span>
+            <span style={{ color: "rgba(255,255,255,0.12)" }}>/</span>
+            <span
+              style={{
+                fontSize: "14px",
+                color: "var(--color-text-secondary)",
+                fontWeight: 500,
+              }}
+            >
+              Docs
+            </span>
           </div>
-          <div className="flex items-center gap-6">
-            <Link href="/" className="text-sm text-text-muted hover:text-text-primary transition-colors">Home</Link>
-            <Link href="/workflows" className="text-sm text-text-muted hover:text-text-primary transition-colors">Dashboard</Link>
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+            <Link
+              href="/"
+              style={{
+                fontSize: "14px",
+                color: "var(--color-text-muted)",
+                textDecoration: "none",
+              }}
+            >
+              Home
+            </Link>
+            <Link
+              href="/workflows"
+              style={{
+                fontSize: "14px",
+                color: "var(--color-text-muted)",
+                textDecoration: "none",
+              }}
+            >
+              Dashboard
+            </Link>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-[1400px] mx-auto flex">
+      <div
+        style={{
+          maxWidth: "1400px",
+          margin: "0 auto",
+          display: "flex",
+        }}
+      >
         {/* Sidebar */}
-        <div className="hidden lg:block w-56 shrink-0 sticky top-[49px] h-[calc(100vh-49px)] overflow-y-auto border-r border-[rgba(255,255,255,0.06)]">
+        <div
+          style={{
+            width: "224px",
+            flexShrink: 0,
+            position: "sticky",
+            top: "49px",
+            height: "calc(100vh - 49px)",
+            overflowY: "auto",
+            borderRight: "1px solid var(--color-border)",
+          }}
+        >
           <DocsSidebar sections={SECTIONS} />
         </div>
 
         {/* Content */}
-        <main className="flex-1 py-12 px-8 lg:px-16 min-w-0 max-w-5xl">
-
-          {/* ── GETTING STARTED ── */}
-          <section id="getting-started" className="scroll-mt-20">
-            <h1 className="text-2xl font-semibold text-text-primary mb-1 tracking-tight">
-              API Reference
-            </h1>
-            <p className="text-sm text-text-muted mb-8">
+        <main
+          style={{
+            flex: 1,
+            padding: "48px 64px",
+            minWidth: 0,
+            maxWidth: "960px",
+          }}
+        >
+          {/* -- GETTING STARTED -- */}
+          <section id="getting-started" style={{ scrollMarginTop: "80px" }}>
+            <h1>API Reference</h1>
+            <p style={{ fontSize: "14px", color: "var(--color-text-muted)", marginBottom: "32px" }}>
               Base URL:{" "}
-              <code className="font-mono text-text-secondary bg-elevated rounded px-1.5 py-0.5">
+              <code
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--color-text-secondary)",
+                  background: "var(--color-elevated)",
+                  borderRadius: "4px",
+                  padding: "2px 6px",
+                }}
+              >
                 https://api.alrt.dev
               </code>
             </p>
 
-            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Quick start</h2>
-            <p className="text-sm text-text-secondary mb-6 max-w-xl">
+            <h2>Quick start</h2>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "var(--color-text-secondary)",
+                marginBottom: "24px",
+                maxWidth: "560px",
+              }}
+            >
               Get up and running in three steps. All requests use your server
               key as a Bearer token.
             </p>
 
-            <div className="space-y-4 max-w-2xl">
-              <Card title="1. Get your API key">
-                <p className="text-sm text-text-secondary mb-3">
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+                maxWidth: "640px",
+              }}
+            >
+              <article className="card">
+                <header>
+                  <h3>1. Get your API key</h3>
+                </header>
+                <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>
                   Sign up at{" "}
-                  <code className="font-mono text-xs bg-elevated rounded px-1 text-accent">
+                  <code
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "12px",
+                      background: "var(--color-elevated)",
+                      borderRadius: "4px",
+                      padding: "1px 4px",
+                      color: "var(--color-accent)",
+                    }}
+                  >
                     alrt.dev
                   </code>{" "}
                   to create your team. Your server key (
-                  <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
+                  <code
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "12px",
+                      background: "var(--color-elevated)",
+                      borderRadius: "4px",
+                      padding: "1px 4px",
+                      color: "var(--color-text-secondary)",
+                    }}
+                  >
                     alrt_sk_...
                   </code>
                   ) is shown once on the settings page.
                 </p>
-              </Card>
+              </article>
 
-              <Card title="2. Trigger a notification">
-                <p className="text-sm text-text-secondary mb-3">
+              <article className="card">
+                <header>
+                  <h3>2. Trigger a notification</h3>
+                </header>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "var(--color-text-secondary)",
+                    marginBottom: "12px",
+                  }}
+                >
                   Fire an event. The subscriber is automatically created or
                   updated from the inline object.
                 </p>
@@ -99,10 +237,19 @@ export default function DocsPage() {
     "payload": {"name": "Jane"}
   }'`}
                 />
-              </Card>
+              </article>
 
-              <Card title="3. Fetch notifications">
-                <p className="text-sm text-text-secondary mb-3">
+              <article className="card">
+                <header>
+                  <h3>3. Fetch notifications</h3>
+                </header>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "var(--color-text-secondary)",
+                    marginBottom: "12px",
+                  }}
+                >
                   Read the in-app feed for a subscriber.
                 </p>
                 <CodeBlock
@@ -110,18 +257,40 @@ export default function DocsPage() {
                   code={`curl https://api.alrt.dev/subscribers/user_1/notifications \\
   -H "Authorization: Bearer $KEY"`}
                 />
-              </Card>
+              </article>
             </div>
           </section>
 
-          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid var(--color-border)",
+              margin: "48px 0",
+            }}
+          />
 
-          {/* ── AUTHENTICATION ── */}
-          <section id="authentication" className="scroll-mt-20">
-            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Authentication</h2>
-            <p className="text-sm text-text-secondary mb-6 max-w-xl">
+          {/* -- AUTHENTICATION -- */}
+          <section id="authentication" style={{ scrollMarginTop: "80px" }}>
+            <h2>Authentication</h2>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "var(--color-text-secondary)",
+                marginBottom: "24px",
+                maxWidth: "560px",
+              }}
+            >
               All requests require a Bearer token in the{" "}
-              <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
+              <code
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "12px",
+                  background: "var(--color-elevated)",
+                  borderRadius: "4px",
+                  padding: "1px 4px",
+                  color: "var(--color-text-secondary)",
+                }}
+              >
                 Authorization
               </code>{" "}
               header.
@@ -132,30 +301,69 @@ export default function DocsPage() {
               code={`Authorization: Bearer alrt_sk_live_abc123...`}
             />
 
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl">
+            <div
+              style={{
+                marginTop: "32px",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "32px",
+                maxWidth: "640px",
+              }}
+            >
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                <h4
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--color-text-muted)",
+                    marginBottom: "12px",
+                  }}
+                >
                   Key types
-                </h3>
-                <div className="rounded-md border border-[rgba(255,255,255,0.08)] overflow-hidden">
-                  <table className="w-full text-sm">
+                </h4>
+                <div className="table">
+                  <table>
                     <thead>
-                      <tr className="bg-[rgba(255,255,255,0.03)]">
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Prefix</th>
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Type</th>
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Access</th>
+                      <tr>
+                        <th>Prefix</th>
+                        <th>Type</th>
+                        <th>Access</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-success">alrt_sk_</code></td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Server Key</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Full access (read + write)</td>
+                      <tr>
+                        <td>
+                          <code
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              fontSize: "12px",
+                              fontWeight: 500,
+                              color: "#4ade80",
+                            }}
+                          >
+                            alrt_sk_
+                          </code>
+                        </td>
+                        <td style={{ fontSize: "12px" }}>Server Key</td>
+                        <td style={{ fontSize: "12px" }}>Full access (read + write)</td>
                       </tr>
                       <tr>
-                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-warning">alrt_ck_</code></td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Client Key</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Read-only (frontend / WebSocket)</td>
+                        <td>
+                          <code
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              fontSize: "12px",
+                              fontWeight: 500,
+                              color: "#fbbf24",
+                            }}
+                          >
+                            alrt_ck_
+                          </code>
+                        </td>
+                        <td style={{ fontSize: "12px" }}>Client Key</td>
+                        <td style={{ fontSize: "12px" }}>Read-only (frontend / WebSocket)</td>
                       </tr>
                     </tbody>
                   </table>
@@ -163,33 +371,54 @@ export default function DocsPage() {
               </div>
 
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                <h4
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--color-text-muted)",
+                    marginBottom: "12px",
+                  }}
+                >
                   Rate limits
-                </h3>
-                <div className="rounded-md border border-[rgba(255,255,255,0.08)] overflow-hidden">
-                  <table className="w-full text-sm">
+                </h4>
+                <div className="table">
+                  <table>
                     <thead>
-                      <tr className="bg-[rgba(255,255,255,0.03)]">
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Tier</th>
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Limit</th>
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Applies to</th>
+                      <tr>
+                        <th>Tier</th>
+                        <th>Limit</th>
+                        <th>Applies to</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                        <td className="px-3 py-2.5 text-xs font-mono text-text-secondary">Write</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">60 req/min</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">POST, PATCH, PUT, DELETE</td>
-                      </tr>
-                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                        <td className="px-3 py-2.5 text-xs font-mono text-text-secondary">Read</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">120 req/min</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">GET</td>
+                      <tr>
+                        <td>
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px" }}>
+                            Write
+                          </span>
+                        </td>
+                        <td style={{ fontSize: "12px" }}>60 req/min</td>
+                        <td style={{ fontSize: "12px" }}>POST, PATCH, PUT, DELETE</td>
                       </tr>
                       <tr>
-                        <td className="px-3 py-2.5 text-xs font-mono text-text-secondary">Public</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">30 req/min</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Unauthenticated</td>
+                        <td>
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px" }}>
+                            Read
+                          </span>
+                        </td>
+                        <td style={{ fontSize: "12px" }}>120 req/min</td>
+                        <td style={{ fontSize: "12px" }}>GET</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px" }}>
+                            Public
+                          </span>
+                        </td>
+                        <td style={{ fontSize: "12px" }}>30 req/min</td>
+                        <td style={{ fontSize: "12px" }}>Unauthenticated</td>
                       </tr>
                     </tbody>
                   </table>
@@ -198,12 +427,25 @@ export default function DocsPage() {
             </div>
           </section>
 
-          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid var(--color-border)",
+              margin: "48px 0",
+            }}
+          />
 
-          {/* ── EVENTS ── */}
-          <section id="events" className="scroll-mt-20">
-            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Events</h2>
-            <p className="text-sm text-text-secondary mb-8 max-w-xl">
+          {/* -- EVENTS -- */}
+          <section id="events" style={{ scrollMarginTop: "80px" }}>
+            <h2>Events</h2>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "var(--color-text-secondary)",
+                marginBottom: "32px",
+                maxWidth: "560px",
+              }}
+            >
               Trigger workflow execution by firing named events. Each event name
               maps to one workflow. Subscribers are automatically upserted on every trigger.
             </p>
@@ -311,8 +553,7 @@ export default function DocsPage() {
                   name: "workflow",
                   type: "string",
                   required: true,
-                  description:
-                    "The event name mapped to a workflow.",
+                  description: "The event name mapped to a workflow.",
                 },
                 {
                   name: "subscribers",
@@ -362,8 +603,7 @@ export default function DocsPage() {
                   name: "idempotency_key",
                   type: "string",
                   required: false,
-                  description:
-                    "Batch-level idempotency key (24h window).",
+                  description: "Batch-level idempotency key (24h window).",
                 },
               ]}
               requestExample={`curl -X POST https://api.alrt.dev/events/trigger-bulk \\
@@ -401,15 +641,37 @@ export default function DocsPage() {
             />
           </section>
 
-          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid var(--color-border)",
+              margin: "48px 0",
+            }}
+          />
 
-          {/* ── SUBSCRIBERS ── */}
-          <section id="subscribers" className="scroll-mt-20">
-            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Subscribers</h2>
-            <p className="text-sm text-text-secondary mb-8 max-w-xl">
+          {/* -- SUBSCRIBERS -- */}
+          <section id="subscribers" style={{ scrollMarginTop: "80px" }}>
+            <h2>Subscribers</h2>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "var(--color-text-secondary)",
+                marginBottom: "32px",
+                maxWidth: "560px",
+              }}
+            >
               Manage the users who receive notifications. Each subscriber is
               identified by a unique{" "}
-              <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
+              <code
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "12px",
+                  background: "var(--color-elevated)",
+                  borderRadius: "4px",
+                  padding: "1px 4px",
+                  color: "var(--color-text-secondary)",
+                }}
+              >
                 external_id
               </code>{" "}
               that you define.
@@ -579,12 +841,25 @@ export default function DocsPage() {
             />
           </section>
 
-          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid var(--color-border)",
+              margin: "48px 0",
+            }}
+          />
 
-          {/* ── NOTIFICATIONS ── */}
-          <section id="notifications" className="scroll-mt-20">
-            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">Notifications</h2>
-            <p className="text-sm text-text-secondary mb-8 max-w-xl">
+          {/* -- NOTIFICATIONS -- */}
+          <section id="notifications" style={{ scrollMarginTop: "80px" }}>
+            <h2>Notifications</h2>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "var(--color-text-secondary)",
+                marginBottom: "32px",
+                maxWidth: "560px",
+              }}
+            >
               Query and manage a subscriber&apos;s in-app notification feed.
             </p>
 
@@ -659,72 +934,176 @@ export default function DocsPage() {
             />
           </section>
 
-          <hr className="border-0 border-t border-[rgba(255,255,255,0.06)] my-12" />
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid var(--color-border)",
+              margin: "48px 0",
+            }}
+          />
 
-          {/* ── WEBSOCKET ── */}
-          <section id="websocket" className="scroll-mt-20">
-            <h2 className="text-lg font-semibold text-text-primary mb-2 tracking-tight">WebSocket</h2>
-            <p className="text-sm text-text-secondary mb-8 max-w-xl">
+          {/* -- WEBSOCKET -- */}
+          <section id="websocket" style={{ scrollMarginTop: "80px" }}>
+            <h2>WebSocket</h2>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "var(--color-text-secondary)",
+                marginBottom: "32px",
+                maxWidth: "560px",
+              }}
+            >
               Receive real-time in-app notifications over a persistent WebSocket
               connection. Authenticate using a subscriber-scoped JWT.
             </p>
 
-            <div className="max-w-2xl space-y-8">
+            <div
+              style={{
+                maxWidth: "640px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "32px",
+              }}
+            >
               {/* Connection info */}
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                <h4
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--color-text-muted)",
+                    marginBottom: "12px",
+                  }}
+                >
                   Connection
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs text-text-muted mb-1.5">Endpoint</p>
-                    <code className="font-mono text-sm text-text-primary bg-elevated rounded-md px-3 py-1.5 block">
-                      wss://api.alrt.dev/ws?token=&lt;jwt&gt;
-                    </code>
-                  </div>
-                  <p className="text-sm text-text-secondary leading-relaxed">
-                    Obtain a JWT via{" "}
-                    <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
-                      POST /subscribers/{"{external_id}"}/token
-                    </code>{" "}
-                    using your server key. Pass the token as the{" "}
-                    <code className="font-mono text-xs bg-elevated rounded px-1 text-text-secondary">
-                      token
-                    </code>{" "}
-                    query parameter. Tokens expire after 24 hours.
+                </h4>
+                <div style={{ marginBottom: "16px" }}>
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "var(--color-text-muted)",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Endpoint
                   </p>
+                  <code
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "14px",
+                      color: "var(--color-text-primary)",
+                      background: "var(--color-elevated)",
+                      borderRadius: "6px",
+                      padding: "6px 12px",
+                      display: "block",
+                    }}
+                  >
+                    wss://api.alrt.dev/ws?token=&lt;jwt&gt;
+                  </code>
                 </div>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "var(--color-text-secondary)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Obtain a JWT via{" "}
+                  <code
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "12px",
+                      background: "var(--color-elevated)",
+                      borderRadius: "4px",
+                      padding: "1px 4px",
+                      color: "var(--color-text-secondary)",
+                    }}
+                  >
+                    POST /subscribers/{"{external_id}"}/token
+                  </code>{" "}
+                  using your server key. Pass the token as the{" "}
+                  <code
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "12px",
+                      background: "var(--color-elevated)",
+                      borderRadius: "4px",
+                      padding: "1px 4px",
+                      color: "var(--color-text-secondary)",
+                    }}
+                  >
+                    token
+                  </code>{" "}
+                  query parameter. Tokens expire after 24 hours.
+                </p>
               </div>
 
               {/* Client messages */}
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                <h4
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--color-text-muted)",
+                    marginBottom: "12px",
+                  }}
+                >
                   Client messages
-                </h3>
-                <div className="rounded-md border border-[rgba(255,255,255,0.08)] overflow-hidden">
-                  <table className="w-full text-sm">
+                </h4>
+                <div className="table">
+                  <table>
                     <thead>
-                      <tr className="bg-[rgba(255,255,255,0.03)]">
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)] w-[120px]">Type</th>
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)] w-[120px]">Payload</th>
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Description</th>
+                      <tr>
+                        <th style={{ width: "120px" }}>Type</th>
+                        <th style={{ width: "120px" }}>Payload</th>
+                        <th>Description</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-text-primary">ping</code></td>
-                        <td className="px-3 py-2.5 text-xs text-text-muted">&mdash;</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Server responds with <code className="font-mono text-xs bg-elevated rounded px-1">pong</code>. Use as a keep-alive.</td>
-                      </tr>
-                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-text-primary">mark_read</code></td>
-                        <td className="px-3 py-2.5"><code className="font-mono text-[11px] text-text-muted">notification_id</code></td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Mark a single notification as read.</td>
+                      <tr>
+                        <td>
+                          <code style={{ fontFamily: "var(--font-mono)", fontSize: "12px", fontWeight: 500, color: "var(--color-text-primary)" }}>
+                            ping
+                          </code>
+                        </td>
+                        <td style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>&mdash;</td>
+                        <td style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                          Server responds with{" "}
+                          <code style={{ fontFamily: "var(--font-mono)", fontSize: "12px", background: "var(--color-elevated)", borderRadius: "4px", padding: "1px 4px" }}>
+                            pong
+                          </code>
+                          . Use as a keep-alive.
+                        </td>
                       </tr>
                       <tr>
-                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-medium text-text-primary">mark_all_read</code></td>
-                        <td className="px-3 py-2.5 text-xs text-text-muted">&mdash;</td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Mark all notifications as read.</td>
+                        <td>
+                          <code style={{ fontFamily: "var(--font-mono)", fontSize: "12px", fontWeight: 500, color: "var(--color-text-primary)" }}>
+                            mark_read
+                          </code>
+                        </td>
+                        <td>
+                          <code style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--color-text-muted)" }}>
+                            notification_id
+                          </code>
+                        </td>
+                        <td style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                          Mark a single notification as read.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <code style={{ fontFamily: "var(--font-mono)", fontSize: "12px", fontWeight: 500, color: "var(--color-text-primary)" }}>
+                            mark_all_read
+                          </code>
+                        </td>
+                        <td style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>&mdash;</td>
+                        <td style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                          Mark all notifications as read.
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -733,10 +1112,25 @@ export default function DocsPage() {
 
               {/* Server messages */}
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                <h4
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--color-text-muted)",
+                    marginBottom: "12px",
+                  }}
+                >
                   Server messages
-                </h3>
-                <p className="text-sm text-text-secondary mb-3">
+                </h4>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "var(--color-text-secondary)",
+                    marginBottom: "12px",
+                  }}
+                >
                   When a notification is delivered to the in-app channel, the
                   server pushes the full notification object:
                 </p>
@@ -759,25 +1153,46 @@ export default function DocsPage() {
 
               {/* Error codes */}
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                <h4
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--color-text-muted)",
+                    marginBottom: "12px",
+                  }}
+                >
                   Error codes
-                </h3>
-                <div className="rounded-md border border-[rgba(255,255,255,0.08)] overflow-hidden">
-                  <table className="w-full text-sm">
+                </h4>
+                <div className="table">
+                  <table>
                     <thead>
-                      <tr className="bg-[rgba(255,255,255,0.03)]">
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)] w-[60px]">Code</th>
-                        <th className="text-left px-3 py-2 text-[11px] font-medium text-text-muted border-b border-[rgba(255,255,255,0.08)]">Meaning</th>
+                      <tr>
+                        <th style={{ width: "60px" }}>Code</th>
+                        <th>Meaning</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-semibold text-danger">4001</code></td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Invalid or expired JWT. Re-fetch a token and reconnect.</td>
+                      <tr>
+                        <td>
+                          <code style={{ fontFamily: "var(--font-mono)", fontSize: "12px", fontWeight: 600, color: "#f87171" }}>
+                            4001
+                          </code>
+                        </td>
+                        <td style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                          Invalid or expired JWT. Re-fetch a token and reconnect.
+                        </td>
                       </tr>
                       <tr>
-                        <td className="px-3 py-2.5"><code className="font-mono text-xs font-semibold text-danger">4000</code></td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">Connection replaced. A new WebSocket connection was opened for the same subscriber.</td>
+                        <td>
+                          <code style={{ fontFamily: "var(--font-mono)", fontSize: "12px", fontWeight: 600, color: "#f87171" }}>
+                            4000
+                          </code>
+                        </td>
+                        <td style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                          Connection replaced. A new WebSocket connection was opened for the same subscriber.
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -786,9 +1201,18 @@ export default function DocsPage() {
 
               {/* Example */}
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+                <h4
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--color-text-muted)",
+                    marginBottom: "12px",
+                  }}
+                >
                   Example client
-                </h3>
+                </h4>
                 <CodeBlock
                   title="websocket-client.ts"
                   code={`const token = await fetch("/api/ws-token").then(r => r.json());
@@ -815,7 +1239,7 @@ ws.send(JSON.stringify({
           </section>
 
           {/* Bottom spacer */}
-          <div className="h-32" />
+          <div style={{ height: "128px" }} />
         </main>
       </div>
     </div>

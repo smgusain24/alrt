@@ -15,7 +15,12 @@ class Settings(BaseSettings):
     # alrt-hosted infrastructure
     resend_api_key: str = ""                # alrt's shared Resend account key
     slack_signing_secret: str = ""          # Slack app signing secret for Events API verification
-    monthly_quota_limit: int = 1000         # Default notifications/month per team (shared across channels)
+
+    # Billing
+    billing_provider: str = "razorpay"
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    razorpay_webhook_secret: str = ""
 
     slack_redirect_uri: str = "http://localhost:8000/providers/slack/callback"
     dashboard_url: str = "http://localhost:3000"

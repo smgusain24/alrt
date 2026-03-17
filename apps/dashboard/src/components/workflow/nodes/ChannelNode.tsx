@@ -27,27 +27,40 @@ export default function ChannelNode({ data }: { data: any }) {
     data.template?.body;
 
   const iconProps = LUCIDE_CHANNELS.has(channel)
-    ? { className: "w-4 h-4 shrink-0", style: { color: config.accent }, strokeWidth: 2 }
+    ? { style: { width: 16, height: 16, flexShrink: 0, color: config.accent } as React.CSSProperties, strokeWidth: 2 }
     : { size: 16, style: { color: config.accent } };
 
   return (
-    <div className="min-w-[180px] bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded-md overflow-hidden">
+    <div style={{
+      minWidth: 180,
+      background: "var(--color-elevated)",
+      border: "1px solid var(--color-border)",
+      borderRadius: 6,
+      overflow: "hidden",
+    }}>
       <Handle type="target" position={Position.Top} />
-      <div className="flex">
-        <div className="w-1 shrink-0" style={{ backgroundColor: config.accent }} />
-        <div className="flex-1 min-w-0">
-          <div className="px-3 py-2 flex items-center gap-2">
+      <div style={{ display: "flex" }}>
+        <div style={{ width: 4, flexShrink: 0, backgroundColor: config.accent }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
             <Icon {...iconProps} />
-            <span className="text-xs font-medium text-[#fafafa]">
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-primary)" }}>
               {config.label}
             </span>
             <span
-              className={`ml-auto w-2 h-2 rounded-full shrink-0 ${
-                hasTemplate ? "bg-[#22c55e]" : "bg-[#f59e0b]"
-              }`}
+              className={hasTemplate ? "alrt-dot alrt-dot-success" : "alrt-dot alrt-dot-warning"}
+              style={{ marginLeft: "auto" }}
             />
           </div>
-          <div className="px-3 pb-2 text-xs font-mono text-[#a1a1aa] truncate">
+          <div style={{
+            padding: "0 12px 8px",
+            fontSize: "0.75rem",
+            fontFamily: "monospace",
+            color: "var(--color-text-secondary)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}>
             {data.template?.title ||
               data.template?.subject ||
               data.template?.text ||

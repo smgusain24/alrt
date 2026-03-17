@@ -23,34 +23,116 @@ function TopNav() {
   }, []);
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#0a0a0b]/80 backdrop-blur-xl border-b border-white/5">
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-1">
-            <span className="font-brand text-base font-bold text-white tracking-tight">ALRT</span>
-            <span className="font-mono text-[10px] text-[#71717a]">.dev</span>
+    <nav
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        background: "rgba(10,10,11,0.8)",
+        backdropFilter: "blur(20px)",
+        borderBottom: "1px solid var(--color-border)",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "1152px",
+          margin: "0 auto",
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <span
+              style={{
+                fontFamily: "var(--font-brand)",
+                fontSize: "16px",
+                fontWeight: 700,
+                color: "var(--color-text-primary)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              ALRT
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                color: "var(--color-text-muted)",
+              }}
+            >
+              .dev
+            </span>
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#a1a1aa]">
-            <a href="#features" className="hover:text-white transition-colors">features</a>
-            <a href="#pricing" className="hover:text-white transition-colors">pricing</a>
-            <Link href="/docs" className="hover:text-white transition-colors">docs</Link>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "24px",
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "var(--color-text-secondary)",
+            }}
+          >
+            <a href="#features" style={{ color: "inherit", textDecoration: "none" }}>
+              features
+            </a>
+            <a href="#pricing" style={{ color: "inherit", textDecoration: "none" }}>
+              pricing
+            </a>
+            <Link href="/docs" style={{ color: "inherit", textDecoration: "none" }}>
+              docs
+            </Link>
           </div>
         </div>
         {isLoggedIn ? (
           <Link href="/workflows">
-            <button className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-sm font-bold px-5 py-2 rounded-full transition-all active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+            <button
+              style={{
+                background: "var(--color-accent)",
+                color: "#fff",
+                fontSize: "14px",
+                fontWeight: 700,
+                padding: "8px 20px",
+                borderRadius: "9999px",
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 0 15px rgba(59,130,246,0.5)",
+              }}
+            >
               Dashboard
             </button>
           </Link>
         ) : (
-          <div className="flex items-center gap-3">
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <Link href="/login">
-              <button className="text-sm font-medium text-[#a1a1aa] hover:text-white transition-colors">
+              <button
+                className="ghost"
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "var(--color-text-secondary)",
+                }}
+              >
                 Log In
               </button>
             </Link>
             <Link href="/signup">
-              <button className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-sm font-bold px-5 py-2 rounded-full transition-all active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+              <button
+                style={{
+                  background: "var(--color-accent)",
+                  color: "#fff",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  padding: "8px 20px",
+                  borderRadius: "9999px",
+                  border: "none",
+                  cursor: "pointer",
+                  boxShadow: "0 0 15px rgba(59,130,246,0.5)",
+                }}
+              >
                 Get Started
               </button>
             </Link>
@@ -64,85 +146,287 @@ function TopNav() {
 /* --- Hero --- */
 function Hero() {
   return (
-    <section className="pt-24 pb-12 px-6 max-w-7xl mx-auto flex flex-col items-center">
-      <div className="text-center max-w-3xl mb-20 relative">
+    <section
+      style={{
+        paddingTop: "96px",
+        paddingBottom: "48px",
+        paddingLeft: "24px",
+        paddingRight: "24px",
+        maxWidth: "1280px",
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <div
+        style={{
+          textAlign: "center",
+          maxWidth: "768px",
+          marginBottom: "80px",
+          position: "relative",
+        }}
+      >
         {/* Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#3b82f6]/20 blur-[100px] rounded-full pointer-events-none" />
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "384px",
+            height: "384px",
+            background: "rgba(59,130,246,0.2)",
+            filter: "blur(100px)",
+            borderRadius: "50%",
+            pointerEvents: "none",
+          }}
+        />
 
-        <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-6 relative z-10 leading-[1.1]">
+        <h1
+          style={{
+            fontSize: "clamp(3rem, 7vw, 4.5rem)",
+            fontWeight: 900,
+            letterSpacing: "-0.04em",
+            color: "var(--color-text-primary)",
+            marginBottom: "24px",
+            position: "relative",
+            zIndex: 10,
+            lineHeight: 1.1,
+          }}
+        >
           One API<br />All the noise
         </h1>
-        <p className="text-lg md:text-xl text-[#a1a1aa] max-w-2xl mx-auto relative z-10">
-          Notifications shouldn't be a couple of sprints. Replace your notification technical debt with a single key. Route to multiple channels through a visual builder your PM can actually use.
+        <p
+          style={{
+            fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
+            color: "var(--color-text-secondary)",
+            maxWidth: "640px",
+            margin: "0 auto",
+            position: "relative",
+            zIndex: 10,
+          }}
+        >
+          Notifications shouldn&apos;t be a couple of sprints. Replace your notification technical debt with a single key. Route to multiple channels through a visual builder your PM can actually use.
         </p>
-        <div className="mt-8 flex items-center justify-center gap-3 relative z-10">
+        <div
+          style={{
+            marginTop: "32px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "12px",
+            position: "relative",
+            zIndex: 10,
+          }}
+        >
           <Link href="/signup">
-            <button className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-sm font-bold px-6 py-3 rounded-full transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.4)]">
+            <button
+              style={{
+                background: "var(--color-accent)",
+                color: "#fff",
+                fontSize: "14px",
+                fontWeight: 700,
+                padding: "12px 24px",
+                borderRadius: "9999px",
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 0 20px rgba(59,130,246,0.4)",
+              }}
+            >
               Get Started Free
             </button>
           </Link>
           <Link href="/docs">
-            <button className="border border-white/10 text-[#a1a1aa] hover:text-white text-sm font-medium px-6 py-3 rounded-full transition-colors hover:bg-white/5">
+            <button
+              className="outline"
+              style={{
+                fontSize: "14px",
+                fontWeight: 500,
+                padding: "12px 24px",
+                borderRadius: "9999px",
+              }}
+            >
               View Docs
             </button>
           </Link>
         </div>
       </div>
 
-      {/* Code → Hub → Channels flow */}
-      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-0 mb-12 relative">
+      {/* Code -> Hub -> Channels flow */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "896px",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
+          alignItems: "center",
+          gap: 0,
+          marginBottom: "48px",
+          position: "relative",
+        }}
+      >
         {/* Code snippet */}
-        <div className="bg-[#121214] border border-white/5 rounded-xl p-5 shadow-2xl relative z-10">
-          <div className="flex gap-1.5 mb-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#333]" />
-            <div className="w-2.5 h-2.5 rounded-full bg-[#333]" />
-            <div className="w-2.5 h-2.5 rounded-full bg-[#333]" />
+        <div
+          style={{
+            background: "#121214",
+            border: "1px solid var(--color-border)",
+            borderRadius: "12px",
+            padding: "20px",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+            position: "relative",
+            zIndex: 10,
+          }}
+        >
+          <div style={{ display: "flex", gap: "6px", marginBottom: "12px" }}>
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#333" }} />
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#333" }} />
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#333" }} />
           </div>
-          <pre className="font-mono text-[13px] leading-relaxed text-[#e4e4e7] overflow-x-auto"><code><span className="text-[#c084fc]">await</span>{` fetch(`}<span className="text-[#4ade80]">&quot;/events/trigger&quot;</span>{`, {
-  `}<span className="text-[#60a5fa]">method</span>{`: `}<span className="text-[#4ade80]">&quot;POST&quot;</span>{`,
-  `}<span className="text-[#60a5fa]">body</span>{`: JSON.stringify({
-    `}<span className="text-[#60a5fa]">workflow</span>{`: `}<span className="text-[#4ade80]">&quot;user.signup&quot;</span>{`,
-    `}<span className="text-[#60a5fa]">subscriber_id</span>{`: `}<span className="text-[#4ade80]">&quot;user_987&quot;</span>{`,
-    `}<span className="text-[#60a5fa]">payload</span>{`: { `}<span className="text-[#60a5fa]">name</span>{`: `}<span className="text-[#4ade80]">&quot;alice&quot;</span>{` }
-  })
-});`}</code></pre>
+          <pre
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "13px",
+              lineHeight: 1.6,
+              color: "#e4e4e7",
+              overflowX: "auto",
+              margin: 0,
+            }}
+          >
+            <code>
+              <span style={{ color: "#c084fc" }}>await</span>
+              {` fetch(`}
+              <span style={{ color: "#4ade80" }}>&quot;/events/trigger&quot;</span>
+              {`, {\n  `}
+              <span style={{ color: "#60a5fa" }}>method</span>
+              {`: `}
+              <span style={{ color: "#4ade80" }}>&quot;POST&quot;</span>
+              {`,\n  `}
+              <span style={{ color: "#60a5fa" }}>body</span>
+              {`: JSON.stringify({\n    `}
+              <span style={{ color: "#60a5fa" }}>workflow</span>
+              {`: `}
+              <span style={{ color: "#4ade80" }}>&quot;user.signup&quot;</span>
+              {`,\n    `}
+              <span style={{ color: "#60a5fa" }}>subscriber_id</span>
+              {`: `}
+              <span style={{ color: "#4ade80" }}>&quot;user_987&quot;</span>
+              {`,\n    `}
+              <span style={{ color: "#60a5fa" }}>payload</span>
+              {`: { `}
+              <span style={{ color: "#60a5fa" }}>name</span>
+              {`: `}
+              <span style={{ color: "#4ade80" }}>&quot;alice&quot;</span>
+              {` }\n  })\n});`}
+            </code>
+          </pre>
         </div>
 
         {/* Connector: left line + hub + right line */}
-        <div className="hidden md:flex items-center justify-center px-2">
-          <div className="w-8 h-px bg-gradient-to-r from-white/10 to-[#3b82f6]/50" />
-          <div className="relative shrink-0 mx-1">
-            <div className="absolute inset-0 bg-[#3b82f6]/30 blur-xl rounded-full" />
-            <div className="w-16 h-16 bg-[#121214] border border-[#3b82f6] rounded-2xl flex items-center justify-center relative shadow-[0_0_30px_rgba(59,130,246,0.3)]">
-              <Zap className="w-7 h-7 text-[#3b82f6]" strokeWidth={1.5} />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 8px",
+          }}
+        >
+          <div
+            style={{
+              width: "32px",
+              height: "1px",
+              background: "linear-gradient(to right, rgba(255,255,255,0.1), rgba(59,130,246,0.5))",
+            }}
+          />
+          <div style={{ position: "relative", flexShrink: 0, margin: "0 4px" }}>
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(59,130,246,0.3)",
+                filter: "blur(20px)",
+                borderRadius: "50%",
+              }}
+            />
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                background: "#121214",
+                border: "1px solid var(--color-accent)",
+                borderRadius: "16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
+                boxShadow: "0 0 30px rgba(59,130,246,0.3)",
+              }}
+            >
+              <Zap
+                style={{ width: "28px", height: "28px", color: "var(--color-accent)" }}
+                strokeWidth={1.5}
+              />
             </div>
           </div>
-          <div className="w-8 h-px bg-gradient-to-r from-[#3b82f6]/50 to-white/10" />
-        </div>
-
-        {/* Mobile hub (shown only on mobile) */}
-        <div className="flex md:hidden items-center justify-center py-4">
-          <div className="relative">
-            <div className="absolute inset-0 bg-[#3b82f6]/30 blur-xl rounded-full" />
-            <div className="w-14 h-14 bg-[#121214] border border-[#3b82f6] rounded-2xl flex items-center justify-center relative shadow-[0_0_30px_rgba(59,130,246,0.3)]">
-              <Zap className="w-6 h-6 text-[#3b82f6]" strokeWidth={1.5} />
-            </div>
-          </div>
+          <div
+            style={{
+              width: "32px",
+              height: "1px",
+              background: "linear-gradient(to right, rgba(59,130,246,0.5), rgba(255,255,255,0.1))",
+            }}
+          />
         </div>
 
         {/* Channel cards */}
-        <div className="grid grid-cols-2 gap-3 relative z-10">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "12px",
+            position: "relative",
+            zIndex: 10,
+          }}
+        >
           {[
             { icon: Bell, color: "#22c55e", label: "In-App" },
             { icon: Mail, color: "#a855f7", label: "Email" },
             { icon: MessageSquare, color: "#f97316", label: "Slack" },
             { icon: Zap, color: "#3b82f6", label: "Webhooks" },
           ].map((ch) => (
-            <div key={ch.label} className="bg-[#121214] border border-white/5 rounded-lg p-3 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${ch.color}15` }}>
-                <ch.icon className="w-4 h-4" style={{ color: ch.color }} strokeWidth={2} />
+            <div
+              key={ch.label}
+              style={{
+                background: "#121214",
+                border: "1px solid var(--color-border)",
+                borderRadius: "8px",
+                padding: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+              }}
+            >
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: `${ch.color}15`,
+                }}
+              >
+                <ch.icon style={{ width: "16px", height: "16px", color: ch.color }} strokeWidth={2} />
               </div>
-              <span className="text-sm font-medium text-[#a1a1aa]">{ch.label}</span>
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "var(--color-text-secondary)",
+                }}
+              >
+                {ch.label}
+              </span>
             </div>
           ))}
         </div>
@@ -237,21 +521,58 @@ function CodeExample() {
   const padded = active.code + "\n".repeat(MAX_CODE_LINES - active.code.split("\n").length);
 
   return (
-    <section className="py-20 px-6 max-w-4xl mx-auto">
-      <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white text-center mb-10">
+    <section style={{ padding: "80px 24px", maxWidth: "896px", margin: "0 auto" }}>
+      <h2
+        style={{
+          fontSize: "clamp(1.5rem, 4vw, 2.25rem)",
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          color: "var(--color-text-primary)",
+          textAlign: "center",
+          marginBottom: "40px",
+        }}
+      >
         Integrate in Minutes
       </h2>
 
-      <div className="flex gap-0 mb-0 border-b border-white/5">
+      <div
+        style={{
+          display: "flex",
+          gap: 0,
+          borderBottom: "1px solid var(--color-border)",
+        }}
+      >
         {CODE_EXAMPLES.map((ex, i) => (
           <button
             key={ex.lang}
             onClick={() => setActiveLang(i)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer relative
-              ${i === activeLang ? "text-white" : "text-[#71717a] hover:text-[#a1a1aa]"}`}
+            className="ghost"
+            style={{
+              padding: "10px 16px",
+              fontSize: "14px",
+              fontWeight: 500,
+              cursor: "pointer",
+              position: "relative",
+              color:
+                i === activeLang
+                  ? "var(--color-text-primary)"
+                  : "var(--color-text-muted)",
+              borderRadius: 0,
+            }}
           >
             {ex.lang}
-            {i === activeLang && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3b82f6]" />}
+            {i === activeLang && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: "2px",
+                  background: "var(--color-accent)",
+                }}
+              />
+            )}
           </button>
         ))}
       </div>
@@ -266,7 +587,7 @@ const FEATURES = [
   {
     icon: Workflow,
     title: "Visual Workflow Builder",
-    desc: "Drag-and-drop notification flows. Triggers, channels, delays, and conditions \u2014 no code needed.",
+    desc: "Drag-and-drop notification flows. Triggers, channels, delays, and conditions -- no code needed.",
   },
   {
     icon: Zap,
@@ -297,25 +618,63 @@ const FEATURES = [
 
 function Features() {
   return (
-    <section id="features" className="py-20 px-6 max-w-6xl mx-auto">
-      <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-10 px-2">
+    <section
+      id="features"
+      style={{ padding: "80px 24px", maxWidth: "1152px", margin: "0 auto" }}
+    >
+      <h2
+        style={{
+          fontSize: "clamp(1.5rem, 4vw, 2.25rem)",
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          color: "var(--color-text-primary)",
+          marginBottom: "40px",
+          padding: "0 8px",
+        }}
+      >
         Features
       </h2>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gap: "20px",
+        }}
+      >
         {FEATURES.map((f) => (
-          <div
+          <article
             key={f.title}
-            className="bg-[#121214] border border-white/5 rounded-2xl p-8 relative overflow-hidden group"
+            className="card"
+            style={{
+              padding: "32px",
+              position: "relative",
+              overflow: "hidden",
+            }}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-[#3b82f6]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="relative z-10">
-              <div className="w-10 h-10 rounded-xl bg-[#3b82f6]/10 flex items-center justify-center mb-4">
-                <f.icon className="w-5 h-5 text-[#3b82f6]" strokeWidth={1.5} />
-              </div>
-              <h3 className="text-base font-bold text-white mb-2">{f.title}</h3>
-              <p className="text-sm text-[#a1a1aa] leading-relaxed">{f.desc}</p>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "12px",
+                background: "rgba(59,130,246,0.1)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "16px",
+              }}
+            >
+              <f.icon
+                style={{ width: "20px", height: "20px", color: "var(--color-accent)" }}
+                strokeWidth={1.5}
+              />
             </div>
-          </div>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "8px" }}>
+              {f.title}
+            </h3>
+            <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+              {f.desc}
+            </p>
+          </article>
         ))}
       </div>
     </section>
@@ -380,48 +739,149 @@ const TIERS: PricingTier[] = [
 
 function Pricing() {
   return (
-    <section id="pricing" className="py-20 px-6 max-w-6xl mx-auto">
-      <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-10 px-2">
+    <section
+      id="pricing"
+      style={{ padding: "80px 24px", maxWidth: "1152px", margin: "0 auto" }}
+    >
+      <h2
+        style={{
+          fontSize: "clamp(1.5rem, 4vw, 2.25rem)",
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          color: "var(--color-text-primary)",
+          marginBottom: "40px",
+          padding: "0 8px",
+        }}
+      >
         Pricing
       </h2>
-      <div className="grid md:grid-cols-3 gap-6">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+          gap: "24px",
+        }}
+      >
         {TIERS.map((tier) => (
-          <div
+          <article
             key={tier.name}
-            className={`rounded-2xl p-8 flex flex-col relative ${
-              tier.highlighted
-                ? "bg-[#0f172a] border border-[#3b82f6]/30 shadow-[0_0_30px_rgba(59,130,246,0.1)]"
-                : "bg-[#121214] border border-white/5"
-            }`}
+            className="card"
+            style={{
+              padding: "32px",
+              display: "flex",
+              flexDirection: "column",
+              position: "relative",
+              borderColor: tier.highlighted
+                ? "rgba(59,130,246,0.3)"
+                : undefined,
+              boxShadow: tier.highlighted
+                ? "0 0 30px rgba(59,130,246,0.1)"
+                : undefined,
+            }}
           >
             {tier.highlighted && (
-              <div className="absolute top-0 right-0 bg-[#3b82f6] text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr-2xl">
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  background: "var(--color-accent)",
+                  color: "#fff",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  padding: "4px 12px",
+                  borderBottomLeftRadius: "8px",
+                  borderTopRightRadius: "12px",
+                }}
+              >
                 Free
               </div>
             )}
-            <h3 className="text-xl font-bold text-white mb-2">{tier.name}</h3>
-            <div className="mb-6">
-              <span className="text-4xl font-black text-white">{tier.price}</span>
-              {tier.period && <span className="text-base text-[#71717a] font-normal">{tier.period}</span>}
+            <h3
+              style={{
+                fontSize: "20px",
+                fontWeight: 700,
+                color: "var(--color-text-primary)",
+                marginBottom: "8px",
+              }}
+            >
+              {tier.name}
+            </h3>
+            <div style={{ marginBottom: "24px" }}>
+              <span
+                style={{
+                  fontSize: "36px",
+                  fontWeight: 900,
+                  color: "var(--color-text-primary)",
+                }}
+              >
+                {tier.price}
+              </span>
+              {tier.period && (
+                <span
+                  style={{
+                    fontSize: "16px",
+                    color: "var(--color-text-muted)",
+                    fontWeight: 400,
+                  }}
+                >
+                  {tier.period}
+                </span>
+              )}
             </div>
-            <ul className="space-y-3 mb-8 flex-1">
+            <ul
+              style={{
+                listStyle: "none",
+                padding: 0,
+                margin: "0 0 32px 0",
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+              }}
+            >
               {tier.features.map((f, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm text-[#a1a1aa]">
-                  <Check className="w-4 h-4 text-[#3b82f6] shrink-0" strokeWidth={2} />
+                <li
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    fontSize: "14px",
+                    color: "var(--color-text-secondary)",
+                  }}
+                >
+                  <Check
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      color: "var(--color-accent)",
+                      flexShrink: 0,
+                    }}
+                    strokeWidth={2}
+                  />
                   {f}
                 </li>
               ))}
             </ul>
             <button
-              className={`w-full py-3 rounded-lg text-sm font-bold transition-colors ${
-                tier.highlighted
-                  ? "border border-[#3b82f6]/50 text-[#3b82f6] hover:bg-[#3b82f6] hover:text-white"
-                  : "bg-white/5 hover:bg-white/10 text-white"
-              }`}
+              className="outline"
+              style={{
+                width: "100%",
+                padding: "12px",
+                fontSize: "14px",
+                fontWeight: 700,
+                borderColor: tier.highlighted
+                  ? "rgba(59,130,246,0.5)"
+                  : undefined,
+                color: tier.highlighted
+                  ? "var(--color-accent)"
+                  : "var(--color-text-primary)",
+              }}
             >
               {tier.cta}
             </button>
-          </div>
+          </article>
         ))}
       </div>
     </section>
@@ -431,7 +891,17 @@ function Pricing() {
 /* --- Footer --- */
 function Footer() {
   return (
-    <footer className="border-t border-white/5 py-12 px-6 mt-12 text-center text-[#71717a] text-sm font-mono">
+    <footer
+      style={{
+        borderTop: "1px solid var(--color-border)",
+        padding: "48px 24px",
+        marginTop: "48px",
+        textAlign: "center",
+        color: "var(--color-text-muted)",
+        fontSize: "14px",
+        fontFamily: "var(--font-mono)",
+      }}
+    >
       &copy; 2026 ALRT Inc.
     </footer>
   );
@@ -440,7 +910,14 @@ function Footer() {
 /* --- Page --- */
 export default function LandingPage() {
   return (
-    <main className="bg-[#0a0a0b] min-h-screen text-white antialiased overflow-x-hidden">
+    <main
+      style={{
+        background: "var(--color-background)",
+        minHeight: "100vh",
+        color: "var(--color-text-primary)",
+        overflowX: "hidden",
+      }}
+    >
       <TopNav />
       <Hero />
       <CodeExample />

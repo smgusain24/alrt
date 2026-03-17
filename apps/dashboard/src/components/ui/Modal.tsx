@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useCallback } from "react";
 
 interface ModalProps {
   title: string;
@@ -17,39 +17,47 @@ export default function Modal({
   children,
   className = "",
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const onCloseRef = useRef(onClose);
+
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
   useEffect(() => {
-    if (!open) return;
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCloseRef.current();
-    };
-    document.addEventListener("keydown", handleEsc);
-    return () => document.removeEventListener("keydown", handleEsc);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (open) {
+      if (!dialog.open) dialog.showModal();
+    } else {
+      dialog.close();
+    }
   }, [open]);
 
-  if (!open) return null;
+  const handleClose = useCallback(() => {
+    onCloseRef.current();
+  }, []);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    dialog.addEventListener("close", handleClose);
+    return () => dialog.removeEventListener("close", handleClose);
+  }, [handleClose]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
+    <dialog
+      ref={dialogRef}
+      className={className || undefined}
+      aria-label={title}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className={`w-full max-w-md mx-4 bg-[#111113] border border-[rgba(255,255,255,0.06)] rounded-md shadow-2xl ${className}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-semibold text-[#fafafa] px-6 pt-6">
-          {title}
-        </h2>
-        <div className="px-6 pb-6 pt-4">{children}</div>
-      </div>
-    </div>
+      <form method="dialog">
+        <header>
+          <h2>{title}</h2>
+        </header>
+        <div>{children}</div>
+      </form>
+    </dialog>
   );
 }

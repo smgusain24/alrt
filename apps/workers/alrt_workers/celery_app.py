@@ -12,6 +12,7 @@ for env_path in [Path(__file__).resolve().parents[3] / ".env", Path(".env")]:
         break
 
 from celery import Celery
+from celery.schedules import crontab
 
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 broker_url = os.getenv("CELERY_BROKER_URL", redis_url)
@@ -39,7 +40,7 @@ celery_app.conf.update(
              "alrt_workers.tasks.channels.inapp", "alrt_workers.tasks.channels.email",
              "alrt_workers.tasks.channels.slack", "alrt_workers.tasks.retention",
              "alrt_workers.tasks.channels.whatsapp", "alrt_workers.tasks.channels.discord",
-             "alrt_workers.tasks.channels.telegram"],
+             "alrt_workers.tasks.channels.telegram", "alrt_workers.tasks.billing"],
 )
 
 celery_app.conf.beat_schedule = {
@@ -50,6 +51,18 @@ celery_app.conf.beat_schedule = {
     "archive-old-notifications": {
         "task": "alrt_workers.tasks.retention.archive_old_notifications",
         "schedule": 86400.0,  # 24 hours
+    },
+    "expire-trials": {
+        "task": "alrt_workers.tasks.billing.expire_trials",
+        "schedule": 86400.0,
+    },
+    "expire-cancelled": {
+        "task": "alrt_workers.tasks.billing.expire_cancelled",
+        "schedule": 86400.0,
+    },
+    "reset-monthly-quotas": {
+        "task": "alrt_workers.tasks.billing.reset_monthly_quotas",
+        "schedule": crontab(day_of_month=1, hour=0, minute=0),
     },
 }
 

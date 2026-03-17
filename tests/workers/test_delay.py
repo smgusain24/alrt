@@ -25,9 +25,12 @@ class TestPollScheduledSteps:
             "status": "pending",
         }
 
-        with patch("alrt_workers.tasks.delay.execute_read_query", return_value=[due_step]) as mock_read, \
+        with patch("alrt_workers.tasks.delay.execute_read_query") as mock_read, \
+             patch("alrt_workers.tasks.delay.execute_read_one_query", return_value=None), \
              patch("alrt_workers.tasks.delay.execute_update_query") as mock_update, \
              patch("alrt_workers.tasks.step_runner.execute_step") as mock_step:
+            # First read_query: due scheduled_steps, second: due executions (empty)
+            mock_read.side_effect = [[due_step], []]
 
             from alrt_workers.tasks.delay import poll_scheduled_steps
             poll_scheduled_steps()

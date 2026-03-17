@@ -25,26 +25,48 @@ export default function ConditionNode({ data }: { data: any }) {
   const configured = rules.length > 0 ? rules.some((r: any) => r.field) : !!data.field;
 
   return (
-    <div className="min-w-[200px] max-w-[260px] bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded-md overflow-hidden">
+    <div style={{
+      minWidth: 200,
+      maxWidth: 260,
+      background: "var(--color-elevated)",
+      border: "1px solid var(--color-border)",
+      borderRadius: 6,
+      overflow: "hidden",
+    }}>
       <Handle type="target" position={Position.Top} />
-      <div className="flex">
-        <div className="w-1 bg-[#f43f5e] shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="px-3 py-2 flex items-center gap-2">
-            <GitBranch className="w-4 h-4 text-[#f43f5e] shrink-0" strokeWidth={2} />
-            <span className="text-xs font-medium text-[#fafafa]">Condition</span>
+      <div style={{ display: "flex" }}>
+        <div style={{ width: 4, background: "#f43f5e", flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+            <GitBranch style={{ width: 16, height: 16, color: "#f43f5e", flexShrink: 0 }} strokeWidth={2} />
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-primary)" }}>Condition</span>
             {rules.length > 1 && (
-              <span className="text-[9px] font-mono bg-[#f43f5e]/20 text-[#f43f5e] px-1.5 py-0.5 rounded-sm uppercase">
+              <span style={{
+                fontSize: 9,
+                fontFamily: "monospace",
+                background: "rgba(244,63,94,0.2)",
+                color: "#f43f5e",
+                padding: "2px 6px",
+                borderRadius: 2,
+                textTransform: "uppercase",
+              }}>
                 {matchMode}
               </span>
             )}
             <span
-              className={`ml-auto w-2 h-2 rounded-full shrink-0 ${
-                configured ? "bg-[#22c55e]" : "bg-[#f59e0b]"
-              }`}
+              className={configured ? "alrt-dot alrt-dot-success" : "alrt-dot alrt-dot-warning"}
+              style={{ marginLeft: "auto" }}
             />
           </div>
-          <div className="px-3 pb-2 text-[10px] font-mono text-[#a1a1aa] truncate">
+          <div style={{
+            padding: "0 12px 8px",
+            fontSize: 10,
+            fontFamily: "monospace",
+            color: "var(--color-text-secondary)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}>
             {summary}
           </div>
         </div>

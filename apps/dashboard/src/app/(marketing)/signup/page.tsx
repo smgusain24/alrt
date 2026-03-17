@@ -1,14 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import NextLink from "next/link";
-import { Button, Input } from "@/components/ui";
 import { api } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [teamName, setTeamName] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,74 +29,104 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background">
-      <div className="w-full max-w-md px-4">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "var(--color-background)",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: "448px", padding: "0 16px" }}>
         <NextLink
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary mb-6 transition-colors"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "14px",
+            color: "var(--color-text-muted)",
+            marginBottom: "24px",
+            textDecoration: "none",
+          }}
         >
           <ArrowLeft size={14} /> Back to home
         </NextLink>
-        <div className="bg-surface border border-default rounded-lg p-8">
-          <h2 className="text-xl font-semibold text-text-primary mb-6">Create your account</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              id="team_name"
-              label="Team name"
-              type="text"
-              placeholder="Acme Inc."
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
-              required
-              disabled={loading}
-            />
-            <Input
-              id="name"
-              label="Name"
-              type="text"
-              placeholder="Jane Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              disabled={loading}
-            />
-            <Input
-              id="email"
-              label="Email"
-              type="email"
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-            />
-            <Input
-              id="password"
-              label="Password"
-              type="password"
-              placeholder="Choose a password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-            />
+
+        <article className="card" style={{ padding: "32px" }}>
+          <header>
+            <h2>Create your account</h2>
+          </header>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <label data-field>
+              Team name
+              <input
+                type="text"
+                placeholder="Acme Inc."
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </label>
+            <label data-field>
+              Name
+              <input
+                type="text"
+                placeholder="Jane Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </label>
+            <label data-field>
+              Email
+              <input
+                type="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </label>
+            <label data-field>
+              Password
+              <input
+                type="password"
+                placeholder="Choose a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </label>
             {error && (
-              <div className="text-danger text-sm">{error}</div>
+              <p style={{ color: "#f87171", fontSize: "14px", margin: 0 }}>
+                {error}
+              </p>
             )}
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              disabled={loading}
-            >
+            <button type="submit" disabled={loading} style={{ width: "100%" }}>
               {loading ? "Creating account..." : "Create account"}
-            </Button>
+            </button>
           </form>
-          <p className="mt-4 text-sm text-center text-text-muted">
+          <p
+            style={{
+              marginTop: "16px",
+              fontSize: "14px",
+              textAlign: "center",
+              color: "var(--color-text-muted)",
+            }}
+          >
             Already have an account?{" "}
-            <NextLink href="/login" className="text-accent hover:underline">Log in</NextLink>
+            <NextLink href="/login" style={{ color: "var(--color-accent)" }}>
+              Log in
+            </NextLink>
           </p>
-        </div>
+        </article>
       </div>
     </div>
   );

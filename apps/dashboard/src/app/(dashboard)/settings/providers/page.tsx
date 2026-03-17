@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button, Card, Badge, Toggle } from "@/components/ui";
+import { Badge, Toggle } from "@/components/ui";
 import { Bell, Mail, MessageSquare } from "lucide-react";
 import { SiWhatsapp, SiDiscord, SiTelegram } from "@icons-pack/react-simple-icons";
 import { api } from "@/lib/api";
@@ -36,7 +36,7 @@ const CHANNELS: ChannelDef[] = [
     icon: Bell,
     accent: "#22c55e",
     setup: "none",
-    subtitle: "Headless API — always available",
+    subtitle: "Headless API -- always available",
   },
   {
     id: "email",
@@ -91,7 +91,7 @@ function getToken(): string | null {
 
 export default function ProvidersPage() {
   return (
-    <Suspense fallback={<p className="text-[#71717a] text-sm">Loading channels...</p>}>
+    <Suspense fallback={<div aria-busy="true"></div>}>
       <ProvidersContent />
     </Suspense>
   );
@@ -126,7 +126,7 @@ function ProvidersContent() {
       const data = await api.channels.list();
       setChannelStatuses(data);
     } catch (err: any) {
-      // If channels endpoint fails, fall back to empty — page still renders with defaults
+      // If channels endpoint fails, fall back to empty -- page still renders with defaults
       setChannelStatuses([]);
     }
   }, []);
@@ -186,36 +186,58 @@ function ProvidersContent() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#fafafa]">
+    <div style={{ maxWidth: 960, margin: "0 auto" }}>
+      <div style={{ marginBottom: 24 }}>
+        <h1 className="alrt-page-title">
           Settings &mdash; Channels
         </h1>
-        <p className="text-[#71717a] text-sm mt-1">
+        <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", marginTop: 4 }}>
           Configure your notification channels. In-App and Email are ready to use. Connect Slack, WhatsApp, Discord, and Telegram below.
         </p>
       </div>
 
       {successMsg && (
-        <div className="bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-md px-4 py-3 mb-4 text-sm text-[#22c55e]">
+        <aside style={{
+          background: "rgba(34,197,94,0.1)",
+          border: "1px solid rgba(34,197,94,0.2)",
+          borderRadius: 6,
+          padding: "12px 16px",
+          marginBottom: 16,
+          fontSize: "0.875rem",
+          color: "var(--color-success)",
+        }}>
           {successMsg}
-        </div>
+        </aside>
       )}
 
       {error && (
-        <div className="bg-[#ef4444]/10 border border-[#ef4444]/20 rounded-md px-4 py-3 mb-4 text-sm text-[#ef4444]">
+        <aside style={{
+          background: "rgba(239,68,68,0.1)",
+          border: "1px solid rgba(239,68,68,0.2)",
+          borderRadius: 6,
+          padding: "12px 16px",
+          marginBottom: 16,
+          fontSize: "0.875rem",
+          color: "var(--color-danger)",
+        }}>
           {error}
-        </div>
+        </aside>
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {CHANNELS.map((ch) => (
-            <div key={ch.id} className="bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded-md p-4 h-40 animate-pulse" />
+            <div key={ch.id} aria-busy="true" style={{
+              background: "var(--color-elevated)",
+              border: "1px solid var(--color-border)",
+              borderRadius: 6,
+              padding: 16,
+              height: 160,
+            }} />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
           {CHANNELS.map((channel) => {
             const status = getStatus(channel.id);
             const Icon = channel.icon;
@@ -299,7 +321,7 @@ function ChannelCard({
   const renderAction = () => {
     if (channel.setup === "none") {
       return (
-        <p className="text-xs text-[#71717a]">
+        <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
           No setup required. Use your API key to send in-app notifications.
         </p>
       );
@@ -308,8 +330,8 @@ function ChannelCard({
     if (channel.setup === "auto") {
       const displayName = status?.display_name;
       return (
-        <div className="space-y-2">
-          <p className="text-xs text-[#71717a]">
+        <div>
+          <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
             {displayName
               ? `Sending as: ${displayName}`
               : "Auto-configured at signup. Ready to use."}
@@ -322,27 +344,27 @@ function ChannelCard({
       const workspaceName = status?.workspace_name;
       if (isActive && workspaceName) {
         return (
-          <div className="space-y-2">
-            <p className="text-xs text-[#71717a]">Connected to: <span className="text-[#fafafa]">{workspaceName}</span></p>
-            <Button variant="default" className="w-full text-xs" onClick={onConnectSlack}>
+          <div className="vstack" style={{ gap: 8 }}>
+            <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>Connected to: <span style={{ color: "var(--color-text-primary)" }}>{workspaceName}</span></p>
+            <button className="outline small" style={{ width: "100%" }} onClick={onConnectSlack}>
               Reconnect
-            </Button>
+            </button>
           </div>
         );
       }
       return (
-        <Button variant="default" className="w-full text-xs" onClick={onConnectSlack}>
-          <MessageSquare className="w-3.5 h-3.5 inline mr-1.5" strokeWidth={1.5} />
+        <button className="outline small" style={{ width: "100%" }} onClick={onConnectSlack}>
+          <MessageSquare style={{ width: 14, height: 14, display: "inline", marginRight: 6 }} strokeWidth={1.5} />
           Connect Slack
-        </Button>
+        </button>
       );
     }
 
     if (channel.setup === "toggle") {
       return (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-[#71717a]">
+        <div className="vstack" style={{ gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
               {isActive ? "Enabled" : "Click to activate"}
             </span>
             <Toggle
@@ -352,7 +374,7 @@ function ChannelCard({
             />
           </div>
           {isActive && (
-            <p className="text-xs text-[#71717a]">
+            <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
               Subscribers will receive messages via alrt's WhatsApp Business Account.
             </p>
           )}
@@ -362,26 +384,34 @@ function ChannelCard({
 
     if (channel.setup === "webhook") {
       return (
-        <div className="space-y-3">
-          <div className="bg-[#0a0a0b] border border-[rgba(255,255,255,0.06)] rounded-md p-2.5 text-[10px] text-[#71717a] leading-relaxed">
-            <span className="text-[#a1a1aa] font-medium">Setup:</span> Server Settings &rarr; Integrations &rarr; Webhooks &rarr; New Webhook &rarr; Copy URL
+        <div className="vstack" style={{ gap: 12 }}>
+          <div style={{
+            background: "var(--color-background)",
+            border: "1px solid var(--color-border)",
+            borderRadius: 6,
+            padding: 10,
+            fontSize: 10,
+            color: "var(--color-text-muted)",
+            lineHeight: 1.6,
+          }}>
+            <span style={{ color: "var(--color-text-secondary)", fontWeight: 500 }}>Setup:</span> Server Settings &rarr; Integrations &rarr; Webhooks &rarr; New Webhook &rarr; Copy URL
           </div>
-          <div className="flex gap-2">
+          <div style={{ display: "flex", gap: 8 }}>
             <input
               type="text"
               value={discordWebhook}
               onChange={(e) => onDiscordWebhookChange(e.target.value)}
               placeholder="https://discord.com/api/webhooks/..."
-              className="flex-1 min-w-0 bg-[#111113] text-[#fafafa] text-xs border border-[rgba(255,255,255,0.12)] rounded-[6px] px-2.5 py-1.5 placeholder:text-[#52525b] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+              style={{ flex: 1, minWidth: 0, fontSize: "0.75rem" }}
             />
-            <Button
-              variant="primary"
-              className="text-xs shrink-0"
+            <button
+              className="small"
               onClick={onDiscordSave}
               disabled={discordSaving}
+              style={{ flexShrink: 0 }}
             >
               {discordSaving ? "Saving..." : "Save"}
-            </Button>
+            </button>
           </div>
         </div>
       );
@@ -389,12 +419,17 @@ function ChannelCard({
 
     if (channel.setup === "manual") {
       return (
-        <div className="bg-[#0a0a0b] border border-[rgba(255,255,255,0.06)] rounded-md p-2.5 space-y-1.5">
-          <p className="text-[10px] text-[#a1a1aa] font-medium">Setup instructions:</p>
-          <ol className="text-[10px] text-[#71717a] list-decimal list-inside space-y-1 leading-relaxed">
-            <li>Add <span className="text-[#fafafa] font-mono">@alrt_bot</span> to your group chat</li>
-            <li>Send <span className="text-[#fafafa] font-mono">/start</span> to the bot</li>
-            <li>Set <span className="text-[#fafafa] font-mono">telegram_chat_id</span> on each subscriber via the API</li>
+        <div style={{
+          background: "var(--color-background)",
+          border: "1px solid var(--color-border)",
+          borderRadius: 6,
+          padding: 10,
+        }}>
+          <p style={{ fontSize: 10, color: "var(--color-text-secondary)", fontWeight: 500, marginBottom: 6 }}>Setup instructions:</p>
+          <ol style={{ fontSize: 10, color: "var(--color-text-muted)", listStyle: "decimal inside", lineHeight: 1.6 }}>
+            <li>Add <span style={{ color: "var(--color-text-primary)", fontFamily: "monospace" }}>@alrt_bot</span> to your group chat</li>
+            <li>Send <span style={{ color: "var(--color-text-primary)", fontFamily: "monospace" }}>/start</span> to the bot</li>
+            <li>Set <span style={{ color: "var(--color-text-primary)", fontFamily: "monospace" }}>telegram_chat_id</span> on each subscriber via the API</li>
           </ol>
         </div>
       );
@@ -404,33 +439,41 @@ function ChannelCard({
   };
 
   return (
-    <div className="bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded-md p-4 flex flex-col gap-3 hover:border-[rgba(255,255,255,0.10)] transition-colors duration-150">
+    <article className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Header */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5">
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
-            className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
-            style={{ backgroundColor: `${channel.accent}15` }}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 6,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              backgroundColor: `${channel.accent}15`,
+            }}
           >
             {channel.isSimple ? (
               <Icon size={16} style={{ color: channel.accent }} />
             ) : (
-              <Icon className="w-4 h-4" style={{ color: channel.accent }} strokeWidth={1.5} />
+              <Icon style={{ width: 16, height: 16, color: channel.accent }} strokeWidth={1.5} />
             )}
           </div>
           <div>
-            <p className="text-sm font-medium text-[#fafafa]">{channel.label}</p>
-            <p className="text-[10px] text-[#71717a] leading-tight mt-0.5">{channel.subtitle}</p>
+            <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-primary)", margin: 0 }}>{channel.label}</p>
+            <p style={{ fontSize: 10, color: "var(--color-text-muted)", lineHeight: 1.3, marginTop: 2 }}>{channel.subtitle}</p>
           </div>
         </div>
-        <div className="shrink-0">{renderStatusBadge()}</div>
+        <div style={{ flexShrink: 0 }}>{renderStatusBadge()}</div>
       </div>
 
       {/* Separator */}
-      <div className="border-t border-[rgba(255,255,255,0.06)]" />
+      <hr style={{ margin: 0 }} />
 
       {/* Action area */}
       <div>{renderAction()}</div>
-    </div>
+    </article>
   );
 }

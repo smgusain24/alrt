@@ -13,20 +13,11 @@ export default function StatsCounter({
   className = "",
 }: StatsCounterProps) {
   return (
-    <div
-      className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 ${className}`}
-    >
+    <div className={`alrt-grid-stats ${className}`.trim()}>
       {stats.map((stat, i) => (
-        <div
-          key={i}
-          className="bg-[#111113] border border-[rgba(255,255,255,0.06)] rounded-md p-4"
-        >
-          <div className="text-2xl font-semibold font-mono text-[#fafafa]">
-            {stat.value}
-          </div>
-          <div className="text-xs text-[#71717a] mt-1">
-            {stat.label}
-          </div>
+        <div key={i} className="alrt-stat-card">
+          <div className="alrt-stat-value">{stat.value}</div>
+          <div className="alrt-stat-label">{stat.label}</div>
         </div>
       ))}
     </div>

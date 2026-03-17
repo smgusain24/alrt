@@ -4,7 +4,7 @@ import { Input, Button, Tabs } from "@/components/ui";
 import { X, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 
-/* ─── Condition Builder ─── */
+/* --- Condition Builder --- */
 
 interface ConditionRule {
   field: string;
@@ -41,6 +41,70 @@ const OPERATORS_BY_TYPE: Record<string, { value: string; label: string }[]> = {
 
 const EMPTY_RULE: ConditionRule = { field: "", value_type: "string", operator: "equals", value: "" };
 
+const pillStyle = (active: boolean): React.CSSProperties => ({
+  padding: "6px 12px",
+  fontSize: "0.75rem",
+  fontWeight: 500,
+  borderRadius: 6,
+  transition: "all 0.15s",
+  cursor: "pointer",
+  border: active ? "none" : "1px solid var(--color-border)",
+  background: active ? "var(--color-accent)" : "var(--color-elevated)",
+  color: active ? "#fff" : "var(--color-text-secondary)",
+});
+
+const smallPillStyle = (active: boolean): React.CSSProperties => ({
+  padding: "4px 8px",
+  fontSize: 10,
+  fontFamily: "monospace",
+  borderRadius: 4,
+  transition: "all 0.15s",
+  cursor: "pointer",
+  border: active ? "none" : "1px solid var(--color-border)",
+  background: active ? "var(--color-accent)" : "var(--color-elevated)",
+  color: active ? "#fff" : "var(--color-text-secondary)",
+});
+
+const labelStyle: React.CSSProperties = {
+  fontSize: "0.75rem",
+  fontWeight: 500,
+  color: "var(--color-text-secondary)",
+  display: "block",
+  marginBottom: 6,
+};
+
+const textareaStyle: React.CSSProperties = {
+  background: "var(--color-surface)",
+  color: "var(--color-text-primary)",
+  fontSize: "0.875rem",
+  border: "1px solid var(--color-border-bright)",
+  borderRadius: 6,
+  width: "100%",
+  padding: "8px 12px",
+  outline: "none",
+  minHeight: 80,
+  resize: "vertical",
+  fontFamily: "inherit",
+};
+
+const monoTextareaStyle: React.CSSProperties = {
+  ...textareaStyle,
+  background: "var(--color-background)",
+  fontSize: "0.75rem",
+  fontFamily: "monospace",
+};
+
+const selectStyle: React.CSSProperties = {
+  background: "var(--color-surface)",
+  color: "var(--color-text-primary)",
+  fontSize: "0.875rem",
+  border: "1px solid var(--color-border-bright)",
+  borderRadius: 6,
+  width: "100%",
+  padding: "8px 12px",
+  outline: "none",
+};
+
 function ConditionConfig({ data, onUpdate }: { data: any; onUpdate: (d: any) => void }) {
   const rules: ConditionRule[] = data.rules || [
     { field: data.field || "", value_type: "string", operator: data.operator || "equals", value: data.value || "" },
@@ -62,20 +126,17 @@ function ConditionConfig({ data, onUpdate }: { data: any; onUpdate: (d: any) => 
   const removeRule = (i: number) => setRules(rules.filter((_, idx) => idx !== i));
 
   return (
-    <div className="space-y-3">
+    <div className="vstack" style={{ gap: 12 }}>
       {/* Match mode */}
       <div>
-        <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Match Mode</label>
-        <div className="flex gap-1">
+        <label style={labelStyle}>Match Mode</label>
+        <div style={{ display: "flex", gap: 4 }}>
           {(["all", "any"] as const).map((mode) => (
             <button
               key={mode}
+              type="button"
               onClick={() => setMatchMode(mode)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150
-                ${matchMode === mode
-                  ? "bg-[#3b82f6] text-white"
-                  : "bg-[#18181b] text-[#a1a1aa] border border-[rgba(255,255,255,0.06)] hover:text-[#fafafa]"
-                }`}
+              style={pillStyle(matchMode === mode)}
             >
               {mode === "all" ? "ALL (AND)" : "ANY (OR)"}
             </button>
@@ -85,28 +146,33 @@ function ConditionConfig({ data, onUpdate }: { data: any; onUpdate: (d: any) => 
 
       {/* Rules */}
       {rules.map((rule, i) => (
-        <div key={i} className="bg-[#111113] border border-[rgba(255,255,255,0.06)] rounded-md p-3 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#71717a]">Rule {i + 1}</span>
+        <div key={i} style={{
+          background: "var(--color-surface)",
+          border: "1px solid var(--color-border)",
+          borderRadius: 6,
+          padding: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-muted)" }}>Rule {i + 1}</span>
             {rules.length > 1 && (
-              <button onClick={() => removeRule(i)} className="text-[#71717a] hover:text-[#ef4444] transition-colors">
-                <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+              <button type="button" onClick={() => removeRule(i)} style={{ background: "none", border: "none", color: "var(--color-text-muted)", cursor: "pointer", padding: 2 }}>
+                <Trash2 style={{ width: 14, height: 14 }} strokeWidth={2} />
               </button>
             )}
           </div>
           <Input id={`field-${i}`} label="Payload Field" value={rule.field} onChange={(e) => updateRule(i, { field: e.target.value })} placeholder="e.g. payload.plan" />
           <div>
-            <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Value Type</label>
-            <div className="flex gap-1">
+            <label style={labelStyle}>Value Type</label>
+            <div style={{ display: "flex", gap: 4 }}>
               {(["string", "number", "boolean"] as const).map((vt) => (
                 <button
                   key={vt}
+                  type="button"
                   onClick={() => updateRule(i, { value_type: vt })}
-                  className={`px-2 py-1 text-[10px] font-mono rounded transition-colors duration-150
-                    ${rule.value_type === vt
-                      ? "bg-[#3b82f6] text-white"
-                      : "bg-[#18181b] text-[#a1a1aa] border border-[rgba(255,255,255,0.06)]"
-                    }`}
+                  style={smallPillStyle(rule.value_type === vt)}
                 >
                   {vt}
                 </button>
@@ -114,9 +180,9 @@ function ConditionConfig({ data, onUpdate }: { data: any; onUpdate: (d: any) => 
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Operator</label>
+            <label style={labelStyle}>Operator</label>
             <select
-              className="bg-[#111113] text-[#fafafa] text-sm border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+              style={selectStyle}
               value={rule.operator}
               onChange={(e) => updateRule(i, { operator: e.target.value })}
             >
@@ -128,17 +194,14 @@ function ConditionConfig({ data, onUpdate }: { data: any; onUpdate: (d: any) => 
           {rule.operator !== "exists" && rule.operator !== "not_exists" && (
             rule.value_type === "boolean" ? (
               <div>
-                <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Value</label>
-                <div className="flex gap-1">
+                <label style={labelStyle}>Value</label>
+                <div style={{ display: "flex", gap: 4 }}>
                   {["true", "false"].map((v) => (
                     <button
                       key={v}
+                      type="button"
                       onClick={() => updateRule(i, { value: v })}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150
-                        ${rule.value === v
-                          ? "bg-[#3b82f6] text-white"
-                          : "bg-[#18181b] text-[#a1a1aa] border border-[rgba(255,255,255,0.06)]"
-                        }`}
+                      style={pillStyle(rule.value === v)}
                     >
                       {v}
                     </button>
@@ -159,18 +222,18 @@ function ConditionConfig({ data, onUpdate }: { data: any; onUpdate: (d: any) => 
         </div>
       ))}
 
-      <Button variant="default" className="w-full text-xs" onClick={addRule}>
-        <Plus className="w-3 h-3 mr-1" strokeWidth={2} />
+      <button className="outline small" style={{ width: "100%" }} onClick={addRule}>
+        <Plus style={{ width: 12, height: 12, marginRight: 4 }} strokeWidth={2} />
         Add Condition
-      </Button>
-      <p className="text-[10px] text-[#71717a]">
+      </button>
+      <p style={{ fontSize: 10, color: "var(--color-text-muted)" }}>
         Fields reference the trigger payload. Use dot notation for nested fields.
       </p>
     </div>
   );
 }
 
-/* ─── Config Tab Content ─── */
+/* --- Config Tab Content --- */
 
 function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data: any) => void }) {
   const data = node.data || {};
@@ -184,8 +247,8 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
 
   if (nodeType === "trigger") {
     return (
-      <div className="space-y-3">
-        <p className="text-xs text-[#71717a]">
+      <div className="vstack" style={{ gap: 12 }}>
+        <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
           The trigger node fires when the matching event is received via the API.
         </p>
         <Input id="event_name" label="Event Name" value={data.event_name || ""} disabled placeholder="Set on the workflow" />
@@ -195,19 +258,16 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
 
   if (nodeType === "channel") {
     return (
-      <div className="space-y-3">
+      <div className="vstack" style={{ gap: 12 }}>
         <div>
-          <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Channel</label>
-          <div className="flex flex-wrap gap-1">
+          <label style={labelStyle}>Channel</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
             {["in_app", "email", "slack", "whatsapp", "discord", "telegram"].map((ch) => (
               <button
                 key={ch}
+                type="button"
                 onClick={() => updateField("channel", ch)}
-                className={`px-2.5 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150
-                  ${data.channel === ch
-                    ? "bg-[#3b82f6] text-white"
-                    : "bg-[#18181b] text-[#a1a1aa] border border-[rgba(255,255,255,0.06)] hover:text-[#fafafa]"
-                  }`}
+                style={pillStyle(data.channel === ch)}
               >
                 {ch.replace("_", "-")}
               </button>
@@ -219,9 +279,9 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
           <>
             <Input id="title" label="Title" value={data.template?.title || ""} onChange={(e) => updateTemplate("title", e.target.value)} placeholder="Notification title with {{variables}}" />
             <div>
-              <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Body</label>
+              <label style={labelStyle}>Body</label>
               <textarea
-                className="bg-[#111113] text-[#fafafa] text-sm border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 placeholder:text-[#71717a] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] min-h-[80px] resize-y"
+                style={textareaStyle}
                 value={data.template?.body || ""}
                 onChange={(e) => updateTemplate("body", e.target.value)}
                 placeholder="Message body with {{variables}}"
@@ -235,9 +295,9 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
           <>
             <Input id="subject" label="Subject" value={data.template?.subject || ""} onChange={(e) => updateTemplate("subject", e.target.value)} placeholder="Email subject with {{variables}}" />
             <div>
-              <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Body HTML</label>
+              <label style={labelStyle}>Body HTML</label>
               <textarea
-                className="bg-[#111113] text-[#fafafa] text-sm font-mono border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 placeholder:text-[#71717a] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] min-h-[120px] resize-y"
+                style={{ ...monoTextareaStyle, minHeight: 120 }}
                 value={data.template?.body_html || ""}
                 onChange={(e) => updateTemplate("body_html", e.target.value)}
                 placeholder="<p>Hello {{name}},</p>"
@@ -249,18 +309,18 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
         {data.channel === "slack" && (
           <>
             <div>
-              <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Message</label>
+              <label style={labelStyle}>Message</label>
               <textarea
-                className="bg-[#111113] text-[#fafafa] text-sm border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 placeholder:text-[#71717a] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] min-h-[80px] resize-y"
+                style={textareaStyle}
                 value={data.template?.text || ""}
                 onChange={(e) => updateTemplate("text", e.target.value)}
                 placeholder="Slack message with {{variables}}"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Block Kit JSON (optional)</label>
+              <label style={labelStyle}>Block Kit JSON (optional)</label>
               <textarea
-                className="bg-[#0a0a0b] text-[#fafafa] text-xs font-mono border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 placeholder:text-[#71717a] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] min-h-[80px] resize-y"
+                style={monoTextareaStyle}
                 value={data.template?.blocks || ""}
                 onChange={(e) => updateTemplate("blocks", e.target.value)}
                 placeholder='[{"type": "section", ...}]'
@@ -272,9 +332,9 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
         {data.channel === "whatsapp" && (
           <>
             <div>
-              <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Message Body</label>
+              <label style={labelStyle}>Message Body</label>
               <textarea
-                className="bg-[#111113] text-[#fafafa] text-sm border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 placeholder:text-[#71717a] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] min-h-[80px] resize-y"
+                style={textareaStyle}
                 value={data.template?.body || ""}
                 onChange={(e) => updateTemplate("body", e.target.value)}
                 placeholder="Hello {{name}}, your order {{order_id}} is ready!"
@@ -284,9 +344,9 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
             <Input id="media_url" label="Media URL (optional)" value={data.template?.media_url || ""} onChange={(e) => updateTemplate("media_url", e.target.value)} placeholder="https://example.com/image.jpg" />
             {data.template?.media_url && (
               <div>
-                <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Media Type</label>
+                <label style={labelStyle}>Media Type</label>
                 <select
-                  className="bg-[#111113] text-[#fafafa] text-sm border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                  style={selectStyle}
                   value={data.template?.media_type || "image"}
                   onChange={(e) => updateTemplate("media_type", e.target.value)}
                 >
@@ -303,9 +363,9 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
           <>
             <Input id="title" label="Embed Title" value={data.template?.title || ""} onChange={(e) => updateTemplate("title", e.target.value)} placeholder="New notification" />
             <div>
-              <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Embed Description</label>
+              <label style={labelStyle}>Embed Description</label>
               <textarea
-                className="bg-[#111113] text-[#fafafa] text-sm border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 placeholder:text-[#71717a] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] min-h-[80px] resize-y"
+                style={textareaStyle}
                 value={data.template?.body || ""}
                 onChange={(e) => updateTemplate("body", e.target.value)}
                 placeholder="Hello {{name}}, your order {{order_id}} is confirmed."
@@ -313,15 +373,15 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
             </div>
             <Input id="color" label="Embed Color (hex)" value={data.template?.color || "3b82f6"} onChange={(e) => updateTemplate("color", e.target.value)} placeholder="3b82f6" />
             <Input id="footer" label="Footer (optional)" value={data.template?.footer || ""} onChange={(e) => updateTemplate("footer", e.target.value)} placeholder="Sent via alrt" />
-            <div className="flex items-center gap-2">
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input
                 type="checkbox"
+                role="switch"
                 id="embed_enabled"
                 checked={data.template?.embed_enabled !== false && data.template?.embed_enabled !== ""}
                 onChange={(e) => updateTemplate("embed_enabled", e.target.checked ? "true" : "")}
-                className="accent-[#3b82f6]"
               />
-              <label htmlFor="embed_enabled" className="text-xs text-[#a1a1aa]">Use embed formatting</label>
+              <label htmlFor="embed_enabled" style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>Use embed formatting</label>
             </div>
           </>
         )}
@@ -329,18 +389,18 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
         {data.channel === "telegram" && (
           <>
             <div>
-              <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Message</label>
+              <label style={labelStyle}>Message</label>
               <textarea
-                className="bg-[#111113] text-[#fafafa] text-sm border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 placeholder:text-[#71717a] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] min-h-[80px] resize-y"
+                style={textareaStyle}
                 value={data.template?.body || ""}
                 onChange={(e) => updateTemplate("body", e.target.value)}
                 placeholder="Hello *{{name}}*, your order `{{order_id}}` is ready!"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Parse Mode</label>
+              <label style={labelStyle}>Parse Mode</label>
               <select
-                className="bg-[#111113] text-[#fafafa] text-sm border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                style={selectStyle}
                 value={data.template?.parse_mode || "Markdown"}
                 onChange={(e) => updateTemplate("parse_mode", e.target.value)}
               >
@@ -351,7 +411,7 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
           </>
         )}
 
-        <p className="text-[10px] text-[#71717a]">
+        <p style={{ fontSize: 10, color: "var(--color-text-muted)" }}>
           Use {"{{variable}}"} syntax for Jinja2 dynamic content.
         </p>
       </div>
@@ -360,7 +420,7 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
 
   if (nodeType === "delay") {
     return (
-      <div className="space-y-3">
+      <div className="vstack" style={{ gap: 12 }}>
         <Input
           id="duration"
           label="Duration (seconds)"
@@ -369,7 +429,7 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
           onChange={(e) => updateField("duration_seconds", parseInt(e.target.value) || 60)}
           placeholder="60"
         />
-        <div className="flex gap-1">
+        <div style={{ display: "flex", gap: 4 }}>
           {[
             { label: "30s", val: 30 },
             { label: "5m", val: 300 },
@@ -378,12 +438,9 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
           ].map((preset) => (
             <button
               key={preset.label}
+              type="button"
               onClick={() => updateField("duration_seconds", preset.val)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150
-                ${data.duration_seconds === preset.val
-                  ? "bg-[#3b82f6] text-white"
-                  : "bg-[#18181b] text-[#a1a1aa] border border-[rgba(255,255,255,0.06)] hover:text-[#fafafa]"
-                }`}
+              style={pillStyle(data.duration_seconds === preset.val)}
             >
               {preset.label}
             </button>
@@ -400,7 +457,7 @@ function ConfigTab({ node, onUpdate }: { node: any; onUpdate: (id: string, data:
   return null;
 }
 
-/* ─── Preview Tab ─── */
+/* --- Preview Tab --- */
 
 function PreviewTab({ node }: { node: any }) {
   const data = node.data || {};
@@ -411,7 +468,7 @@ function PreviewTab({ node }: { node: any }) {
   const [error, setError] = useState("");
 
   if (node.type !== "channel") {
-    return <p className="text-xs text-[#71717a]">Preview is only available for channel nodes.</p>;
+    return <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>Preview is only available for channel nodes.</p>;
   }
 
   const handlePreview = async () => {
@@ -435,32 +492,49 @@ function PreviewTab({ node }: { node: any }) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="vstack" style={{ gap: 12 }}>
       <Input id="preview-sub" label="Subscriber ID (optional)" value={subscriberId} onChange={(e) => setSubscriberId(e.target.value)} placeholder="External ID" />
       <div>
-        <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Test Payload (JSON)</label>
+        <label style={labelStyle}>Test Payload (JSON)</label>
         <textarea
-          className="bg-[#0a0a0b] text-[#fafafa] text-xs font-mono border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 placeholder:text-[#71717a] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] min-h-[80px] resize-y"
+          style={monoTextareaStyle}
           value={payload}
           onChange={(e) => setPayload(e.target.value)}
         />
       </div>
-      <Button variant="primary" className="w-full text-xs" onClick={handlePreview} disabled={loading}>
+      <button style={{ width: "100%", fontSize: "0.75rem" }} onClick={handlePreview} disabled={loading}>
         {loading ? "Rendering..." : "Render Template"}
-      </Button>
+      </button>
       {error && (
-        <div className="bg-[#ef4444]/10 text-[#ef4444] text-xs p-2.5 rounded-md font-mono break-all border border-[#ef4444]/20">
+        <div style={{
+          background: "rgba(239,68,68,0.1)",
+          color: "var(--color-danger)",
+          fontSize: "0.75rem",
+          padding: 10,
+          borderRadius: 6,
+          fontFamily: "monospace",
+          wordBreak: "break-all",
+          border: "1px solid rgba(239,68,68,0.2)",
+        }}>
           {error}
         </div>
       )}
       {result && (
         <div>
-          <label className="text-xs font-medium text-[#22c55e] block mb-1.5">Output</label>
-          <div className="bg-[#111113] border border-[rgba(255,255,255,0.06)] rounded-md p-3 text-sm text-[#fafafa] overflow-x-auto">
+          <label style={{ ...labelStyle, color: "var(--color-success)" }}>Output</label>
+          <div style={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border)",
+            borderRadius: 6,
+            padding: 12,
+            fontSize: "0.875rem",
+            color: "var(--color-text-primary)",
+            overflowX: "auto",
+          }}>
             {data.channel === "email" ? (
               <div dangerouslySetInnerHTML={{ __html: result }} />
             ) : (
-              <pre className="font-mono text-xs whitespace-pre-wrap">{result}</pre>
+              <pre style={{ fontFamily: "monospace", fontSize: "0.75rem", whiteSpace: "pre-wrap", margin: 0 }}>{result}</pre>
             )}
           </div>
         </div>
@@ -469,34 +543,34 @@ function PreviewTab({ node }: { node: any }) {
   );
 }
 
-/* ─── Test Tab ─── */
+/* --- Test Tab --- */
 
 function TestTab({ node }: { node: any }) {
   if (node.type !== "channel") {
-    return <p className="text-xs text-[#71717a]">Test sending is only available for channel nodes.</p>;
+    return <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>Test sending is only available for channel nodes.</p>;
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-[#71717a]">
+    <div className="vstack" style={{ gap: 12 }}>
+      <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
         Send a real test notification using this channel configuration. Requires a published workflow and valid provider settings.
       </p>
       <Input id="test-sub" label="Test Subscriber ID" placeholder="subscriber_external_id" />
       <div>
-        <label className="text-xs font-medium text-[#a1a1aa] block mb-1.5">Test Payload (JSON)</label>
+        <label style={labelStyle}>Test Payload (JSON)</label>
         <textarea
-          className="bg-[#0a0a0b] text-[#fafafa] text-xs font-mono border border-[rgba(255,255,255,0.12)] rounded-[6px] w-full px-3 py-2 placeholder:text-[#71717a] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] min-h-[60px] resize-y"
+          style={monoTextareaStyle}
           defaultValue='{"name": "Test User"}'
         />
       </div>
-      <Button variant="primary" className="w-full text-xs" disabled>
+      <button style={{ width: "100%", fontSize: "0.75rem" }} disabled>
         Send Test (coming soon)
-      </Button>
+      </button>
     </div>
   );
 }
 
-/* ─── Main Panel ─── */
+/* --- Main Panel --- */
 
 interface ConfigPanelProps {
   node: any;
@@ -539,42 +613,72 @@ export default function ConfigPanel({ node, onUpdate, onDelete, onClose, onSave,
   return (
     <div
       ref={panelRef}
-      className="absolute right-4 top-4 bottom-4 w-80 bg-[#111113] border border-[rgba(255,255,255,0.06)] rounded-md
-        flex flex-col overflow-hidden z-20 shadow-[0_0_40px_rgba(0,0,0,0.5)]
-        animate-in slide-in-from-right-4 fade-in duration-200"
+      style={{
+        position: "absolute",
+        right: 16,
+        top: 16,
+        bottom: 16,
+        width: 320,
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-border)",
+        borderRadius: 6,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        zIndex: 20,
+        boxShadow: "0 0 40px rgba(0,0,0,0.5)",
+      }}
     >
       {/* Header */}
-      <div className="px-4 py-3 flex items-center justify-between border-b border-[rgba(255,255,255,0.06)]">
-        <span className="text-sm font-medium text-[#fafafa] capitalize">
+      <div style={{
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        borderBottom: "1px solid var(--color-border)",
+      }}>
+        <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "capitalize" }}>
           {nodeLabel} Config
         </span>
-        <button onClick={onClose} className="text-[#71717a] hover:text-[#fafafa] transition-colors">
-          <X className="w-4 h-4" strokeWidth={2} />
+        <button type="button" onClick={onClose} style={{
+          background: "none",
+          border: "none",
+          color: "var(--color-text-muted)",
+          cursor: "pointer",
+          padding: 2,
+        }}>
+          <X style={{ width: 16, height: 16 }} strokeWidth={2} />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="px-4 pt-2">
+      <div style={{ padding: "8px 16px 0" }}>
         <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
         {activeTab === "config" && <ConfigTab node={node} onUpdate={onUpdate} />}
         {activeTab === "preview" && <PreviewTab node={node} />}
         {activeTab === "test" && <TestTab node={node} />}
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-[rgba(255,255,255,0.06)] space-y-2">
+      <div style={{
+        padding: 12,
+        borderTop: "1px solid var(--color-border)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}>
         {onSave && (
-          <Button variant="primary" className="w-full text-xs" onClick={onSave} disabled={saving}>
+          <button style={{ width: "100%", fontSize: "0.75rem" }} onClick={onSave} disabled={saving}>
             {saving ? "Saving..." : "Save Workflow"}
-          </Button>
+          </button>
         )}
-        <Button variant="danger" className="w-full text-xs" onClick={() => onDelete(node.id)}>
+        <button data-variant="danger" className="outline" style={{ width: "100%", fontSize: "0.75rem" }} onClick={() => onDelete(node.id)}>
           Remove Node
-        </Button>
+        </button>
       </div>
     </div>
   );

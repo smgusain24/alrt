@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from alrt.config import settings
 from alrt.db import execute_read_one_query, execute_insert_query
-from alrt.deps import get_current_team
+from alrt.billing.deps import enforce_quota
 from alrt.middleware.rate_limit import limiter
 from alrt.queries import workflows as wf_q, subscribers as sub_q, executions as exec_q
 from alrt.schemas.event import (
@@ -113,7 +113,7 @@ async def _enqueue_execution(r: aioredis.Redis, execution_id: str) -> None:
 async def trigger_event(
     request: Request,
     body: TriggerEvent,
-    team_id: uuid.UUID = Depends(get_current_team),
+    team_id: uuid.UUID = Depends(enforce_quota),
 ):
     subscriber_inline = _get_subscriber_inline(body)
 
@@ -223,7 +223,7 @@ async def trigger_event(
 async def trigger_event_bulk(
     request: Request,
     body: TriggerBulkEvent,
-    team_id: uuid.UUID = Depends(get_current_team),
+    team_id: uuid.UUID = Depends(enforce_quota),
 ):
     batch_id = uuid.uuid4()
 

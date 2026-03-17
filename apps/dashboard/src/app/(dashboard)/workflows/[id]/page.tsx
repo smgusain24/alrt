@@ -18,7 +18,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
-import { Button, Badge } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { Save, Upload, ArrowLeft, LayoutGrid, Copy, Check } from "lucide-react";
 import NodePalette from "@/components/workflow/NodePalette";
 import ConfigPanel from "@/components/workflow/ConfigPanel";
@@ -411,74 +411,98 @@ function WorkflowBuilderInner() {
 
   if (!workflow) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-sm text-[#71717a]">Loading workflow...</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+        <div aria-busy="true"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Top bar */}
-      <div className="bg-[#111113] border-b border-[rgba(255,255,255,0.06)] px-4 py-2.5 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
+      <div style={{
+        background: "var(--color-surface)",
+        borderBottom: "1px solid var(--color-border)",
+        padding: "10px 16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexShrink: 0,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <a
             href="/workflows"
-            className="text-[#71717a] hover:text-[#fafafa] transition-colors p-1"
+            style={{ color: "var(--color-text-muted)", padding: 4, display: "inline-flex" }}
           >
-            <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+            <ArrowLeft style={{ width: 16, height: 16 }} strokeWidth={2} />
           </a>
-          <span className="text-xs text-[#71717a]">/</span>
-          <span className="text-xs text-[#71717a]">Workflows</span>
-          <span className="text-xs text-[#71717a]">/</span>
-          <h1 className="text-sm font-medium text-[#fafafa]">{workflow.name}</h1>
+          <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>/</span>
+          <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>Workflows</span>
+          <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>/</span>
+          <h1 style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-primary)", margin: 0 }}>{workflow.name}</h1>
           <Badge variant={workflow.status === "published" ? "success" : "warning"}>
             {workflow.status}
           </Badge>
-          <div className="flex items-center gap-2 ml-4">
-            <label className="text-xs text-[#71717a] shrink-0">Category</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 16 }}>
+            <label style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", flexShrink: 0 }}>Category</label>
             <input
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="e.g. marketing"
-              className="bg-[#18181b] text-[#fafafa] text-xs px-2 py-1 rounded border border-[rgba(255,255,255,0.06)] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] w-28"
+              style={{
+                background: "var(--color-elevated)",
+                color: "var(--color-text-primary)",
+                fontSize: "0.75rem",
+                padding: "4px 8px",
+                borderRadius: 4,
+                border: "1px solid var(--color-border)",
+                outline: "none",
+                width: 112,
+              }}
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={handleCopyCurl}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button className="ghost small" onClick={handleCopyCurl}>
             {copiedCurl ? (
-              <><Check className="w-3.5 h-3.5 mr-1.5 text-[#22c55e]" strokeWidth={3} />Copied</>
+              <><Check style={{ width: 14, height: 14, marginRight: 6, color: "var(--color-success)" }} strokeWidth={3} />Copied</>
             ) : (
-              <><Copy className="w-3.5 h-3.5 mr-1.5" strokeWidth={2} />cURL</>
+              <><Copy style={{ width: 14, height: 14, marginRight: 6 }} strokeWidth={2} />cURL</>
             )}
-          </Button>
-          <Button variant="ghost" onClick={handleAutoArrange}>
-            <LayoutGrid className="w-3.5 h-3.5 mr-1.5" strokeWidth={2} />
+          </button>
+          <button className="ghost small" onClick={handleAutoArrange}>
+            <LayoutGrid style={{ width: 14, height: 14, marginRight: 6 }} strokeWidth={2} />
             Arrange
-          </Button>
-          <Button variant="default" onClick={handleSave} disabled={saving}>
-            <Save className="w-3.5 h-3.5 mr-1.5" strokeWidth={2} />
+          </button>
+          <button className="outline small" onClick={handleSave} disabled={saving}>
+            <Save style={{ width: 14, height: 14, marginRight: 6 }} strokeWidth={2} />
             {saving ? "Saving..." : "Save"}
             {isDirty && !saving && (
-              <span className="ml-1.5 w-2 h-2 rounded-full bg-[#f59e0b]" />
+              <span style={{
+                marginLeft: 6,
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "var(--color-warning)",
+                display: "inline-block",
+              }} />
             )}
-          </Button>
+          </button>
           {workflow.status !== "published" && (
-            <Button variant="primary" onClick={handlePublish} disabled={publishing}>
-              <Upload className="w-3.5 h-3.5 mr-1.5" strokeWidth={2} />
+            <button onClick={handlePublish} disabled={publishing}>
+              <Upload style={{ width: 14, height: 14, marginRight: 6 }} strokeWidth={2} />
               {publishing ? "Publishing..." : "Publish"}
-            </Button>
+            </button>
           )}
         </div>
       </div>
 
       {/* Builder area */}
-      <div className="flex flex-1 overflow-hidden min-h-0 relative">
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0, position: "relative" }}>
         <NodePalette />
 
         <div
-          className="flex-1"
+          style={{ flex: 1 }}
           ref={reactFlowWrapper}
           onDragOver={onDragOver}
           onDrop={onDrop}
@@ -502,7 +526,12 @@ function WorkflowBuilderInner() {
           >
             <Background color="#333" gap={20} size={1} />
             <Controls
-              className="!bg-[#111113] !border !border-[rgba(255,255,255,0.06)] !shadow-none !rounded-md"
+              style={{
+                background: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                boxShadow: "none",
+                borderRadius: 6,
+              }}
               showInteractive={false}
             />
             <MiniMap
@@ -527,10 +556,20 @@ function WorkflowBuilderInner() {
       </div>
 
       {/* Status bar */}
-      <div className="bg-[#111113] border-t border-[rgba(255,255,255,0.06)] px-4 py-1.5 flex items-center justify-between text-[11px] text-[#71717a] shrink-0">
-        <div className="flex items-center gap-4">
+      <div style={{
+        background: "var(--color-surface)",
+        borderTop: "1px solid var(--color-border)",
+        padding: "6px 16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        fontSize: 11,
+        color: "var(--color-text-muted)",
+        flexShrink: 0,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <span>{nodes.length} nodes, {edges.length} edges</span>
-          <span className="text-[rgba(255,255,255,0.06)]">|</span>
+          <span style={{ color: "var(--color-border)" }}>|</span>
           <span>Cmd+S save &middot; Cmd+Z undo &middot; Del remove</span>
         </div>
         <div>
