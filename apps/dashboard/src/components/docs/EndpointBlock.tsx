@@ -39,33 +39,70 @@ export default function EndpointBlock({
   responseExample,
   responseStatus = "200 OK",
   errors = [],
-  className = "",
 }: EndpointBlockProps) {
-  const hasParams = pathParams.length > 0 || queryParams.length > 0 || bodyParams.length > 0 || errors.length > 0;
+  const hasParams =
+    pathParams.length > 0 ||
+    queryParams.length > 0 ||
+    bodyParams.length > 0 ||
+    errors.length > 0;
   const hasCode = !!requestExample || !!responseExample;
 
   return (
-    <div className={`mb-10 rounded-lg border border-[rgba(255,255,255,0.08)] overflow-hidden ${className}`}>
+    <article
+      className="card"
+      style={{
+        marginBottom: "40px",
+        overflow: "hidden",
+        padding: 0,
+      }}
+    >
       {/* Header bar */}
-      <div className="flex items-center gap-3 px-5 py-3 border-b border-[rgba(255,255,255,0.08)]">
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "12px 20px",
+          borderBottom: "1px solid var(--color-border)",
+        }}
+      >
         <MethodBadge method={method} />
-        <code className="font-mono text-sm font-medium text-text-primary">
+        <code
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "14px",
+            fontWeight: 500,
+            color: "var(--color-text-primary)",
+          }}
+        >
           {path}
         </code>
-      </div>
+      </header>
 
       {/* Description */}
-      <div className="px-5 pt-4 pb-3">
-        <p className="text-sm text-text-secondary leading-relaxed">
+      <div style={{ padding: "16px 20px 12px" }}>
+        <p
+          style={{
+            fontSize: "14px",
+            color: "var(--color-text-secondary)",
+            lineHeight: 1.6,
+          }}
+        >
           {description}
         </p>
       </div>
 
       {/* Two-column content */}
       {(hasParams || hasCode) && (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] items-start">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            alignItems: "start",
+          }}
+        >
           {/* Left: params + errors */}
-          <div className="px-5 pb-5">
+          <div style={{ padding: "0 20px 20px" }}>
             {pathParams.length > 0 && (
               <ParamsTable title="Path parameters" params={pathParams} />
             )}
@@ -76,21 +113,61 @@ export default function EndpointBlock({
               <ParamsTable title="Body parameters" params={bodyParams} />
             )}
             {errors.length > 0 && (
-              <div className={pathParams.length > 0 || queryParams.length > 0 || bodyParams.length > 0 ? "mt-4" : ""}>
-                <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-2">
+              <div
+                style={{
+                  marginTop:
+                    pathParams.length > 0 ||
+                    queryParams.length > 0 ||
+                    bodyParams.length > 0
+                      ? "16px"
+                      : undefined,
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--color-text-muted)",
+                    marginBottom: "8px",
+                  }}
+                >
                   Errors
                 </h4>
                 {errors.map((e, i) => (
                   <div
                     key={i}
-                    className={`flex items-baseline gap-3 py-2 ${
-                      i < errors.length - 1 ? "border-b border-[rgba(255,255,255,0.06)]" : ""
-                    }`}
+                    style={{
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: "12px",
+                      padding: "8px 0",
+                      borderBottom:
+                        i < errors.length - 1
+                          ? "1px solid var(--color-border)"
+                          : undefined,
+                    }}
                   >
-                    <code className="text-xs font-mono font-semibold text-danger shrink-0">
+                    <code
+                      style={{
+                        fontSize: "12px",
+                        fontFamily: "var(--font-mono)",
+                        fontWeight: 600,
+                        color: "#f87171",
+                        flexShrink: 0,
+                      }}
+                    >
                       {e.status}
                     </code>
-                    <span className="text-xs text-text-secondary">{e.detail}</span>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--color-text-secondary)",
+                      }}
+                    >
+                      {e.detail}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -98,7 +175,14 @@ export default function EndpointBlock({
           </div>
 
           {/* Right: code examples */}
-          <div className="px-5 pb-5 space-y-4">
+          <div
+            style={{
+              padding: "0 20px 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+            }}
+          >
             {requestExample && (
               <CodeBlock title="Request" code={requestExample} />
             )}
@@ -111,6 +195,6 @@ export default function EndpointBlock({
           </div>
         </div>
       )}
-    </div>
+    </article>
   );
 }

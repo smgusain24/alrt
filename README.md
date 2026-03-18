@@ -62,7 +62,7 @@ uv run uvicorn alrt.main:app --reload
 # Workers
 cd apps/workers
 uv sync
-uv run celery -A alrt_workers.celery_app worker --loglevel=info
+uv run celery -A alrt_workers.celery_app worker --loglevel=debug
 
 # Dashboard
 cd apps/dashboard

@@ -136,7 +136,7 @@ class TestSlackDeliver:
                 {},
             )
 
-            # Notification marked failed (only update call)
+            # Notification marked dead_letter (permanent errors go to DLQ)
             assert mock_update.call_count == 1
             failed_call = mock_update.call_args_list[0]
-            assert "status = 'failed'" in failed_call[0][0]
+            assert "status = 'dead_letter'" in failed_call[0][0]

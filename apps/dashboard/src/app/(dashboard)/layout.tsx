@@ -7,10 +7,6 @@ import {
   BarChart,
   Activity,
   Settings,
-  Menu,
-  X,
-  ChevronLeft,
-  ChevronRight,
   LogOut,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -23,204 +19,21 @@ const NAV_ITEMS = [
   { href: "/subscribers", label: "Subscribers", icon: Users },
   { href: "/analytics", label: "Analytics", icon: BarChart },
   { href: "/activity", label: "Activity", icon: Activity },
-  {
-    href: "/settings", label: "Settings", icon: Settings, children: [
-      { href: "/settings", label: "API keys" },
-      { href: "/settings/providers", label: "Providers" },
-    ]
-  },
 ];
 
-function Sidebar({
-  open,
-  onClose,
-  collapsed,
-  onToggleCollapse,
-  user,
-}: {
-  open: boolean;
-  onClose: () => void;
-  collapsed: boolean;
-  onToggleCollapse: () => void;
-  user: any;
-}) {
-  const pathname = usePathname();
-
-  const handleLogout = () => {
-    api.auth.logout().finally(() => {
-      window.location.href = "/login";
-    });
-  };
-
-  return (
-    <>
-      {/* Mobile overlay */}
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      <aside
-        className={`
-          fixed md:static z-50 top-0 left-0 h-full
-          bg-[#0a0a0b] border-r border-white/[0.04]
-          flex flex-col
-          transition-all duration-200 ease-out
-          ${collapsed ? "md:w-14" : "md:w-56"}
-          w-60 md:transform-none
-          ${open ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-        `}
-      >
-        {/* Header */}
-        <div className={`flex items-center justify-between px-4 py-4 ${collapsed ? "md:px-0 md:justify-center" : ""}`}>
-          <Link href="/" className={`flex items-center gap-1 ${collapsed ? "md:hidden" : ""}`}>
-            <span className="font-brand text-lg font-bold text-text-primary">ALRT</span>
-            <span className="font-mono text-xs text-text-muted">.dev</span>
-          </Link>
-          {collapsed && (
-            <Link href="/" className="hidden md:block font-brand text-lg font-bold text-text-primary">
-              A
-            </Link>
-          )}
-          <button
-            onClick={onToggleCollapse}
-            className="hidden md:flex items-center justify-center w-6 h-6 rounded text-text-muted hover:text-text-primary transition-colors"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" strokeWidth={1.5} />
-            ) : (
-              <ChevronLeft className="w-4 h-4" strokeWidth={1.5} />
-            )}
-          </button>
-          <button onClick={onClose} className="md:hidden text-text-muted hover:text-text-primary transition-colors">
-            <X className="w-5 h-5" strokeWidth={1.5} />
-          </button>
-        </div>
-
-        {/* Nav items */}
-        <nav className={`flex-1 space-y-0.5 ${collapsed ? "md:px-1.5" : "px-2"} px-2 mt-2`}>
-          {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + "/");
-            const isParentActive = item.children?.some((c: any) => pathname === c.href || pathname.startsWith(c.href + "/"));
-            const isActive = active || isParentActive;
-            const showChildren = isActive && !collapsed;
-            return (
-              <div key={item.href}>
-                <Link
-                  href={item.children ? item.children[0].href : item.href}
-                  onClick={onClose}
-                  title={collapsed ? item.label : undefined}
-                  className={`
-                    flex items-center gap-3 py-2 rounded-md text-sm font-medium
-                    transition-colors relative
-                    ${collapsed ? "md:justify-center md:px-0 px-3" : "px-3"}
-                    ${isActive
-                      ? "text-text-primary"
-                      : "text-text-muted hover:text-text-secondary"
-                    }
-                  `}
-                >
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-accent rounded-full" />
-                  )}
-                  <item.icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? "text-accent" : ""}`} strokeWidth={1.5} />
-                  <span className={`${collapsed ? "md:hidden" : ""} truncate`}>{item.label}</span>
-                </Link>
-                {item.children && showChildren && (
-                  <div className="ml-9 mt-0.5 space-y-0.5">
-                    {item.children.map((child: any) => {
-                      const childActive = pathname === child.href;
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          onClick={onClose}
-                          className={`
-                            block px-3 py-1.5 text-xs rounded-md
-                            transition-colors
-                            ${childActive ? "text-text-primary font-medium" : "text-text-muted hover:text-text-secondary"}
-                          `}
-                        >
-                          {child.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Footer: user info */}
-        <div className={`border-t border-white/[0.04] px-3 py-3 ${collapsed ? "md:px-0 md:flex md:justify-center" : ""}`}>
-          {collapsed ? (
-            <button
-              onClick={handleLogout}
-              title="Log out"
-              className="hidden md:flex items-center justify-center w-8 h-8 rounded-md text-text-muted hover:text-text-primary transition-colors"
-            >
-              <LogOut className="w-4 h-4" strokeWidth={1.5} />
-            </button>
-          ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted truncate max-w-[140px]">
-                {user?.email ?? "\u2014"}
-              </span>
-              <button
-                onClick={handleLogout}
-                title="Log out"
-                className="text-text-muted hover:text-text-primary transition-colors p-1"
-              >
-                <LogOut className="w-3.5 h-3.5" strokeWidth={1.5} />
-              </button>
-            </div>
-          )}
-          {/* Mobile: always show expanded footer */}
-          <div className="md:hidden flex items-center justify-between">
-            <span className="text-xs text-text-muted truncate max-w-[140px]">
-              {user?.email ?? "\u2014"}
-            </span>
-            <button
-              onClick={handleLogout}
-              className="text-text-muted hover:text-text-primary transition-colors p-1"
-            >
-              <LogOut className="w-3.5 h-3.5" strokeWidth={1.5} />
-            </button>
-          </div>
-        </div>
-      </aside>
-    </>
-  );
-}
-
-/* Slim mobile header — only visible below md */
-function MobileHeader({ onMenuClick }: { onMenuClick: () => void }) {
-  return (
-    <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-[#0a0a0b] border-b border-white/[0.04]">
-      <button
-        onClick={onMenuClick}
-        className="text-text-muted hover:text-text-primary p-1 rounded-md transition-colors"
-      >
-        <Menu className="w-4 h-4" strokeWidth={1.5} />
-      </button>
-      <Link href="/" className="flex items-center gap-1">
-        <span className="font-brand text-base font-bold text-text-primary">ALRT</span>
-        <span className="font-mono text-[10px] text-text-muted">.dev</span>
-      </Link>
-    </header>
-  );
-}
+const SETTINGS_CHILDREN = [
+  { href: "/settings", label: "API keys" },
+  { href: "/settings/providers", label: "Channels" },
+  { href: "/settings/members", label: "Members" },
+];
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
 
@@ -239,25 +52,258 @@ export default function DashboardLayout({
       .catch(() => {});
   }, [user]);
 
+  const handleLogout = () => {
+    api.auth.logout().finally(() => {
+      window.location.href = "/login";
+    });
+  };
+
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
+
+  const isSettingsActive = SETTINGS_CHILDREN.some((c) => isActive(c.href));
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <>
       <CommandPalette />
-      <Sidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
-        user={user}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
-        {quotaExceeded && (
-          <div className="bg-danger/10 border border-danger rounded-md mx-4 mt-4 px-4 py-2 text-sm text-danger text-center">
-            You&apos;ve exceeded your monthly notification limit. Contact support to continue sending.
+      <div
+        data-sidebar-layout
+        data-sidebar-open={sidebarOpen || undefined}
+        style={{
+          minHeight: "100vh",
+          background: "var(--color-background)",
+          color: "var(--color-text-primary)",
+        }}
+      >
+        {/* Mobile top nav */}
+        <nav data-topnav style={{ background: "var(--color-background)", borderBottom: "1px solid var(--color-border)" }}>
+          <button
+            data-sidebar-toggle
+            className="outline"
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label="Toggle menu"
+            style={{ color: "var(--color-text-muted)", background: "none", border: "none", cursor: "pointer", padding: "4px" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}>
+            <span style={{ fontFamily: "var(--font-serif, inherit)", fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)" }}>ALRT</span>
+            <span style={{ fontFamily: "monospace", fontSize: "10px", color: "var(--color-text-muted)" }}>.dev</span>
+          </Link>
+        </nav>
+
+        {/* Sidebar */}
+        <aside
+          data-sidebar
+          style={{
+            background: "var(--color-background)",
+            borderRight: "1px solid var(--color-border)",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Sidebar header — logo */}
+          <header style={{ padding: "16px 16px 12px", display: "flex", alignItems: "center" }}>
+            <Link href="/" style={{ display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}>
+              <span style={{ fontFamily: "var(--font-serif, inherit)", fontSize: "18px", fontWeight: 700, color: "var(--color-text-primary)" }}>ALRT</span>
+              <span style={{ fontFamily: "monospace", fontSize: "11px", color: "var(--color-text-muted)" }}>.dev</span>
+            </Link>
+          </header>
+
+          {/* Navigation */}
+          <nav style={{ flex: 1, padding: "0 8px" }}>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              {NAV_ITEMS.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setSidebarOpen(false)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        fontWeight: 500,
+                        textDecoration: "none",
+                        color: active ? "var(--color-text-primary)" : "var(--color-text-muted)",
+                        background: active ? "var(--color-surface)" : "transparent",
+                        transition: "color 0.15s, background 0.15s",
+                        position: "relative",
+                      }}
+                    >
+                      {active && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            width: "2px",
+                            height: "16px",
+                            background: "var(--color-accent)",
+                            borderRadius: "2px",
+                          }}
+                        />
+                      )}
+                      <item.icon
+                        size={18}
+                        strokeWidth={1.5}
+                        style={{ flexShrink: 0, color: active ? "var(--color-accent)" : "currentColor" }}
+                      />
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+
+              {/* Settings group with details/summary */}
+              <li>
+                <details open={isSettingsActive || undefined} style={{ marginTop: "2px" }}>
+                  <summary
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      color: isSettingsActive ? "var(--color-text-primary)" : "var(--color-text-muted)",
+                      background: isSettingsActive ? "var(--color-surface)" : "transparent",
+                      cursor: "pointer",
+                      listStyle: "none",
+                      position: "relative",
+                      transition: "color 0.15s, background 0.15s",
+                    }}
+                  >
+                    {isSettingsActive && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          width: "2px",
+                          height: "16px",
+                          background: "var(--color-accent)",
+                          borderRadius: "2px",
+                        }}
+                      />
+                    )}
+                    <Settings
+                      size={18}
+                      strokeWidth={1.5}
+                      style={{ flexShrink: 0, color: isSettingsActive ? "var(--color-accent)" : "currentColor" }}
+                    />
+                    <span>Settings</span>
+                  </summary>
+                  <ul style={{ listStyle: "none", margin: "2px 0 0 0", padding: "0 0 0 40px" }}>
+                    {SETTINGS_CHILDREN.map((child) => {
+                      const childActive = pathname === child.href;
+                      return (
+                        <li key={child.href}>
+                          <Link
+                            href={child.href}
+                            aria-current={childActive ? "page" : undefined}
+                            onClick={() => setSidebarOpen(false)}
+                            style={{
+                              display: "block",
+                              padding: "5px 12px",
+                              fontSize: "13px",
+                              fontWeight: childActive ? 500 : 400,
+                              borderRadius: "4px",
+                              textDecoration: "none",
+                              color: childActive ? "var(--color-text-primary)" : "var(--color-text-muted)",
+                              transition: "color 0.15s",
+                            }}
+                          >
+                            {child.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </details>
+              </li>
+            </ul>
+          </nav>
+
+          {/* Footer — user info + logout */}
+          <footer
+            style={{
+              borderTop: "1px solid var(--color-border)",
+              padding: "12px 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "8px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "12px",
+                color: "var(--color-text-muted)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: "140px",
+              }}
+            >
+              {user?.email ?? "\u2014"}
+            </span>
+            <button
+              onClick={handleLogout}
+              title="Log out"
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--color-text-muted)",
+                cursor: "pointer",
+                padding: "4px",
+                display: "flex",
+                alignItems: "center",
+                borderRadius: "4px",
+                transition: "color 0.15s",
+              }}
+            >
+              <LogOut size={14} strokeWidth={1.5} />
+            </button>
+          </footer>
+        </aside>
+
+        {/* Main content area */}
+        <main style={{ overflow: "auto" }}>
+          {quotaExceeded && (
+            <div
+              role="alert"
+              style={{
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid var(--color-danger)",
+                borderRadius: "6px",
+                margin: "16px 16px 0",
+                padding: "8px 16px",
+                fontSize: "14px",
+                color: "var(--color-danger)",
+                textAlign: "center",
+              }}
+            >
+              You&apos;ve exceeded your monthly notification limit. Contact support to continue sending.
+            </div>
+          )}
+          <div style={{ padding: "24px" }}>
+            {children}
           </div>
-        )}
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        </main>
       </div>
-    </div>
+    </>
   );
 }

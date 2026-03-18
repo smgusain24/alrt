@@ -28,27 +28,24 @@ const TIMEZONES = [
 export default function TimezoneSelector({
   value,
   onChange,
-  className = "",
   id,
 }: TimezoneSelectorProps) {
   return (
-    <select
-      id={id}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`w-full bg-[#111113] text-[#fafafa] px-3 py-2 text-sm
-        border border-[rgba(255,255,255,0.12)] rounded-[6px]
-        focus:outline-none focus:ring-1 focus:ring-[#3b82f6]
-        transition-colors duration-150 ${className}`}
-    >
-      <option value="UTC" disabled>
-        Select your timezone
-      </option>
-      {TIMEZONES.map((tz) => (
-        <option key={tz.value} value={tz.value}>
-          {tz.label} ({tz.value})
+    <label data-field>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="UTC" disabled>
+          Select your timezone
         </option>
-      ))}
-    </select>
+        {TIMEZONES.map((tz) => (
+          <option key={tz.value} value={tz.value}>
+            {tz.label} ({tz.value})
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

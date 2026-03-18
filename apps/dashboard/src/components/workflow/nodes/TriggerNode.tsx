@@ -6,21 +6,34 @@ export default function TriggerNode({ data }: { data: any }) {
   const configured = !!data.event_name;
 
   return (
-    <div className="min-w-[180px] bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded-md overflow-hidden">
+    <div style={{
+      minWidth: 180,
+      background: "var(--color-elevated)",
+      border: "1px solid var(--color-border)",
+      borderRadius: 6,
+      overflow: "hidden",
+    }}>
       {/* Left accent stripe */}
-      <div className="flex">
-        <div className="w-1 bg-[#3b82f6] shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="px-3 py-2 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#3b82f6] shrink-0" strokeWidth={2} />
-            <span className="text-xs font-medium text-[#fafafa]">Trigger</span>
+      <div style={{ display: "flex" }}>
+        <div style={{ width: 4, background: "var(--color-accent)", flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+            <Zap style={{ width: 16, height: 16, color: "var(--color-accent)", flexShrink: 0 }} strokeWidth={2} />
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-primary)" }}>Trigger</span>
             <span
-              className={`ml-auto w-2 h-2 rounded-full shrink-0 ${
-                configured ? "bg-[#22c55e]" : "bg-[#f59e0b]"
-              }`}
+              className={configured ? "alrt-dot alrt-dot-success" : "alrt-dot alrt-dot-warning"}
+              style={{ marginLeft: "auto" }}
             />
           </div>
-          <div className="px-3 pb-2 text-xs font-mono text-[#a1a1aa] truncate">
+          <div style={{
+            padding: "0 12px 8px",
+            fontSize: "0.75rem",
+            fontFamily: "monospace",
+            color: "var(--color-text-secondary)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}>
             {data.event_name || "No event set"}
           </div>
         </div>

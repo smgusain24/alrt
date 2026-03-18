@@ -8,15 +8,15 @@ interface Token {
   text: string;
 }
 
-const TOKEN_COLORS: Record<Token["type"], string> = {
-  keyword: "text-[#c084fc]",
-  string: "text-[#4ade80]",
-  comment: "text-[#525252]",
-  property: "text-[#60a5fa]",
-  method: "text-[#34d399]",
-  punctuation: "text-[#a1a1aa]",
-  plain: "text-[#e4e4e7]",
-  number: "text-[#fb923c]",
+const TOKEN_CLASSES: Record<Token["type"], string> = {
+  keyword: "token-keyword",
+  string: "token-string",
+  comment: "token-comment",
+  property: "token-property",
+  method: "token-method",
+  punctuation: "token-punctuation",
+  plain: "token-plain",
+  number: "token-number",
 };
 
 function tokenizeLine(line: string): Token[] {
@@ -85,7 +85,7 @@ function HighlightedLine({ line }: { line: string }) {
   return (
     <>
       {tokens.map((token, i) => (
-        <span key={i} className={TOKEN_COLORS[token.type]}>
+        <span key={i} className={TOKEN_CLASSES[token.type]}>
           {token.text}
         </span>
       ))}
@@ -114,26 +114,58 @@ export default function CodeBlock({
   };
 
   return (
-    <div className={`border border-[rgba(255,255,255,0.06)] rounded-md overflow-hidden ${className}`}>
+    <div
+      className={className || undefined}
+      style={{
+        border: "1px solid var(--color-border)",
+        borderRadius: "6px",
+        overflow: "hidden",
+      }}
+    >
       {/* Title bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#18181b] border-b border-[rgba(255,255,255,0.06)]">
-        <span className="font-mono text-xs text-[#a1a1aa]">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0.5rem 1rem",
+          background: "var(--color-elevated)",
+          borderBottom: "1px solid var(--color-border)",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "monospace",
+            fontSize: "0.75rem",
+            color: "var(--color-text-secondary)",
+          }}
+        >
           {title}
         </span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 px-2 py-1 text-xs rounded
-            text-[#71717a] hover:text-[#fafafa]
-            transition-colors duration-150 focus:outline-none"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.375rem",
+            padding: "0.25rem 0.5rem",
+            fontSize: "0.75rem",
+            background: "none",
+            border: "none",
+            borderRadius: "4px",
+            color: copied ? "var(--color-success)" : "var(--color-text-muted)",
+            cursor: "pointer",
+            transition: "color 0.15s",
+          }}
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-[#22c55e]" strokeWidth={2} />
-              <span className="text-[#22c55e]">Copied</span>
+              <Check style={{ width: 14, height: 14 }} strokeWidth={2} />
+              <span>Copied</span>
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5" strokeWidth={2} />
+              <Copy style={{ width: 14, height: 14 }} strokeWidth={2} />
               <span>Copy</span>
             </>
           )}
@@ -141,18 +173,45 @@ export default function CodeBlock({
       </div>
 
       {/* Code area */}
-      <div className="overflow-x-auto bg-[#111113]">
-        <pre className="p-0 m-0">
-          <code className="font-mono text-sm leading-6">
+      <div style={{ overflowX: "auto", background: "var(--color-surface)" }}>
+        <pre style={{ padding: 0, margin: 0 }}>
+          <code
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.875rem",
+              lineHeight: "1.5rem",
+            }}
+          >
             {lines.map((line, i) => (
               <div
                 key={i}
-                className="flex hover:bg-[#18181b]/60"
+                style={{
+                  display: "flex",
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(24, 24, 27, 0.6)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
               >
-                <span className="select-none w-12 shrink-0 text-right pr-4 pl-2 text-[#525252] border-r border-[rgba(255,255,255,0.06)]">
+                <span
+                  style={{
+                    userSelect: "none",
+                    width: "3rem",
+                    flexShrink: 0,
+                    textAlign: "right",
+                    paddingRight: "1rem",
+                    paddingLeft: "0.5rem",
+                    color: "var(--color-text-muted)",
+                    borderRight: "1px solid var(--color-border)",
+                    opacity: 0.5,
+                  }}
+                >
                   {i + 1}
                 </span>
-                <span className="pl-4 pr-4 whitespace-pre">
+                <span style={{ paddingLeft: "1rem", paddingRight: "1rem", whiteSpace: "pre" }}>
                   <HighlightedLine line={line} />
                 </span>
               </div>
@@ -162,7 +221,19 @@ export default function CodeBlock({
       </div>
 
       {/* Bottom status bar */}
-      <div className="flex items-center justify-between px-4 py-1.5 bg-[#18181b] border-t border-[rgba(255,255,255,0.06)] text-xs font-mono text-[#71717a]">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0.375rem 1rem",
+          background: "var(--color-elevated)",
+          borderTop: "1px solid var(--color-border)",
+          fontSize: "0.75rem",
+          fontFamily: "monospace",
+          color: "var(--color-text-muted)",
+        }}
+      >
         <span>TypeScript</span>
         <span>{lines.length} lines</span>
       </div>

@@ -2,11 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Button,
   Table,
   Badge,
-  Divider,
-  Card,
   Input,
   Modal,
 } from "@/components/ui";
@@ -136,8 +133,8 @@ export default function SettingsPage() {
       key: "name",
       header: "Name",
       render: (row: ApiKeyRow) => (
-        <span className="font-medium text-sm text-text-primary">
-          {row.name || <span className="text-text-muted">Unnamed</span>}
+        <span style={{ fontWeight: 500, fontSize: "0.875rem", color: "var(--color-text-primary)" }}>
+          {row.name || <span style={{ color: "var(--color-text-muted)" }}>Unnamed</span>}
         </span>
       ),
     },
@@ -145,7 +142,14 @@ export default function SettingsPage() {
       key: "key_prefix",
       header: "Key prefix",
       render: (row: ApiKeyRow) => (
-        <code className="font-mono text-xs bg-elevated rounded px-1.5 py-0.5 text-text-secondary">
+        <code style={{
+          fontFamily: "monospace",
+          fontSize: "0.75rem",
+          background: "var(--color-elevated)",
+          borderRadius: 4,
+          padding: "2px 6px",
+          color: "var(--color-text-secondary)",
+        }}>
           {row.key_prefix}
         </code>
       ),
@@ -172,7 +176,7 @@ export default function SettingsPage() {
       key: "last_used_at",
       header: "Last used",
       render: (row: ApiKeyRow) => (
-        <span className="font-mono text-xs text-text-muted">
+        <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
           {row.last_used_at ? relativeDate(row.last_used_at) : "Never"}
         </span>
       ),
@@ -181,7 +185,7 @@ export default function SettingsPage() {
       key: "created_at",
       header: "Created",
       render: (row: ApiKeyRow) => (
-        <span className="font-mono text-xs text-text-muted">
+        <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
           {new Date(row.created_at).toLocaleDateString()}
         </span>
       ),
@@ -190,48 +194,48 @@ export default function SettingsPage() {
       key: "actions",
       header: "Actions",
       render: (row: ApiKeyRow) => (
-        <Button
-          variant="danger"
-          className="!px-2 !py-1 !text-xs"
+        <button
+          data-variant="danger"
+          className="small"
           disabled={!row.is_active}
           onClick={(e) => {
             e.stopPropagation();
             setShowRevokeConfirm(row.id);
           }}
         >
-          <Trash2 className="w-3.5 h-3.5 inline mr-1" strokeWidth={1.5} />
+          <Trash2 style={{ width: 14, height: 14, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
           Revoke
-        </Button>
+        </button>
       ),
     },
   ];
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-text-primary">
+    <div style={{ maxWidth: 960, margin: "0 auto" }}>
+      <div className="alrt-page-header">
+        <h1 className="alrt-page-title">
           Settings &mdash; API keys
         </h1>
-        <Button variant="primary" onClick={openCreateModal}>
-          <Plus className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+        <button onClick={openCreateModal}>
+          <Plus style={{ width: 16, height: 16, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
           Create API key
-        </Button>
+        </button>
       </div>
 
-      <p className="text-text-secondary text-sm mb-4">
+      <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", marginBottom: 16 }}>
         API keys authenticate requests to the Alrt API. Server keys have full
         access. Client keys are read-only.
       </p>
 
-      <Divider />
+      <hr />
 
-      <div className="mt-4">
+      <div style={{ marginTop: 16 }}>
         {loading ? (
-          <p className="text-text-muted text-sm">Loading API keys...</p>
+          <div aria-busy="true" data-spinner="large"></div>
         ) : error ? (
-          <Card>
-            <p className="text-red-500 text-sm">{error}</p>
-          </Card>
+          <article className="card">
+            <p style={{ color: "var(--color-danger)", fontSize: "0.875rem" }}>{error}</p>
+          </article>
         ) : (
           <Table<ApiKeyRow> columns={columns} data={apiKeys} />
         )}
@@ -244,7 +248,7 @@ export default function SettingsPage() {
         onClose={closeCreateModal}
       >
         {createStep === 1 ? (
-          <div className="flex flex-col gap-4">
+          <div className="vstack">
             <Input
               id="key-name"
               label="Key name"
@@ -253,77 +257,84 @@ export default function SettingsPage() {
               onChange={(e) => setNewKeyName(e.target.value)}
             />
 
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-text-secondary">
+            <div className="vstack" style={{ gap: 8 }}>
+              <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-secondary)" }}>
                 Key type
               </span>
-              <div className="flex gap-2">
-                <Button
-                  variant={newKeyType === "server" ? "primary" : "default"}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  className={newKeyType === "server" ? "small" : "outline small"}
                   onClick={() => setNewKeyType("server")}
                 >
-                  <Key className="w-3.5 h-3.5 inline mr-1" strokeWidth={1.5} />
+                  <Key style={{ width: 14, height: 14, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
                   Server key
-                </Button>
-                <Button
-                  variant={newKeyType === "client" ? "primary" : "default"}
+                </button>
+                <button
+                  className={newKeyType === "client" ? "small" : "outline small"}
                   onClick={() => setNewKeyType("client")}
                 >
-                  <Key className="w-3.5 h-3.5 inline mr-1" strokeWidth={1.5} />
+                  <Key style={{ width: 14, height: 14, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
                   Client key
-                </Button>
+                </button>
               </div>
-              <p className="text-xs text-text-muted">
+              <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
                 {newKeyType === "server"
                   ? "Full read/write access"
                   : "Read-only (frontend/WebSocket)"}
               </p>
             </div>
 
-            <Button
-              variant="primary"
+            <button
               onClick={handleCreate}
               disabled={creating}
-              className="w-full"
+              style={{ width: "100%" }}
             >
               {creating ? "Creating..." : "Create key"}
-            </Button>
+            </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" strokeWidth={1.5} />
-              <p className="text-danger text-sm">
+          <div className="vstack">
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <AlertTriangle style={{ width: 20, height: 20, color: "var(--color-danger)", flexShrink: 0, marginTop: 2 }} strokeWidth={1.5} />
+              <p style={{ color: "var(--color-danger)", fontSize: "0.875rem" }}>
                 This key will only be shown once. Copy it now and store it
                 securely.
               </p>
             </div>
 
-            <div className="bg-elevated border border-default rounded-md p-3 font-mono text-accent text-sm break-all">
+            <div style={{
+              background: "var(--color-elevated)",
+              border: "1px solid var(--color-border)",
+              borderRadius: 6,
+              padding: 12,
+              fontFamily: "monospace",
+              color: "var(--color-accent)",
+              fontSize: "0.875rem",
+              wordBreak: "break-all",
+            }}>
               {createdRawKey}
             </div>
 
-            <Button onClick={handleCopyKey} className="w-full">
+            <button className="outline" onClick={handleCopyKey} style={{ width: "100%" }}>
               {copied ? (
                 <>
-                  <Check className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+                  <Check style={{ width: 16, height: 16, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
                   Copied!
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+                  <Copy style={{ width: 16, height: 16, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
                   Copy to clipboard
                 </>
               )}
-            </Button>
+            </button>
 
-            <Button
-              variant="primary"
-              className="w-full"
+            <button
               onClick={closeCreateModal}
+              style={{ width: "100%" }}
             >
               I've saved my key
-            </Button>
+            </button>
           </div>
         )}
       </Modal>
@@ -334,26 +345,26 @@ export default function SettingsPage() {
         open={showRevokeConfirm !== null}
         onClose={() => setShowRevokeConfirm(null)}
       >
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" strokeWidth={1.5} />
-            <p className="text-sm text-text-secondary">
+        <div className="vstack">
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <AlertTriangle style={{ width: 20, height: 20, color: "var(--color-danger)", flexShrink: 0, marginTop: 2 }} strokeWidth={1.5} />
+            <p style={{ fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
               This action cannot be undone. Any services using this key will lose
               access.
             </p>
           </div>
 
-          <div className="flex gap-2 justify-end">
-            <Button onClick={() => setShowRevokeConfirm(null)}>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button className="outline" onClick={() => setShowRevokeConfirm(null)}>
               Cancel
-            </Button>
-            <Button
-              variant="danger"
+            </button>
+            <button
+              data-variant="danger"
               onClick={handleRevoke}
               disabled={revoking}
             >
               {revoking ? "Revoking..." : "Revoke key"}
-            </Button>
+            </button>
           </div>
         </div>
       </Modal>

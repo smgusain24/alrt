@@ -3,10 +3,18 @@ import uuid
 from datetime import datetime, timezone
 
 
-def make_team(*, id=None, name="Test Team"):
+def make_team(*, id=None, name="Test Team", plan_id=None,
+              billing_status="trialing", billing_provider=None,
+              subscription_id=None, trial_ends_at=None, period_ends_at=None):
     return {
         "id": id or uuid.uuid4(),
         "name": name,
+        "plan_id": plan_id,
+        "billing_status": billing_status,
+        "billing_provider": billing_provider,
+        "subscription_id": subscription_id,
+        "trial_ends_at": trial_ends_at,
+        "period_ends_at": period_ends_at,
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
     }
@@ -32,7 +40,9 @@ def make_user(*, id=None, email="test@example.com", team_id=None, role="admin",
 
 def make_subscriber(*, id=None, team_id=None, external_id="user-1",
                     email="user@test.com", name="Test User", slack_user_id=None,
-                    phone_number=None, custom_properties=None,
+                    phone_number=None, discord_webhook_url=None,
+                    telegram_chat_id=None, push_tokens=None,
+                    custom_properties=None,
                     channel_preferences=None, is_deleted=False):
     return {
         "id": id or uuid.uuid4(),
@@ -42,6 +52,9 @@ def make_subscriber(*, id=None, team_id=None, external_id="user-1",
         "name": name,
         "slack_user_id": slack_user_id,
         "phone_number": phone_number,
+        "discord_webhook_url": discord_webhook_url,
+        "telegram_chat_id": telegram_chat_id,
+        "push_tokens": push_tokens or [],
         "custom_properties": custom_properties or {},
         "channel_preferences": channel_preferences or {},
         "is_deleted": is_deleted,
@@ -167,4 +180,52 @@ def make_api_key(*, id=None, team_id=None, key_type="server",
         "last_used_at": None,
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
+    }
+
+
+def make_invite(*, id=None, team_id=None, email="invited@example.com",
+                role="viewer", token_hash="b" * 64, invited_by=None,
+                expires_at=None, accepted_at=None):
+    return {
+        "id": id or uuid.uuid4(),
+        "team_id": team_id or uuid.uuid4(),
+        "email": email,
+        "role": role,
+        "token_hash": token_hash,
+        "invited_by": invited_by or uuid.uuid4(),
+        "expires_at": expires_at or datetime(2099, 1, 1, tzinfo=timezone.utc),
+        "accepted_at": accepted_at,
+        "created_at": datetime.now(timezone.utc),
+    }
+
+
+def make_plan(*, id=None, name="free", display_name="Free Trial",
+              price_inr=0, quota_limit=1000, features=None,
+              is_active=True, sort_order=0):
+    return {
+        "id": id or uuid.uuid4(),
+        "name": name,
+        "display_name": display_name,
+        "price_inr": price_inr,
+        "quota_limit": quota_limit,
+        "features": features or {},
+        "is_active": is_active,
+        "sort_order": sort_order,
+        "created_at": datetime.now(timezone.utc),
+    }
+
+
+def make_billing_event(*, id=None, team_id=None, provider="razorpay",
+                       event_type="subscription.activated",
+                       event_id=None, payload_hash="a" * 64,
+                       metadata=None):
+    return {
+        "id": id or uuid.uuid4(),
+        "team_id": team_id or uuid.uuid4(),
+        "provider": provider,
+        "event_type": event_type,
+        "event_id": event_id or str(uuid.uuid4()),
+        "payload_hash": payload_hash,
+        "metadata": metadata or {},
+        "created_at": datetime.now(timezone.utc),
     }

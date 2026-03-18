@@ -5,10 +5,8 @@ import {
   Button,
   Table,
   Badge,
-  Card,
   Modal,
   Input,
-  Divider,
 } from "@/components/ui";
 import { Plus, Workflow } from "lucide-react";
 import { api } from "@/lib/api";
@@ -27,14 +25,21 @@ const columns = [
     key: "name",
     header: "Workflow",
     render: (row: WorkflowRow) => (
-      <span className="font-medium text-text-primary">{row.name}</span>
+      <span style={{ fontWeight: 500, color: "var(--color-text-primary)" }}>{row.name}</span>
     ),
   },
   {
     key: "event_name",
     header: "Trigger event",
     render: (row: WorkflowRow) => (
-      <code className="font-mono text-xs bg-elevated rounded px-1.5 py-0.5 text-text-secondary">
+      <code style={{
+        fontFamily: "monospace",
+        fontSize: "0.75rem",
+        background: "var(--color-elevated)",
+        borderRadius: "4px",
+        padding: "2px 6px",
+        color: "var(--color-text-secondary)",
+      }}>
         {row.event_name}
       </code>
     ),
@@ -52,7 +57,7 @@ const columns = [
     key: "updated_at",
     header: "Last edited",
     render: (row: WorkflowRow) => (
-      <span className="font-mono text-xs text-text-muted">
+      <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
         {new Date(row.updated_at).toLocaleDateString()}
       </span>
     ),
@@ -61,17 +66,24 @@ const columns = [
 
 function EmptyState() {
   return (
-    <Card className="text-center py-12">
-      <div className="flex flex-col items-center">
-        <div className="bg-elevated rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-          <Workflow className="w-8 h-8 text-text-muted" strokeWidth={1.5} />
-        </div>
-        <h3 className="text-lg font-semibold text-text-primary mb-2">No workflows yet</h3>
-        <p className="text-text-secondary text-sm max-w-sm">
-          Click <strong>&quot;Create workflow&quot;</strong> above to build your first notification flow.
-        </p>
+    <div className="alrt-empty">
+      <div style={{
+        background: "var(--color-elevated)",
+        borderRadius: "50%",
+        width: 64,
+        height: 64,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        margin: "0 auto 1rem",
+      }}>
+        <Workflow style={{ width: 32, height: 32, color: "var(--color-text-muted)" }} strokeWidth={1.5} />
       </div>
-    </Card>
+      <h3>No workflows yet</h3>
+      <p>
+        Click <strong>&quot;Create workflow&quot;</strong> above to build your first notification flow.
+      </p>
+    </div>
   );
 }
 
@@ -125,21 +137,21 @@ export default function WorkflowsPage() {
   const isEmpty = workflows.length === 0;
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-text-primary">Workflows</h1>
-        <Button variant="primary" onClick={openCreateModal}>
-          <Plus className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+    <div style={{ maxWidth: 960, margin: "0 auto" }}>
+      <div className="alrt-page-header">
+        <h1 className="alrt-page-title">Workflows</h1>
+        <button onClick={openCreateModal}>
+          <Plus style={{ width: 16, height: 16, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
           Create workflow
-        </Button>
+        </button>
       </div>
 
       {loading ? (
-        <p className="text-text-muted text-sm">Loading workflows...</p>
+        <div aria-busy="true" data-spinner="large"></div>
       ) : error ? (
-        <Card>
-          <p className="text-red-500 text-sm">{error}</p>
-        </Card>
+        <article className="card">
+          <p style={{ color: "var(--color-danger)", fontSize: "0.875rem" }}>{error}</p>
+        </article>
       ) : isEmpty ? (
         <EmptyState />
       ) : (
@@ -156,7 +168,7 @@ export default function WorkflowsPage() {
         open={showCreate}
         onClose={() => setShowCreate(false)}
       >
-        <form onSubmit={handleCreate} className="space-y-4">
+        <form onSubmit={handleCreate} className="vstack">
           <Input
             id="wf-name"
             label="Workflow name"
@@ -175,24 +187,23 @@ export default function WorkflowsPage() {
             required
             disabled={creating}
           />
-          <p className="text-xs text-text-muted">
+          <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
             The event name is used in the trigger API call. It must be unique per team.
           </p>
 
           {createError && (
-            <div className="text-danger text-sm">{createError}</div>
+            <div style={{ color: "var(--color-danger)", fontSize: "0.875rem" }}>{createError}</div>
           )}
 
-          <Divider className="!my-3" />
+          <hr />
 
-          <Button
+          <button
             type="submit"
-            variant="primary"
-            className="w-full"
             disabled={creating}
+            style={{ width: "100%" }}
           >
             {creating ? "Creating..." : "Create & open builder"}
-          </Button>
+          </button>
         </form>
       </Modal>
     </div>

@@ -4,7 +4,7 @@ import { SiWhatsapp, SiDiscord, SiTelegram } from "@icons-pack/react-simple-icon
 import { Tooltip } from "@/components/ui";
 
 const NODE_TYPES: { type: string; label: string; icon: any; accent: string; isSimple?: boolean }[] = [
-  { type: "trigger",           label: "Trigger",   icon: Zap,          accent: "#3b82f6" },
+  { type: "trigger",           label: "Trigger",   icon: Zap,          accent: "#3EA369" },
   { type: "channel_inapp",    label: "In-App",    icon: Bell,         accent: "#22c55e" },
   { type: "channel_email",    label: "Email",     icon: Mail,         accent: "#a855f7" },
   { type: "channel_slack",    label: "Slack",     icon: MessageSquare, accent: "#f97316" },
@@ -22,8 +22,25 @@ export default function NodePalette() {
   };
 
   return (
-    <div className="w-16 bg-[#111113] border-r border-[rgba(255,255,255,0.06)] py-3 flex flex-col items-center gap-1.5 shrink-0">
-      <span className="text-[9px] font-medium text-[#71717a] uppercase tracking-wider mb-1">
+    <div style={{
+      width: 64,
+      background: "var(--color-surface)",
+      borderRight: "1px solid var(--color-border)",
+      padding: "12px 0",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 6,
+      flexShrink: 0,
+    }}>
+      <span style={{
+        fontSize: 9,
+        fontWeight: 500,
+        color: "var(--color-text-muted)",
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        marginBottom: 4,
+      }}>
         Nodes
       </span>
       {NODE_TYPES.map((node) => (
@@ -31,16 +48,32 @@ export default function NodePalette() {
           <div
             draggable
             onDragStart={(e) => onDragStart(e, node.type)}
-            className="w-10 h-10 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#18181b]
-              flex items-center justify-center cursor-grab active:cursor-grabbing
-              hover:border-[rgba(255,255,255,0.12)] hover:bg-[#1f1f23] transition-colors duration-150"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 6,
+              border: "1px solid var(--color-border)",
+              background: "var(--color-elevated)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "grab",
+              transition: "border-color 0.15s, background 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-border-bright)";
+              e.currentTarget.style.background = "#1f1f23";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-border)";
+              e.currentTarget.style.background = "var(--color-elevated)";
+            }}
           >
             {node.isSimple ? (
               <node.icon size={18} style={{ color: node.accent }} />
             ) : (
               <node.icon
-                className="w-4.5 h-4.5"
-                style={{ color: node.accent }}
+                style={{ width: 18, height: 18, color: node.accent }}
                 strokeWidth={2}
               />
             )}

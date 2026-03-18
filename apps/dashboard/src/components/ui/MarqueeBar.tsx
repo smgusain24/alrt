@@ -16,11 +16,24 @@ export default function MarqueeBar({
 }: MarqueeBarProps) {
   return (
     <div
-      className={`bg-[#111113] py-2 border-y border-[rgba(255,255,255,0.06)] ${className}`}
+      className={className || undefined}
+      style={{
+        background: "var(--color-surface)",
+        padding: "0.5rem 0",
+        borderTop: "1px solid var(--color-border)",
+        borderBottom: "1px solid var(--color-border)",
+      }}
       aria-hidden="true"
     >
       <Marquee speed={speed} gradient={false} pauseOnHover>
-        <span className="text-sm tracking-wide px-8 text-[#71717a]">
+        <span
+          style={{
+            fontSize: "0.875rem",
+            letterSpacing: "0.025em",
+            padding: "0 2rem",
+            color: "var(--color-text-muted)",
+          }}
+        >
           {children}
         </span>
       </Marquee>

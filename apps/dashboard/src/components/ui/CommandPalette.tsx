@@ -27,7 +27,6 @@ function fuzzyMatch(query: string, text: string): boolean {
   const q = query.toLowerCase();
   const t = text.toLowerCase();
   if (t.includes(q)) return true;
-  // Simple character-by-character fuzzy match
   let qi = 0;
   for (let ti = 0; ti < t.length && qi < q.length; ti++) {
     if (t[ti] === q[qi]) qi++;
@@ -41,6 +40,7 @@ export default function CommandPalette() {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const router = useRouter();
 
   const close = useCallback(() => {
@@ -59,14 +59,12 @@ export default function CommandPalette() {
 
   const commands: CommandItem[] = useMemo(
     () => [
-      // Navigation
       { id: "nav-workflows", label: "Go to Workflows", section: "Navigation", icon: Workflow, action: () => navigate("/workflows"), keywords: "workflows list" },
       { id: "nav-subscribers", label: "Go to Subscribers", section: "Navigation", icon: Users, action: () => navigate("/subscribers"), keywords: "subscribers users" },
       { id: "nav-analytics", label: "Go to Analytics", section: "Navigation", icon: BarChart, action: () => navigate("/analytics"), keywords: "analytics metrics stats" },
       { id: "nav-activity", label: "Go to Activity", section: "Navigation", icon: Activity, action: () => navigate("/activity"), keywords: "activity notifications logs" },
       { id: "nav-settings", label: "Go to Settings", section: "Navigation", icon: Settings, action: () => navigate("/settings"), keywords: "settings api keys" },
       { id: "nav-providers", label: "Go to Providers", section: "Navigation", icon: Settings, action: () => navigate("/settings/providers"), keywords: "providers email slack" },
-      // Actions
       { id: "act-new-workflow", label: "Create New Workflow", section: "Actions", icon: Plus, action: () => navigate("/workflows"), keywords: "new workflow create add" },
     ],
     [navigate]
@@ -81,7 +79,6 @@ export default function CommandPalette() {
     );
   }, [query, commands]);
 
-  // Group by section
   const sections = useMemo(() => {
     const map = new Map<string, CommandItem[]>();
     for (const item of filtered) {
@@ -92,7 +89,6 @@ export default function CommandPalette() {
     return map;
   }, [filtered]);
 
-  // Flatten for index tracking
   const flatItems = useMemo(() => filtered, [filtered]);
 
   // Cmd+K listener
@@ -107,12 +103,30 @@ export default function CommandPalette() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Focus input when opened
+  // Show/hide dialog
   useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
     if (open) {
+      if (!dialog.open) dialog.showModal();
       setTimeout(() => inputRef.current?.focus(), 50);
+    } else {
+      dialog.close();
     }
   }, [open]);
+
+  // Handle native close event
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const handleClose = () => {
+      setOpen(false);
+      setQuery("");
+      setActiveIndex(0);
+    };
+    dialog.addEventListener("close", handleClose);
+    return () => dialog.removeEventListener("close", handleClose);
+  }, []);
 
   // Keyboard navigation inside palette
   useEffect(() => {
@@ -135,104 +149,177 @@ export default function CommandPalette() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, activeIndex, flatItems, close]);
 
-  // Reset active index on query change
   useEffect(() => {
     setActiveIndex(0);
   }, [query]);
 
-  // Scroll active item into view
   useEffect(() => {
     if (!listRef.current) return;
     const active = listRef.current.querySelector("[data-active='true']");
     active?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
 
-  if (!open) return null;
-
   let runningIndex = -1;
 
+  const kbdStyle: React.CSSProperties = {
+    fontSize: "10px",
+    fontFamily: "monospace",
+    color: "var(--color-text-muted)",
+    background: "var(--color-elevated)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "3px",
+    padding: "2px 6px",
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]">
-      {/* Backdrop */}
+    <dialog
+      ref={dialogRef}
+      style={{
+        position: "fixed",
+        top: "20vh",
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "100%",
+        maxWidth: "32rem",
+        padding: 0,
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "8px",
+        boxShadow: "0 0 60px rgba(0, 0, 0, 0.6)",
+        overflow: "hidden",
+        color: "var(--color-text-primary)",
+      }}
+      onClick={(e) => {
+        if (e.target === dialogRef.current) close();
+      }}
+    >
+      {/* Search input */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={close}
-      />
-
-      {/* Palette */}
-      <div className="relative w-full max-w-lg bg-[#111113] border border-[rgba(255,255,255,0.06)] rounded-lg shadow-[0_0_60px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[rgba(255,255,255,0.06)]">
-          <Search className="w-4 h-4 text-[#71717a] shrink-0" strokeWidth={2} />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search commands..."
-            className="flex-1 bg-transparent text-sm text-[#fafafa] placeholder:text-[#71717a] focus:outline-none"
-          />
-          <kbd className="text-[10px] font-mono text-[#71717a] bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded px-1.5 py-0.5">
-            esc
-          </kbd>
-        </div>
-
-        {/* Results */}
-        <div ref={listRef} className="max-h-[300px] overflow-y-auto p-1.5">
-          {flatItems.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-[#71717a]">
-              No results found
-            </div>
-          ) : (
-            Array.from(sections.entries()).map(([section, items]) => (
-              <div key={section}>
-                <div className="px-3 py-1.5 text-[10px] font-medium text-[#71717a] uppercase tracking-wider">
-                  {section}
-                </div>
-                {items.map((item) => {
-                  runningIndex++;
-                  const isActive = runningIndex === activeIndex;
-                  const idx = runningIndex;
-                  return (
-                    <button
-                      key={item.id}
-                      data-active={isActive}
-                      onClick={() => item.action()}
-                      onMouseEnter={() => setActiveIndex(idx)}
-                      className={`
-                        w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-left
-                        transition-colors duration-75
-                        ${isActive ? "bg-[#18181b] text-[#fafafa]" : "text-[#a1a1aa] hover:bg-[#18181b]"}
-                      `}
-                    >
-                      <item.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
-                      <span className="flex-1">{item.label}</span>
-                      {isActive && (
-                        <ArrowRight className="w-3 h-3 text-[#71717a]" strokeWidth={2} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Footer hint */}
-        <div className="px-4 py-2 border-t border-[rgba(255,255,255,0.06)] flex items-center gap-4 text-[10px] text-[#71717a]">
-          <span className="flex items-center gap-1">
-            <kbd className="font-mono bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded px-1 py-0.5">&uarr;&darr;</kbd>
-            navigate
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="font-mono bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded px-1 py-0.5">&crarr;</kbd>
-            select
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="font-mono bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded px-1 py-0.5">esc</kbd>
-            close
-          </span>
-        </div>
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem",
+          padding: "0.75rem 1rem",
+          borderBottom: "1px solid var(--color-border)",
+        }}
+      >
+        <Search style={{ width: 16, height: 16, color: "var(--color-text-muted)", flexShrink: 0 }} strokeWidth={2} />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search commands..."
+          style={{
+            flex: 1,
+            background: "transparent",
+            fontSize: "0.875rem",
+            color: "var(--color-text-primary)",
+            border: "none",
+            outline: "none",
+          }}
+        />
+        <kbd style={kbdStyle}>esc</kbd>
       </div>
-    </div>
+
+      {/* Results */}
+      <div
+        ref={listRef}
+        style={{
+          maxHeight: "300px",
+          overflowY: "auto",
+          padding: "0.375rem",
+        }}
+      >
+        {flatItems.length === 0 ? (
+          <div
+            style={{
+              padding: "1.5rem 0.75rem",
+              textAlign: "center",
+              fontSize: "0.875rem",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            No results found
+          </div>
+        ) : (
+          Array.from(sections.entries()).map(([section, items]) => (
+            <div key={section}>
+              <div
+                style={{
+                  padding: "0.375rem 0.75rem",
+                  fontSize: "10px",
+                  fontWeight: 500,
+                  color: "var(--color-text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {section}
+              </div>
+              {items.map((item) => {
+                runningIndex++;
+                const isActive = runningIndex === activeIndex;
+                const idx = runningIndex;
+                return (
+                  <button
+                    key={item.id}
+                    data-active={isActive}
+                    onClick={() => item.action()}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      padding: "0.5rem 0.75rem",
+                      borderRadius: "6px",
+                      fontSize: "0.875rem",
+                      textAlign: "left",
+                      background: isActive ? "var(--color-elevated)" : "transparent",
+                      color: isActive ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "background 0.075s, color 0.075s",
+                    }}
+                  >
+                    <item.icon style={{ width: 16, height: 16, flexShrink: 0 }} strokeWidth={1.5} />
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                    {isActive && (
+                      <ArrowRight style={{ width: 12, height: 12, color: "var(--color-text-muted)" }} strokeWidth={2} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Footer hint */}
+      <div
+        style={{
+          padding: "0.5rem 1rem",
+          borderTop: "1px solid var(--color-border)",
+          display: "flex",
+          alignItems: "center",
+          gap: "1rem",
+          fontSize: "10px",
+          color: "var(--color-text-muted)",
+        }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+          <kbd style={kbdStyle}>&uarr;&darr;</kbd>
+          navigate
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+          <kbd style={kbdStyle}>&crarr;</kbd>
+          select
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+          <kbd style={kbdStyle}>esc</kbd>
+          close
+        </span>
+      </div>
+    </dialog>
   );
 }

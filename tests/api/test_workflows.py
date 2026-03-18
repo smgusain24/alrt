@@ -97,8 +97,9 @@ class TestPublishWorkflow:
 
             resp = await client.post(f"/workflows/{WORKFLOW_ID}/publish", headers={"Authorization": "Bearer fake"})
 
-            assert resp.status_code == 400
-            assert "trigger" in resp.json()["detail"].lower()
+            assert resp.status_code == 422
+            detail = resp.json()["detail"]
+            assert any("trigger" in err.lower() for err in detail)
 
     async def test_publish_empty_nodes(self, client):
         wf = make_workflow(id=WORKFLOW_ID, team_id=TEAM_ID, definition={
@@ -110,8 +111,9 @@ class TestPublishWorkflow:
 
             resp = await client.post(f"/workflows/{WORKFLOW_ID}/publish", headers={"Authorization": "Bearer fake"})
 
-            assert resp.status_code == 400
-            assert "at least one node" in resp.json()["detail"].lower()
+            assert resp.status_code == 422
+            detail = resp.json()["detail"]
+            assert any("at least one node" in err.lower() for err in detail)
 
 
 @pytest.mark.asyncio

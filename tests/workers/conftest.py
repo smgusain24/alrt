@@ -30,6 +30,7 @@ if "celery" not in sys.modules:
     _celery_mod.Celery.return_value = _celery_app_instance
     sys.modules["celery"] = _celery_mod
     sys.modules["celery.signals"] = MagicMock()
+    sys.modules["celery.schedules"] = MagicMock()
 
     # Now create the alrt_workers.celery_app module with our mock app
     import types

@@ -12,17 +12,30 @@ export default function DelayNode({ data }: { data: any }) {
         : `${duration}s`;
 
   return (
-    <div className="min-w-[160px] bg-[#18181b] border border-[rgba(255,255,255,0.06)] rounded-md overflow-hidden">
+    <div style={{
+      minWidth: 160,
+      background: "var(--color-elevated)",
+      border: "1px solid var(--color-border)",
+      borderRadius: 6,
+      overflow: "hidden",
+    }}>
       <Handle type="target" position={Position.Top} />
-      <div className="flex">
-        <div className="w-1 bg-[#f59e0b] shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="px-3 py-2 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[#f59e0b] shrink-0" strokeWidth={2} />
-            <span className="text-xs font-medium text-[#fafafa]">Delay</span>
-            <span className="ml-auto w-2 h-2 rounded-full shrink-0 bg-[#22c55e]" />
+      <div style={{ display: "flex" }}>
+        <div style={{ width: 4, background: "var(--color-warning)", flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+            <Clock style={{ width: 16, height: 16, color: "var(--color-warning)", flexShrink: 0 }} strokeWidth={2} />
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-text-primary)" }}>Delay</span>
+            <span className="alrt-dot alrt-dot-success" style={{ marginLeft: "auto" }} />
           </div>
-          <div className="px-3 pb-2 text-sm font-mono font-semibold text-[#fafafa] text-center">
+          <div style={{
+            padding: "0 12px 8px",
+            fontSize: "0.875rem",
+            fontFamily: "monospace",
+            fontWeight: 600,
+            color: "var(--color-text-primary)",
+            textAlign: "center",
+          }}>
             {label}
           </div>
         </div>

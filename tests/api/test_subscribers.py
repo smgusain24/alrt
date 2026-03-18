@@ -127,5 +127,7 @@ class TestPreferences:
 
             assert resp.status_code == 200
             data = resp.json()
-            assert data["channel_preferences"]["global"]["email"] is True
-            assert data["channel_preferences"]["global"]["in_app"] is False
+            # PreferencesResponse is flat (no channel_preferences wrapper)
+            prefs = data.get("global") or data.get("global_", {})
+            assert prefs["email"] is True
+            assert prefs["in_app"] is False

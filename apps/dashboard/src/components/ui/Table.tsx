@@ -13,26 +13,19 @@ interface TableProps<T> {
   className?: string;
 }
 
-export default function Table<T extends Record<string, unknown>>({
+export default function Table<T extends object>({
   columns,
   data,
   onRowClick,
   className = "",
 }: TableProps<T>) {
   return (
-    <div
-      className={`border border-[rgba(255,255,255,0.06)] rounded-md overflow-hidden ${className}`}
-    >
-      <table className="w-full text-sm">
+    <div className={`table ${className}`.trim()}>
+      <table>
         <thead>
-          <tr className="bg-[#111113] sticky top-0">
+          <tr>
             {columns.map((col) => (
-              <th
-                key={col.key}
-                className="text-left px-4 py-2.5 text-xs font-medium text-[#a1a1aa] border-b border-[rgba(255,255,255,0.06)]"
-              >
-                {col.header}
-              </th>
+              <th key={col.key}>{col.header}</th>
             ))}
           </tr>
         </thead>
@@ -40,19 +33,12 @@ export default function Table<T extends Record<string, unknown>>({
           {data.map((row, i) => (
             <tr
               key={i}
-              className={`
-                border-b border-[rgba(255,255,255,0.06)] last:border-b-0
-                transition-colors duration-100
-                ${onRowClick ? "cursor-pointer hover:bg-[#18181b]" : "hover:bg-[#18181b]"}
-              `}
               onClick={() => onRowClick?.(row)}
+              style={onRowClick ? { cursor: "pointer" } : undefined}
             >
               {columns.map((col) => (
-                <td
-                  key={col.key}
-                  className="px-4 py-2.5 text-[#fafafa]"
-                >
-                  {col.render ? col.render(row) : (row[col.key] as ReactNode)}
+                <td key={col.key}>
+                  {col.render ? col.render(row) : ((row as Record<string, unknown>)[col.key] as ReactNode)}
                 </td>
               ))}
             </tr>

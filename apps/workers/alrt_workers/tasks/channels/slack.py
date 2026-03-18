@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import uuid
 
 import httpx
@@ -101,7 +100,17 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     try:
         _send_slack_message(bot_token, target, text, blocks, thread_ts=overrides.get("thread_ts"))
         execute_update_query(Q_MARK_SENT, [nid])
-        # Increment monthly quota counter (soft limit, fire-and-forget)
+        # Get plan-based quota limit (fire-and-forget — never blocks delivery)
+        try:
+            _limit_row = execute_read_one_query(
+                """SELECT COALESCE(p.quota_limit, 1000) AS quota_limit
+                   FROM teams t LEFT JOIN plans p ON t.plan_id = p.id
+                   WHERE t.id = $1""",
+                [uuid.UUID(team_id)],
+            )
+            _quota_limit = _limit_row["quota_limit"] if _limit_row else 1000
+        except Exception:
+            _quota_limit = 1000
         execute_update_query(
             """
             INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
@@ -111,7 +120,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
                 over_limit    = (team_quotas.monthly_count + 1) > $2,
                 updated_at    = now()
             """,
-            [uuid.UUID(team_id), int(os.getenv("MONTHLY_QUOTA_LIMIT", "1000"))],
+            [uuid.UUID(team_id), _quota_limit],
         )
     except _PermanentSlackError as exc:
         log.error(f"Permanent Slack error for notification {nid}: {exc}")

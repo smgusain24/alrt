@@ -35,7 +35,7 @@ async def init_pool(database_url: str):
 REQUIRED_TABLES = [
     "teams", "users", "api_keys", "subscribers", "workflows",
     "workflow_executions", "notifications", "providers", "scheduled_steps",
-    "event_logs", "templates", "team_quotas",
+    "event_logs", "templates", "team_quotas", "plans", "billing_events",
 ]
 
 REQUIRED_INDEXES = [
@@ -68,7 +68,13 @@ CREATE TABLE IF NOT EXISTS teams (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    plan_id          UUID,
+    billing_status   VARCHAR(20) NOT NULL DEFAULT 'trialing',
+    billing_provider VARCHAR(20),
+    subscription_id  VARCHAR(255),
+    trial_ends_at    TIMESTAMPTZ,
+    period_ends_at   TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -109,6 +115,7 @@ CREATE TABLE IF NOT EXISTS subscribers (
     phone_number VARCHAR(50),
     discord_webhook_url VARCHAR(500),
     telegram_chat_id    VARCHAR(100),
+    push_tokens JSONB NOT NULL DEFAULT '[]',
     custom_properties JSONB NOT NULL DEFAULT '{}',
     channel_preferences JSONB NOT NULL DEFAULT '{}',
     is_deleted BOOLEAN NOT NULL DEFAULT false,
@@ -217,6 +224,33 @@ CREATE TABLE IF NOT EXISTS templates (
     UNIQUE(team_id, name, channel)
 );
 
+CREATE TABLE IF NOT EXISTS plans (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name         VARCHAR(50) NOT NULL UNIQUE,
+    display_name VARCHAR(100) NOT NULL,
+    price_inr    INTEGER NOT NULL DEFAULT 0,
+    quota_limit  INTEGER NOT NULL,
+    features     JSONB NOT NULL DEFAULT '{}',
+    is_active    BOOLEAN NOT NULL DEFAULT true,
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS billing_events (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id      UUID NOT NULL REFERENCES teams(id),
+    provider     VARCHAR(20) NOT NULL,
+    event_type   VARCHAR(100) NOT NULL,
+    event_id     VARCHAR(255) NOT NULL,
+    payload_hash VARCHAR(64) NOT NULL,
+    metadata     JSONB NOT NULL DEFAULT '{}',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(provider, event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_billing_events_team
+    ON billing_events(team_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS team_quotas (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id      UUID NOT NULL REFERENCES teams(id),
@@ -252,6 +286,13 @@ SCHEMA_MIGRATIONS = [
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS discord_webhook_url VARCHAR(500)",
     "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR(100)",
+    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS plan_id UUID",
+    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS billing_status VARCHAR(20) NOT NULL DEFAULT 'trialing'",
+    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS billing_provider VARCHAR(20)",
+    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS subscription_id VARCHAR(255)",
+    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ",
+    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS period_ends_at TIMESTAMPTZ",
+    "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS push_tokens JSONB NOT NULL DEFAULT '[]'",
 ]
 
 
@@ -293,6 +334,22 @@ async def ensure_schema():
                 await conn.execute(migration)
             except Exception:
                 pass  # Column already exists — idempotent
+
+        # Seed billing plans (idempotent upsert)
+        await conn.execute("""
+            INSERT INTO plans (name, display_name, price_inr, quota_limit, features, sort_order)
+            VALUES
+                ('free',   'Free Trial', 0,      1000,   '{}',                                    0),
+                ('pro',    'Pro',        99900,  25000,  '{"byoc_email": true, "byoc_slack": true}', 1),
+                ('growth', 'Growth',     499900, 200000, '{"byoc_email": true, "byoc_slack": true, "byoc_all": true, "priority_support": true}', 2)
+            ON CONFLICT (name) DO UPDATE SET
+                display_name = EXCLUDED.display_name,
+                price_inr    = EXCLUDED.price_inr,
+                quota_limit  = EXCLUDED.quota_limit,
+                features     = EXCLUDED.features,
+                sort_order   = EXCLUDED.sort_order
+        """)
+        logger.info("Billing plans seeded")
 
 
 async def close_pool():

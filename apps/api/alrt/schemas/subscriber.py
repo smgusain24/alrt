@@ -55,6 +55,7 @@ class SubscriberResponse(BaseModel):
     telegram_chat_id: str | None
     custom_properties: dict
     channel_preferences: dict
+    push_tokens: list[dict] = []
     created_at: datetime
     updated_at: datetime
 
@@ -72,3 +73,16 @@ class PreferencesResponse(BaseModel):
 
 class UpdatePreferences(BaseModel):
     channel_preferences: ChannelPreferences
+
+
+class PushTokenRegister(BaseModel):
+    token: str
+    platform: str  # "android" | "ios" | "web"
+    device_id: str | None = None
+
+
+class PushTokenResponse(BaseModel):
+    token: str
+    platform: str
+    device_id: str | None
+    last_seen: str | None

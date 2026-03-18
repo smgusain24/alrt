@@ -7,13 +7,13 @@ CREATE = """
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     RETURNING id, external_id, email, name, phone_number, slack_user_id,
               discord_webhook_url, telegram_chat_id,
-              custom_properties, channel_preferences, created_at, updated_at
+              custom_properties, channel_preferences, push_tokens, created_at, updated_at
 """
 
 FIND_BY_EXTERNAL_ID = """
     SELECT id, team_id, external_id, email, name, slack_user_id,
            phone_number, discord_webhook_url, telegram_chat_id,
-           custom_properties, channel_preferences, created_at, updated_at
+           custom_properties, channel_preferences, push_tokens, created_at, updated_at
     FROM subscribers
     WHERE team_id = $1 AND external_id = $2 AND is_deleted = false
 """
@@ -34,20 +34,20 @@ UPSERT_BY_EXTERNAL_ID = """
         updated_at = now()
     RETURNING id, external_id, email, name, phone_number, slack_user_id,
               discord_webhook_url, telegram_chat_id,
-              custom_properties, channel_preferences, created_at, updated_at
+              custom_properties, channel_preferences, push_tokens, created_at, updated_at
 """
 
 FIND_BY_ID = """
     SELECT id, team_id, external_id, email, name, slack_user_id,
            phone_number, discord_webhook_url, telegram_chat_id,
-           custom_properties, channel_preferences, created_at, updated_at
+           custom_properties, channel_preferences, push_tokens, created_at, updated_at
     FROM subscribers WHERE id = $1 AND is_deleted = false
 """
 
 LIST_BY_TEAM = """
     SELECT id, external_id, email, name, slack_user_id,
            phone_number, discord_webhook_url, telegram_chat_id,
-           custom_properties, channel_preferences, created_at, updated_at
+           custom_properties, channel_preferences, push_tokens, created_at, updated_at
     FROM subscribers
     WHERE team_id = $1 AND is_deleted = false
     ORDER BY created_at DESC
@@ -74,7 +74,7 @@ UPDATE = """
     WHERE id = $1
     RETURNING id, external_id, email, name, phone_number, slack_user_id,
               discord_webhook_url, telegram_chat_id,
-              custom_properties, channel_preferences, created_at, updated_at
+              custom_properties, channel_preferences, push_tokens, created_at, updated_at
 """
 
 SOFT_DELETE = """
@@ -87,5 +87,35 @@ UPDATE_PREFERENCES = """
     WHERE id = $1
     RETURNING id, external_id, email, name, phone_number, slack_user_id,
               discord_webhook_url, telegram_chat_id,
-              custom_properties, channel_preferences, created_at, updated_at
+              custom_properties, channel_preferences, push_tokens, created_at, updated_at
+"""
+
+ADD_PUSH_TOKEN = """
+    UPDATE subscribers SET
+        push_tokens = (
+            SELECT COALESCE(jsonb_agg(t), '[]'::jsonb)
+            FROM jsonb_array_elements(
+                CASE WHEN push_tokens = '[]'::jsonb THEN '[]'::jsonb ELSE push_tokens END
+            ) t
+            WHERE t->>'token' != $2
+        ) || $3::jsonb,
+        updated_at = now()
+    WHERE id = $1 AND is_deleted = false
+    RETURNING push_tokens
+"""
+
+REMOVE_PUSH_TOKEN = """
+    UPDATE subscribers SET
+        push_tokens = (
+            SELECT COALESCE(jsonb_agg(t), '[]'::jsonb)
+            FROM jsonb_array_elements(push_tokens) t
+            WHERE t->>'token' != $2
+        ),
+        updated_at = now()
+    WHERE id = $1 AND is_deleted = false
+    RETURNING push_tokens
+"""
+
+GET_PUSH_TOKENS = """
+    SELECT push_tokens FROM subscribers WHERE id = $1 AND is_deleted = false
 """

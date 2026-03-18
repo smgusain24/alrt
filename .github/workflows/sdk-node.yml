@@ -1,0 +1,23 @@
+name: SDK Node
+
+on:
+  pull_request:
+    paths:
+      - "packages/sdk-node/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: cd packages/sdk-node && pnpm install
+      - run: cd packages/sdk-node && pnpm lint
+      - run: cd packages/sdk-node && pnpm build
+      - run: cd packages/sdk-node && pnpm test

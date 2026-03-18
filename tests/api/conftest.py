@@ -33,12 +33,15 @@ async def client():
 
         from alrt.main import app
         from alrt.deps import get_current_team, get_current_user
+        from alrt.billing.deps import enforce_quota
 
         # Override auth dependencies
         app.dependency_overrides[get_current_team] = lambda: TEAM_ID
         app.dependency_overrides[get_current_user] = lambda: make_user(
             id=USER_ID, team_id=TEAM_ID
         )
+        # Override quota enforcement (returns team_id, no DB call)
+        app.dependency_overrides[enforce_quota] = lambda: TEAM_ID
 
         # Disable rate limiting for tests
         from alrt.middleware.rate_limit import limiter

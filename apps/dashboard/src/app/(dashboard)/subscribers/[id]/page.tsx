@@ -3,15 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  Button,
   Input,
-  Card,
   Badge,
-  Divider,
   Table,
   TimezoneSelector,
 } from "@/components/ui";
-import { User, Mail, MessageSquare, Bell, Save, ArrowLeft, Trash2, Clock, Activity } from "lucide-react";
+import { User, Mail, MessageSquare, Bell, Save, ArrowLeft, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface Subscriber {
@@ -182,7 +179,7 @@ export default function SubscriberDetailPage() {
       key: "title",
       header: "Title",
       render: (row: Notification) => (
-        <span className="font-medium text-text-primary text-xs">{row.title || "\u2014"}</span>
+        <span style={{ fontWeight: 500, color: "var(--color-text-primary)", fontSize: "0.75rem" }}>{row.title || "\u2014"}</span>
       ),
     },
     {
@@ -214,7 +211,7 @@ export default function SubscriberDetailPage() {
       key: "created_at",
       header: "Timestamp",
       render: (row: Notification) => (
-        <span className="font-mono text-xs text-text-muted">
+        <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
           {new Date(row.created_at).toLocaleString()}
         </span>
       ),
@@ -223,68 +220,84 @@ export default function SubscriberDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto">
-        <p className="text-text-muted font-mono text-sm animate-pulse">Loading subscriber...</p>
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
+        <div aria-busy="true" data-spinner="large"></div>
       </div>
     );
   }
 
   if (notFound || !subscriber) {
     return (
-      <div className="max-w-5xl mx-auto">
-        <Card className="text-center py-12">
-          <div className="flex flex-col items-center">
-            <div className="bg-danger/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-              <User className="w-8 h-8 text-danger" strokeWidth={1.5} />
-            </div>
-            <h3 className="text-lg font-semibold text-text-primary mb-2">Subscriber not found</h3>
-            <p className="text-text-secondary text-sm mb-4">
-              No subscriber found with ID <code className="font-mono bg-elevated rounded-[6px] px-1.5 py-0.5 text-sm">{id}</code>
-            </p>
-            <Button onClick={() => router.push("/subscribers")}>
-              <ArrowLeft className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
-              Back to subscribers
-            </Button>
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
+        <div className="alrt-empty">
+          <div style={{
+            background: "rgba(239,68,68,0.1)",
+            borderRadius: "50%",
+            width: 64,
+            height: 64,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 1rem",
+          }}>
+            <User style={{ width: 32, height: 32, color: "var(--color-danger)" }} strokeWidth={1.5} />
           </div>
-        </Card>
+          <h3>Subscriber not found</h3>
+          <p>
+            No subscriber found with ID <code style={{ fontFamily: "monospace", background: "var(--color-elevated)", borderRadius: 6, padding: "2px 6px", fontSize: "0.875rem" }}>{id}</code>
+          </p>
+          <button className="outline" onClick={() => router.push("/subscribers")}>
+            <ArrowLeft style={{ width: 16, height: 16, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
+            Back to subscribers
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto pb-12">
+    <div style={{ maxWidth: 960, margin: "0 auto", paddingBottom: 48 }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <button
+          className="ghost"
           onClick={() => router.push("/subscribers")}
-          className="flex items-center gap-1 text-sm text-text-muted hover:text-text-primary cursor-pointer transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />
+          <ArrowLeft style={{ width: 16, height: 16, marginRight: 4 }} strokeWidth={1.5} />
           Back
         </button>
-        <div className="flex gap-2">
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
-            <Save className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={handleSave} disabled={saving}>
+            <Save style={{ width: 16, height: 16, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
             {saving ? "Saving..." : saveSuccess ? "Saved!" : "Save changes"}
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={deleting}>
-            <Trash2 className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+          </button>
+          <button data-variant="danger" onClick={handleDelete} disabled={deleting}>
+            <Trash2 style={{ width: 16, height: 16, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
             {deleting ? "Deleting..." : "Delete"}
-          </Button>
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-start">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 24, alignItems: "start" }}>
         {/* Left Column */}
-        <div className="flex flex-col gap-6">
+        <div className="vstack" style={{ gap: 24 }}>
           {/* Profile */}
-          <Card title="Subscriber profile">
-            <div className="space-y-4">
+          <article className="card">
+            <header><h3>Subscriber profile</h3></header>
+            <div className="vstack">
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
+                <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 4 }}>
                   External ID
                 </label>
-                <code className="font-mono text-sm bg-elevated rounded-[6px] px-2 py-1.5 block text-text-primary">
+                <code style={{
+                  fontFamily: "monospace",
+                  fontSize: "0.875rem",
+                  background: "var(--color-elevated)",
+                  borderRadius: 6,
+                  padding: "6px 8px",
+                  display: "block",
+                  color: "var(--color-text-primary)",
+                }}>
                   {subscriber.external_id}
                 </code>
               </div>
@@ -315,43 +328,44 @@ export default function SubscriberDetailPage() {
               />
 
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
+                <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 4 }}>
                   Created
                 </label>
-                <span className="font-mono text-sm text-text-muted">
+                <span style={{ fontFamily: "monospace", fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
                   {new Date(subscriber.created_at).toLocaleString()}
                 </span>
               </div>
             </div>
-          </Card>
+          </article>
 
           {/* DND Hours */}
-          <Card title="Do not disturb">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-text-muted max-w-[200px]">
+          <article className="card">
+            <header><h3>Do not disturb</h3></header>
+            <div className="vstack">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", maxWidth: 200 }}>
                   Delay notifications during specific hours.
                 </p>
-                <Button
-                  variant={dndEnabled ? "danger" : "default"}
+                <button
+                  className={dndEnabled ? "small" : "outline small"}
+                  data-variant={dndEnabled ? "danger" : undefined}
                   onClick={() => setDndEnabled(!dndEnabled)}
-                  className="text-xs px-2 py-1"
                 >
                   {dndEnabled ? "Disable" : "Enable"}
-                </Button>
+                </button>
               </div>
 
               {dndEnabled && (
                 <>
-                  <Divider />
-                  <div className="space-y-3">
+                  <hr />
+                  <div className="vstack">
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1">
+                      <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 4 }}>
                         Timezone
                       </label>
                       <TimezoneSelector value={dndTimezone} onChange={setDndTimezone} />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <Input
                         id="dnd-start"
                         label="Start time"
@@ -371,87 +385,76 @@ export default function SubscriberDetailPage() {
                 </>
               )}
             </div>
-          </Card>
+          </article>
         </div>
 
         {/* Right Column */}
-        <div className="flex flex-col gap-6">
+        <div className="vstack" style={{ gap: 24 }}>
           {/* Channel Preferences */}
-          <Card title="Global channels">
-            <div className="space-y-4">
-              <p className="text-xs text-text-muted">
+          <article className="card">
+            <header><h3>Global channels</h3></header>
+            <div className="vstack">
+              <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
                 Control which channels this subscriber can receive notifications from globally.
               </p>
 
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPrefInApp((v) => !v)}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium cursor-pointer rounded-[6px] border transition-colors ${prefInApp
-                    ? "border-accent bg-accent/10 text-text-primary"
-                    : "border-default bg-surface text-text-muted hover:bg-elevated"
-                    }`}
-                >
-                  <Bell className="w-4 h-4" strokeWidth={1.5} />
-                  In-app
-                  {prefInApp && (
-                    <Badge variant="success" className="ml-auto">on</Badge>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPrefEmail((v) => !v)}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium cursor-pointer rounded-[6px] border transition-colors ${prefEmail
-                    ? "border-accent bg-accent/10 text-text-primary"
-                    : "border-default bg-surface text-text-muted hover:bg-elevated"
-                    }`}
-                >
-                  <Mail className="w-4 h-4" strokeWidth={1.5} />
-                  Email
-                  {prefEmail && (
-                    <Badge variant="success" className="ml-auto">on</Badge>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPrefSlack((v) => !v)}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium cursor-pointer rounded-[6px] border transition-colors ${prefSlack
-                    ? "border-accent bg-accent/10 text-text-primary"
-                    : "border-default bg-surface text-text-muted hover:bg-elevated"
-                    }`}
-                >
-                  <MessageSquare className="w-4 h-4" strokeWidth={1.5} />
-                  Slack
-                  {prefSlack && (
-                    <Badge variant="success" className="ml-auto">on</Badge>
-                  )}
-                </button>
+              <div className="vstack" style={{ gap: 8 }}>
+                {[
+                  { label: "In-app", icon: Bell, value: prefInApp, toggle: () => setPrefInApp((v) => !v) },
+                  { label: "Email", icon: Mail, value: prefEmail, toggle: () => setPrefEmail((v) => !v) },
+                  { label: "Slack", icon: MessageSquare, value: prefSlack, toggle: () => setPrefSlack((v) => !v) },
+                ].map((ch) => {
+                  const Icon = ch.icon;
+                  return (
+                    <button
+                      key={ch.label}
+                      type="button"
+                      onClick={ch.toggle}
+                      className={ch.value ? "outline" : "ghost"}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "12px 16px",
+                        width: "100%",
+                        justifyContent: "flex-start",
+                        borderColor: ch.value ? "var(--color-accent)" : undefined,
+                        background: ch.value ? "rgba(62,163,105,0.1)" : undefined,
+                      }}
+                    >
+                      <Icon style={{ width: 16, height: 16 }} strokeWidth={1.5} />
+                      {ch.label}
+                      {ch.value && (
+                        <span className="badge success" style={{ marginLeft: "auto" }}>on</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </Card>
+          </article>
 
           {/* Frequency Cap */}
-          <Card title="Frequency cap">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-text-muted max-w-[200px]">
+          <article className="card">
+            <header><h3>Frequency cap</h3></header>
+            <div className="vstack">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", maxWidth: 200 }}>
                   Limit max notifications per channel per day.
                 </p>
-                <Button
-                  variant={freqEnabled ? "danger" : "default"}
+                <button
+                  className={freqEnabled ? "small" : "outline small"}
+                  data-variant={freqEnabled ? "danger" : undefined}
                   onClick={() => setFreqEnabled(!freqEnabled)}
-                  className="text-xs px-2 py-1"
                 >
                   {freqEnabled ? "Disable" : "Enable"}
-                </Button>
+                </button>
               </div>
 
               {freqEnabled && (
                 <>
-                  <Divider />
-                  <div className="space-y-3">
+                  <hr />
+                  <div className="vstack">
                     <Input
                       id="freq-max-day"
                       label="Max per day"
@@ -465,29 +468,37 @@ export default function SubscriberDetailPage() {
                 </>
               )}
             </div>
-          </Card>
+          </article>
         </div>
       </div>
 
-      <Card title="Notification history">
+      <article className="card">
+        <header><h3>Notification history</h3></header>
         {
           notifications.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="bg-elevated rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                <Bell className="w-6 h-6 text-text-muted" strokeWidth={1.5} />
+            <div className="alrt-empty" style={{ padding: "2rem 0" }}>
+              <div style={{
+                background: "var(--color-elevated)",
+                borderRadius: "50%",
+                width: 48,
+                height: 48,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 0.75rem",
+              }}>
+                <Bell style={{ width: 24, height: 24, color: "var(--color-text-muted)" }} strokeWidth={1.5} />
               </div>
-              <p className="text-text-muted text-sm">No notifications logged yet</p>
+              <p>No notifications logged yet</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table<Notification>
-                columns={notificationColumns}
-                data={notifications}
-              />
-            </div>
+            <Table<Notification>
+              columns={notificationColumns}
+              data={notifications}
+            />
           )
         }
-      </Card>
+      </article>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, ReactNode } from "react";
+import { useState, useRef, ReactNode, CSSProperties } from "react";
 
 interface TooltipProps {
   content: string;
@@ -9,11 +9,31 @@ interface TooltipProps {
   className?: string;
 }
 
-const positionClasses: Record<string, string> = {
-  top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
-  bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
-  left: "right-full top-1/2 -translate-y-1/2 mr-2",
-  right: "left-full top-1/2 -translate-y-1/2 ml-2",
+const positionStyles: Record<string, CSSProperties> = {
+  top: {
+    bottom: "100%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    marginBottom: "0.5rem",
+  },
+  bottom: {
+    top: "100%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    marginTop: "0.5rem",
+  },
+  left: {
+    right: "100%",
+    top: "50%",
+    transform: "translateY(-50%)",
+    marginRight: "0.5rem",
+  },
+  right: {
+    left: "100%",
+    top: "50%",
+    transform: "translateY(-50%)",
+    marginLeft: "0.5rem",
+  },
 };
 
 export default function Tooltip({
@@ -36,7 +56,8 @@ export default function Tooltip({
 
   return (
     <div
-      className={`relative inline-flex ${className}`}
+      className={className || undefined}
+      style={{ position: "relative", display: "inline-flex" }}
       onMouseEnter={show}
       onMouseLeave={hide}
     >
@@ -44,11 +65,18 @@ export default function Tooltip({
       {visible && (
         <div
           role="tooltip"
-          className={`absolute z-50 whitespace-nowrap
-            bg-[#18181b] text-[#fafafa] text-xs rounded px-2 py-1
-            pointer-events-none
-            ${positionClasses[position]}
-          `}
+          style={{
+            position: "absolute",
+            zIndex: 50,
+            whiteSpace: "nowrap",
+            background: "var(--color-elevated)",
+            color: "var(--color-text-primary)",
+            fontSize: "0.75rem",
+            borderRadius: "4px",
+            padding: "0.25rem 0.5rem",
+            pointerEvents: "none",
+            ...positionStyles[position],
+          }}
         >
           {content}
         </div>

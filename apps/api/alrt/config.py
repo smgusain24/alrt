@@ -15,7 +15,12 @@ class Settings(BaseSettings):
     # alrt-hosted infrastructure
     resend_api_key: str = ""                # alrt's shared Resend account key
     slack_signing_secret: str = ""          # Slack app signing secret for Events API verification
-    monthly_quota_limit: int = 1000         # Default notifications/month per team (shared across channels)
+
+    # Billing
+    billing_provider: str = "razorpay"
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    razorpay_webhook_secret: str = ""
 
     slack_redirect_uri: str = "http://localhost:8000/providers/slack/callback"
     dashboard_url: str = "http://localhost:3000"
@@ -25,6 +30,14 @@ class Settings(BaseSettings):
     whatsapp_phone_number_id: str = ""       # Meta Phone Number ID for outbound messages
     whatsapp_app_secret: str = ""            # Meta App Secret for webhook signature verification
     telegram_bot_token: str = ""             # alrt's shared Telegram bot token
+
+    # alrt-hosted push notifications
+    fcm_server_key: str = ""
+    fcm_project_id: str = ""
+    apns_key_id: str = ""
+    apns_team_id: str = ""
+    apns_key_path: str = ""
+    apns_bundle_id: str = ""
 
     # Cookie security (set COOKIE_SECURE=true in production)
     cookie_secure: bool = False

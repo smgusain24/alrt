@@ -13,7 +13,7 @@ export default function Link({
   return (
     <a
       href={href}
-      className={`text-[#3b82f6] hover:text-[#3b82f6]/80 no-underline hover:underline transition-colors duration-150 ${className}`}
+      className={className || undefined}
       {...props}
     >
       {children}

@@ -114,6 +114,29 @@ export const api = {
   templates: {
     preview: (data: any) => request("/templates/preview", { method: "POST", body: JSON.stringify(data) }),
   },
+  invites: {
+    listMembers: (teamId: string) =>
+      request<{ members: Array<{
+        id: string; email: string; name: string | null; role: string;
+        created_at: string; last_login_at: string | null; record_type: string;
+      }> }>(`/teams/${teamId}/members`),
+    create: (teamId: string, data: { email: string; role: string }) =>
+      request<{
+        id: string; team_id: string; email: string; role: string;
+        expires_at: string; created_at: string; invite_url: string;
+      }>(`/teams/${teamId}/invites`, { method: "POST", body: JSON.stringify(data) }),
+    delete: (teamId: string, inviteId: string) =>
+      request(`/teams/${teamId}/invites/${inviteId}`, { method: "DELETE" }),
+    getInviteInfo: (token: string) =>
+      request<{ email: string; role: string; team_id: string }>(`/auth/accept-invite?token=${token}`),
+    acceptInvite: async (data: { token: string; password: string; name?: string }) => {
+      const res = await request<{ token: string; email: string; role: string }>("/auth/accept-invite", {
+        method: "POST", body: JSON.stringify(data),
+      });
+      if (res.token) setToken(res.token);
+      return res;
+    },
+  },
   activity: {
     list: (params?: Record<string, string | number>) => {
       const qs = params ? "?" + new URLSearchParams(

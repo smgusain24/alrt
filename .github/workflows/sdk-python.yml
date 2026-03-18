@@ -1,0 +1,22 @@
+name: SDK Python
+
+on:
+  pull_request:
+    paths:
+      - "packages/sdk-python/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: cd packages/sdk-python && pip install -e ".[dev]"
+      - run: cd packages/sdk-python && ruff check src/
+      - run: cd packages/sdk-python && mypy src/
+      - run: cd packages/sdk-python && python -m pytest tests/ -v

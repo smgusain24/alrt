@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from "react";
 import {
-  Button,
   Table,
-  Card,
   Badge,
   Input,
   Modal,
-  Divider,
 } from "@/components/ui";
 import { Users, Plus, Search } from "lucide-react";
 import { api } from "@/lib/api";
@@ -37,7 +34,14 @@ const columns = [
     key: "external_id",
     header: "External ID",
     render: (row: SubscriberRow) => (
-      <code className="font-mono text-xs bg-elevated rounded px-1.5 py-0.5 text-text-secondary">
+      <code style={{
+        fontFamily: "monospace",
+        fontSize: "0.75rem",
+        background: "var(--color-elevated)",
+        borderRadius: 4,
+        padding: "2px 6px",
+        color: "var(--color-text-secondary)",
+      }}>
         {row.external_id}
       </code>
     ),
@@ -46,14 +50,14 @@ const columns = [
     key: "name",
     header: "Name",
     render: (row: SubscriberRow) => (
-      <span className="font-medium text-text-primary">{row.name}</span>
+      <span style={{ fontWeight: 500, color: "var(--color-text-primary)" }}>{row.name}</span>
     ),
   },
   {
     key: "email",
     header: "Email",
     render: (row: SubscriberRow) => (
-      <span className="font-mono text-xs text-text-muted">{row.email}</span>
+      <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>{row.email}</span>
     ),
   },
   {
@@ -66,7 +70,7 @@ const columns = [
             .map(([ch]) => ch)
         : [];
       return (
-        <div className="flex gap-1 flex-wrap">
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {channels.map((ch) => {
             const config = CHANNEL_CONFIG[ch];
             if (!config) return null;
@@ -84,7 +88,7 @@ const columns = [
     key: "created_at",
     header: "Created",
     render: (row: SubscriberRow) => (
-      <span className="font-mono text-xs text-text-muted">
+      <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
         {new Date(row.created_at).toLocaleDateString()}
       </span>
     ),
@@ -93,18 +97,25 @@ const columns = [
 
 function EmptyState() {
   return (
-    <Card className="text-center py-12">
-      <div className="flex flex-col items-center">
-        <div className="bg-elevated rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-          <Users className="w-8 h-8 text-text-muted" strokeWidth={1.5} />
-        </div>
-        <h3 className="text-lg font-semibold text-text-primary mb-2">No subscribers yet</h3>
-        <p className="text-text-secondary text-sm max-w-sm">
-          Click <strong>&quot;Add subscriber&quot;</strong> above to create one for testing,
-          or use the API to create subscribers programmatically.
-        </p>
+    <div className="alrt-empty">
+      <div style={{
+        background: "var(--color-elevated)",
+        borderRadius: "50%",
+        width: 64,
+        height: 64,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        margin: "0 auto 1rem",
+      }}>
+        <Users style={{ width: 32, height: 32, color: "var(--color-text-muted)" }} strokeWidth={1.5} />
       </div>
-    </Card>
+      <h3>No subscribers yet</h3>
+      <p>
+        Click <strong>&quot;Add subscriber&quot;</strong> above to create one for testing,
+        or use the API to create subscribers programmatically.
+      </p>
+    </div>
   );
 }
 
@@ -194,39 +205,56 @@ export default function SubscribersPage() {
   const isEmpty = subscribers.length === 0;
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-text-primary">Subscribers</h1>
-        <Button variant="primary" onClick={openCreateModal}>
-          <Plus className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+    <div style={{ maxWidth: 960, margin: "0 auto" }}>
+      <div className="alrt-page-header">
+        <h1 className="alrt-page-title">Subscribers</h1>
+        <button onClick={openCreateModal}>
+          <Plus style={{ width: 16, height: 16, display: "inline", marginRight: 4 }} strokeWidth={1.5} />
           Add subscriber
-        </Button>
+        </button>
       </div>
 
-      <div className="bg-accent/10 border border-accent/20 rounded-md p-4 mb-6 text-sm text-text-secondary">
-        <strong className="text-text-primary text-xs font-medium">Note:</strong>{" "}
+      <aside style={{
+        background: "rgba(62,163,105,0.1)",
+        border: "1px solid rgba(62,163,105,0.2)",
+        borderRadius: 6,
+        padding: 16,
+        marginBottom: 24,
+        fontSize: "0.875rem",
+        color: "var(--color-text-secondary)",
+      }}>
+        <strong style={{ color: "var(--color-text-primary)", fontSize: "0.75rem", fontWeight: 500 }}>Note:</strong>{" "}
         In production, subscribers are created automatically via the API when users sign up in your app.
         Use this page to manage existing subscribers and test notification delivery.{" "}
-        <a href="/docs#subscribers" className="text-accent hover:underline">See API docs</a>.
-      </div>
+        <a href="/docs#subscribers" style={{ color: "var(--color-accent)" }}>See API docs</a>.
+      </aside>
 
       {loading ? (
-        <p className="text-text-muted text-sm">Loading subscribers...</p>
+        <div aria-busy="true" data-spinner="large"></div>
       ) : error ? (
-        <Card>
-          <p className="text-red-500 text-sm">{error}</p>
-        </Card>
+        <article className="card">
+          <p style={{ color: "var(--color-danger)", fontSize: "0.875rem" }}>{error}</p>
+        </article>
       ) : isEmpty ? (
         <EmptyState />
       ) : (
         <>
-          <div className="mb-4 relative max-w-sm">
-            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-            <Input
+          <div style={{ marginBottom: 16, position: "relative", maxWidth: 384 }}>
+            <Search style={{
+              width: 16,
+              height: 16,
+              position: "absolute",
+              left: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--color-text-muted)",
+              pointerEvents: "none",
+            }} />
+            <input
               placeholder="Search by name or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
+              style={{ paddingLeft: 32, width: "100%" }}
             />
           </div>
 
@@ -238,44 +266,46 @@ export default function SubscribersPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <span className="text-xs font-mono text-text-muted">
-                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total} subscribers
+            <nav aria-label="Pagination" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16 }}>
+              <span style={{ fontSize: "0.75rem", fontFamily: "monospace", color: "var(--color-text-muted)" }}>
+                {page * PAGE_SIZE + 1}--{Math.min((page + 1) * PAGE_SIZE, total)} of {total} subscribers
               </span>
-              <div className="flex gap-1">
-                <Button
-                  variant="default"
-                  className="text-xs px-3 py-1"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                >
-                  Prev
-                </Button>
+              <menu className="buttons" style={{ display: "flex", gap: 4 }}>
+                <li>
+                  <button
+                    className="outline small"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    Prev
+                  </button>
+                </li>
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                   const start = Math.max(0, Math.min(page - 2, totalPages - 5));
                   const pageNum = start + i;
                   if (pageNum >= totalPages) return null;
                   return (
-                    <Button
-                      key={pageNum}
-                      variant="default"
-                      className={`text-xs px-3 py-1 ${pageNum === page ? "bg-elevated text-accent font-medium" : ""}`}
-                      onClick={() => setPage(pageNum)}
-                    >
-                      {pageNum + 1}
-                    </Button>
+                    <li key={pageNum}>
+                      <button
+                        className={pageNum === page ? "small" : "outline small"}
+                        onClick={() => setPage(pageNum)}
+                      >
+                        {pageNum + 1}
+                      </button>
+                    </li>
                   );
                 })}
-                <Button
-                  variant="default"
-                  className="text-xs px-3 py-1"
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
+                <li>
+                  <button
+                    className="outline small"
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                  >
+                    Next
+                  </button>
+                </li>
+              </menu>
+            </nav>
           )}
         </>
       )}
@@ -286,9 +316,15 @@ export default function SubscribersPage() {
         open={showCreate}
         onClose={() => setShowCreate(false)}
       >
-        <form onSubmit={handleCreate} className="space-y-4">
-          <p className="text-xs text-text-muted bg-elevated rounded-md px-3 py-2">
-            For testing only. In production, create subscribers via <code className="font-mono text-accent">POST /subscribers</code> in your backend.
+        <form onSubmit={handleCreate} className="vstack">
+          <p style={{
+            fontSize: "0.75rem",
+            color: "var(--color-text-muted)",
+            background: "var(--color-elevated)",
+            borderRadius: 6,
+            padding: "8px 12px",
+          }}>
+            For testing only. In production, create subscribers via <code style={{ fontFamily: "monospace", color: "var(--color-accent)" }}>POST /subscribers</code> in your backend.
           </p>
           <Input
             id="sub-external-id"
@@ -325,64 +361,42 @@ export default function SubscribersPage() {
             disabled={creating}
           />
 
-          <Divider className="!my-3" />
+          <hr />
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+            <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 8 }}>
               Channel preferences
             </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPrefInApp((v) => !v)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors ${
-                  prefInApp
-                    ? "bg-accent text-white"
-                    : "bg-elevated text-text-secondary hover:text-text-primary"
-                }`}
-                disabled={creating}
-              >
-                In-app
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrefEmail((v) => !v)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors ${
-                  prefEmail
-                    ? "bg-accent text-white"
-                    : "bg-elevated text-text-secondary hover:text-text-primary"
-                }`}
-                disabled={creating}
-              >
-                Email
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrefSlack((v) => !v)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors ${
-                  prefSlack
-                    ? "bg-accent text-white"
-                    : "bg-elevated text-text-secondary hover:text-text-primary"
-                }`}
-                disabled={creating}
-              >
-                Slack
-              </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                { label: "In-app", value: prefInApp, toggle: () => setPrefInApp((v) => !v) },
+                { label: "Email", value: prefEmail, toggle: () => setPrefEmail((v) => !v) },
+                { label: "Slack", value: prefSlack, toggle: () => setPrefSlack((v) => !v) },
+              ].map((ch) => (
+                <button
+                  key={ch.label}
+                  type="button"
+                  onClick={ch.toggle}
+                  disabled={creating}
+                  className={ch.value ? "small" : "outline small"}
+                >
+                  {ch.label}
+                </button>
+              ))}
             </div>
           </div>
 
           {createError && (
-            <div className="text-danger text-sm">{createError}</div>
+            <div style={{ color: "var(--color-danger)", fontSize: "0.875rem" }}>{createError}</div>
           )}
 
-          <Button
+          <button
             type="submit"
-            variant="primary"
-            className="w-full"
             disabled={creating}
+            style={{ width: "100%" }}
           >
             {creating ? "Creating..." : "Create subscriber"}
-          </Button>
+          </button>
         </form>
       </Modal>
     </div>

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@icons-pack/react-simple-icons": "^13.12.0",
+    "@knadh/oat": "^0.5.0",
     "geist": "^1.7.0",
     "lucide-react": "^0.575.0",
     "next": "^14",
@@ -23,9 +24,6 @@
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "autoprefixer": "^10",
-    "postcss": "^8",
-    "tailwindcss": "^3",
     "typescript": "^5"
   }
 }
