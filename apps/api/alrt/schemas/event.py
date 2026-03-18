@@ -96,8 +96,8 @@ class TriggerBulkEvent(BaseModel):
     def validate_subscribers(cls, v):
         if len(v) == 0:
             raise ValueError("subscribers list cannot be empty")
-        if len(v) > 1000:
-            raise ValueError("subscribers list cannot exceed 1000 entries")
+        if len(v) > 10000:
+            raise ValueError("subscribers list cannot exceed 10000 entries")
         return v
 
 
