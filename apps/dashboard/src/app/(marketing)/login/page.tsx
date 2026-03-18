@@ -55,7 +55,7 @@ export default function LoginPage() {
 
         <article className="card" style={{ padding: "32px" }}>
           <header>
-            <h2>Log in to alrt</h2>
+            <h2>Log in to ALRT</h2>
           </header>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <label data-field>
