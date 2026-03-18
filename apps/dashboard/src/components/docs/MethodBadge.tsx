@@ -7,9 +7,9 @@ const METHOD_STYLES: Record<Method, React.CSSProperties> = {
     borderColor: "rgba(34,197,94,0.2)",
   },
   POST: {
-    background: "rgba(59,130,246,0.15)",
-    color: "#60a5fa",
-    borderColor: "rgba(59,130,246,0.2)",
+    background: "rgba(62,163,105,0.15)",
+    color: "#5CC48A",
+    borderColor: "rgba(62,163,105,0.2)",
   },
   PATCH: {
     background: "rgba(245,158,11,0.15)",

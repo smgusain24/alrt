@@ -49,19 +49,6 @@ export default function DocsSidebar({ sections }: DocsSidebarProps) {
 
   return (
     <nav style={{ height: "100%", paddingTop: "32px", paddingRight: "24px" }}>
-      <div style={{ paddingLeft: "24px", paddingBottom: "16px" }}>
-        <span
-          style={{
-            fontSize: "11px",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            color: "var(--color-text-muted)",
-          }}
-        >
-          API Reference
-        </span>
-      </div>
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {sections.map((section) => {
           const isActive =

@@ -91,7 +91,7 @@ export default function DashboardLayout({
             </svg>
           </button>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}>
-            <span style={{ fontFamily: "var(--font-brand, inherit)", fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)" }}>ALRT</span>
+            <span style={{ fontFamily: "var(--font-serif, inherit)", fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)" }}>ALRT</span>
             <span style={{ fontFamily: "monospace", fontSize: "10px", color: "var(--color-text-muted)" }}>.dev</span>
           </Link>
         </nav>
@@ -109,7 +109,7 @@ export default function DashboardLayout({
           {/* Sidebar header — logo */}
           <header style={{ padding: "16px 16px 12px", display: "flex", alignItems: "center" }}>
             <Link href="/" style={{ display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}>
-              <span style={{ fontFamily: "var(--font-brand, inherit)", fontSize: "18px", fontWeight: 700, color: "var(--color-text-primary)" }}>ALRT</span>
+              <span style={{ fontFamily: "var(--font-serif, inherit)", fontSize: "18px", fontWeight: 700, color: "var(--color-text-primary)" }}>ALRT</span>
               <span style={{ fontFamily: "monospace", fontSize: "11px", color: "var(--color-text-muted)" }}>.dev</span>
             </Link>
           </header>

@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS subscribers (
     phone_number VARCHAR(50),
     discord_webhook_url VARCHAR(500),
     telegram_chat_id    VARCHAR(100),
+    push_tokens JSONB NOT NULL DEFAULT '[]',
     custom_properties JSONB NOT NULL DEFAULT '{}',
     channel_preferences JSONB NOT NULL DEFAULT '{}',
     is_deleted BOOLEAN NOT NULL DEFAULT false,
@@ -291,6 +292,7 @@ SCHEMA_MIGRATIONS = [
     "ALTER TABLE teams ADD COLUMN IF NOT EXISTS subscription_id VARCHAR(255)",
     "ALTER TABLE teams ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ",
     "ALTER TABLE teams ADD COLUMN IF NOT EXISTS period_ends_at TIMESTAMPTZ",
+    "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS push_tokens JSONB NOT NULL DEFAULT '[]'",
 ]
 
 

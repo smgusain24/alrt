@@ -35,12 +35,15 @@ celery_app.conf.update(
         "alrt_workers.tasks.channels.whatsapp.deliver": {"queue": "whatsapp"},
         "alrt_workers.tasks.channels.discord.deliver":  {"queue": "discord"},
         "alrt_workers.tasks.channels.telegram.deliver": {"queue": "telegram"},
+        "alrt_workers.tasks.channels.sms.deliver": {"queue": "sms"},
+        "alrt_workers.tasks.channels.push.deliver": {"queue": "push"},
     },
     imports=["alrt_workers.tasks.workflow", "alrt_workers.tasks.step_runner", "alrt_workers.tasks.delay",
              "alrt_workers.tasks.channels.inapp", "alrt_workers.tasks.channels.email",
              "alrt_workers.tasks.channels.slack", "alrt_workers.tasks.retention",
              "alrt_workers.tasks.channels.whatsapp", "alrt_workers.tasks.channels.discord",
-             "alrt_workers.tasks.channels.telegram", "alrt_workers.tasks.billing"],
+             "alrt_workers.tasks.channels.telegram", "alrt_workers.tasks.billing",
+             "alrt_workers.tasks.channels.sms", "alrt_workers.tasks.channels.push"],
 )
 
 celery_app.conf.beat_schedule = {

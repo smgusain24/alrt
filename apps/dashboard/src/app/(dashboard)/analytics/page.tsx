@@ -219,7 +219,7 @@ export default function AnalyticsDashboard() {
                                         <YAxis tick={{ fontSize: 10, fill: '#71717a', fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
                                         <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} content={<CustomTooltip />} />
                                         <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace', paddingTop: '10px' }} iconType="circle" />
-                                        <Bar dataKey="Sent" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                                        <Bar dataKey="Sent" fill="#3EA369" radius={[2, 2, 0, 0]} />
                                         <Bar dataKey="Failed" fill="#ef4444" radius={[2, 2, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>

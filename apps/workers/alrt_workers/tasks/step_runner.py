@@ -36,13 +36,15 @@ def _handle_channel(execution_id, node, subscriber_id, team_id, payload, prefere
     if allowed_channels is not None and channel not in allowed_channels:
         return "skipped"
 
+    pref_channel = "push" if channel.startswith("push_") else channel
+
     # 1. Global preferences
-    if not preferences.get("global", {}).get(channel, True):
+    if not preferences.get("global", {}).get(pref_channel, True):
         return "skipped"
 
     # 2. Category preferences
     if workflow_category and workflow_category in preferences.get("categories", {}):
-        if not preferences["categories"][workflow_category].get(channel, True):
+        if not preferences["categories"][workflow_category].get(pref_channel, True):
             return "skipped"
 
     # 3. DND (Do Not Disturb)
@@ -100,7 +102,7 @@ def _handle_channel(execution_id, node, subscriber_id, team_id, payload, prefere
         max_daily = freq.get("max_per_day")
         if max_daily:
             r = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
-            key = f"freq:{team_id}:{subscriber_id}:{channel}:day"
+            key = f"freq:{team_id}:{subscriber_id}:{pref_channel}:day"
             count = r.incr(key)
             if count == 1:
                 # Expire at midnight UTC (simplified)
@@ -130,6 +132,15 @@ def _handle_channel(execution_id, node, subscriber_id, team_id, payload, prefere
     elif channel == "telegram":
         from alrt_workers.tasks.channels.telegram import deliver
         deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("telegram") if overrides else None)
+    elif channel == "sms":
+        from alrt_workers.tasks.channels.sms import deliver
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("sms") if overrides else None)
+    elif channel in ("push_android", "push_ios", "push_web", "push"):
+        from alrt_workers.tasks.channels.push import deliver
+        platform_map = {"push_android": "android", "push_ios": "ios", "push_web": "web", "push": None}
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload,
+                      overrides=overrides.get("push") if overrides else None,
+                      platform=platform_map.get(channel))
 
     return "ok"
 

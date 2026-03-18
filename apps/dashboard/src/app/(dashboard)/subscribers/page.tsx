@@ -215,8 +215,8 @@ export default function SubscribersPage() {
       </div>
 
       <aside style={{
-        background: "rgba(59,130,246,0.1)",
-        border: "1px solid rgba(59,130,246,0.2)",
+        background: "rgba(62,163,105,0.1)",
+        border: "1px solid rgba(62,163,105,0.2)",
         borderRadius: 6,
         padding: 16,
         marginBottom: 24,

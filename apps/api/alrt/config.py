@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     whatsapp_app_secret: str = ""            # Meta App Secret for webhook signature verification
     telegram_bot_token: str = ""             # alrt's shared Telegram bot token
 
+    # alrt-hosted push notifications
+    fcm_server_key: str = ""
+    fcm_project_id: str = ""
+    apns_key_id: str = ""
+    apns_team_id: str = ""
+    apns_key_path: str = ""
+    apns_bundle_id: str = ""
+
     # Cookie security (set COOKIE_SECURE=true in production)
     cookie_secure: bool = False
 

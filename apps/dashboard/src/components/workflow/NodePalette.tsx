@@ -4,7 +4,7 @@ import { SiWhatsapp, SiDiscord, SiTelegram } from "@icons-pack/react-simple-icon
 import { Tooltip } from "@/components/ui";
 
 const NODE_TYPES: { type: string; label: string; icon: any; accent: string; isSimple?: boolean }[] = [
-  { type: "trigger",           label: "Trigger",   icon: Zap,          accent: "#3b82f6" },
+  { type: "trigger",           label: "Trigger",   icon: Zap,          accent: "#3EA369" },
   { type: "channel_inapp",    label: "In-App",    icon: Bell,         accent: "#22c55e" },
   { type: "channel_email",    label: "Email",     icon: Mail,         accent: "#a855f7" },
   { type: "channel_slack",    label: "Slack",     icon: MessageSquare, accent: "#f97316" },

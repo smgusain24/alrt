@@ -67,3 +67,19 @@ TELEGRAM_RETRY = RetryPolicy(
     retry_backoff_max=300,
     retry_jitter=True,
 )
+
+SMS_RETRY = RetryPolicy(
+    max_retries=5,
+    default_retry_delay=30,
+    retry_backoff=True,
+    retry_backoff_max=3600,
+    retry_jitter=True,
+)
+
+PUSH_RETRY = RetryPolicy(
+    max_retries=3,
+    default_retry_delay=10,
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+)

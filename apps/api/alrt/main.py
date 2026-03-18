@@ -9,7 +9,7 @@ from alrt.config import settings
 from alrt.db import init_pool, close_pool, ensure_schema
 from alrt.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from alrt.middleware.audit_log import AuditLogMiddleware
-from alrt.routes import activity, analytics, auth, billing, channels, events, invites, logs, notifications, providers, subscribers, teams, templates, websocket, workflows
+from alrt.routes import activity, analytics, auth, billing, channels, events, invites, logs, notifications, providers, push_tokens, subscribers, teams, templates, websocket, workflows
 
 
 @asynccontextmanager
@@ -52,6 +52,7 @@ app.include_router(logs.router)
 app.include_router(activity.router)
 app.include_router(invites.router)
 app.include_router(billing.router)
+app.include_router(push_tokens.router)
 
 
 @app.get("/health")

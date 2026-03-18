@@ -521,7 +521,7 @@ function WorkflowBuilderInner() {
             snapToGrid
             snapGrid={[20, 20]}
             defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
-            connectionLineStyle={{ stroke: "#3b82f6", strokeWidth: 1.5 }}
+            connectionLineStyle={{ stroke: "#3EA369", strokeWidth: 1.5 }}
             connectionLineType={"smoothstep" as any}
           >
             <Background color="#333" gap={20} size={1} />

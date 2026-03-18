@@ -419,7 +419,7 @@ export default function SubscriberDetailPage() {
                         width: "100%",
                         justifyContent: "flex-start",
                         borderColor: ch.value ? "var(--color-accent)" : undefined,
-                        background: ch.value ? "rgba(59,130,246,0.1)" : undefined,
+                        background: ch.value ? "rgba(62,163,105,0.1)" : undefined,
                       }}
                     >
                       <Icon style={{ width: 16, height: 16 }} strokeWidth={1.5} />
