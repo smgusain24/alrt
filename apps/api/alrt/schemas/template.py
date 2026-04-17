@@ -42,7 +42,7 @@ class TemplateListResponse(BaseModel):
 
 
 class TemplatePreviewRequest(BaseModel):
-    payload: dict = {}
+    payload: dict = Field(default_factory=dict)
     subscriber_id: str | None = None
 
 

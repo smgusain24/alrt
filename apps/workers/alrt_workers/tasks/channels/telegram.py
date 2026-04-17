@@ -1,12 +1,14 @@
+"""Telegram channel delivery task using the Bot API sendMessage endpoint."""
+
 import json
 import logging
-import os
 import uuid
 
 import httpx
 
 from alrt_workers.celery_app import celery_app
 from alrt_workers.db import execute_read_one_query, execute_insert_query, execute_update_query
+from alrt_workers.utils.crypto import get_fernet
 from alrt_workers.utils.retry import TELEGRAM_RETRY
 from alrt_workers.utils.template import render
 
@@ -33,6 +35,7 @@ Q_MARK_SENT = "UPDATE notifications SET status = 'sent', sent_at = now(), update
 Q_MARK_FAILED = "UPDATE notifications SET status = 'failed', error_reason = $2, updated_at = now() WHERE id = $1"
 Q_MARK_DEAD_LETTER = "UPDATE notifications SET status = 'dead_letter', error_reason = $2, retry_count = $3, updated_at = now() WHERE id = $1"
 Q_GET_TEMPLATE = "SELECT id, name, channel, subject, body, variables FROM templates WHERE id = $1"
+Q_GET_TELEGRAM_PROVIDER = "SELECT id, team_id, channel, provider_type, config, is_active FROM providers WHERE team_id = $1 AND channel = 'telegram' AND is_active = true LIMIT 1"
 
 # HTTP status codes that indicate a permanent, non-retriable failure
 # 400 = bad request (invalid chat_id or malformed message)
@@ -57,18 +60,24 @@ class _TelegramRateLimited(Exception):
 def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
-        log.warning(f"Subscriber {subscriber_id} not found")
+        log.warning("Subscriber %s not found", subscriber_id)
         return
 
     chat_id = subscriber.get("telegram_chat_id")
     if not chat_id:
-        log.warning(f"Subscriber {subscriber_id} has no telegram_chat_id")
+        log.warning("Subscriber %s has no telegram_chat_id", subscriber_id)
         return
 
-    # Telegram uses a shared bot token from environment (no per-team credentials)
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    # Get bot token from provider config
+    provider = execute_read_one_query(Q_GET_TELEGRAM_PROVIDER, [uuid.UUID(team_id)])
+    if not provider:
+        log.warning("No Telegram provider configured for team %s", team_id)
+        return
+    f = get_fernet()
+    tg_config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
+    bot_token = tg_config.get("bot_token", "")
     if not bot_token:
-        log.error(f"TELEGRAM_BOT_TOKEN not configured — cannot send Telegram message for team {team_id}")
+        log.error("Telegram provider for team %s has no bot_token", team_id)
         return
 
     overrides = overrides or {}
@@ -107,34 +116,12 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     try:
         _send_telegram_message(bot_token, chat_id, text, parse_mode)
         execute_update_query(Q_MARK_SENT, [nid])
-        # Get plan-based quota limit (fire-and-forget — never blocks delivery)
-        try:
-            _limit_row = execute_read_one_query(
-                """SELECT COALESCE(p.quota_limit, 1000) AS quota_limit
-                   FROM teams t LEFT JOIN plans p ON t.plan_id = p.id
-                   WHERE t.id = $1""",
-                [uuid.UUID(team_id)],
-            )
-            _quota_limit = _limit_row["quota_limit"] if _limit_row else 1000
-        except Exception:
-            _quota_limit = 1000
-        execute_update_query(
-            """
-            INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
-            VALUES ($1, date_trunc('month', now()), 1, (1 > $2))
-            ON CONFLICT (team_id, period_start) DO UPDATE
-            SET monthly_count = team_quotas.monthly_count + 1,
-                over_limit    = (team_quotas.monthly_count + 1) > $2,
-                updated_at    = now()
-            """,
-            [uuid.UUID(team_id), _quota_limit],
-        )
     except _PermanentTelegramError as exc:
-        log.error(f"Permanent Telegram error for notification {nid}: {exc}")
+        log.error("Permanent Telegram error for notification %s: %s", nid, exc)
         if nid:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries])
     except _TelegramRateLimited as exc:
-        log.warning(f"Telegram rate limited for notification {nid}, retrying in {exc.retry_after}s")
+        log.warning("Telegram rate limited for notification %s, retrying in %ss", nid, exc.retry_after)
         if nid and self.request.retries >= self.max_retries:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise
@@ -147,7 +134,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
             "notification_id": str(nid) if nid else None,
         })
     except Exception as exc:
-        log.error(f"Telegram delivery failed for notification {nid}: {exc}")
+        log.error("Telegram delivery failed for notification %s: %s", nid, exc)
         if nid and self.request.retries >= self.max_retries:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise

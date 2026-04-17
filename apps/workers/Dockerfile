@@ -12,4 +12,4 @@ COPY apps/workers/ apps/workers/
 
 WORKDIR /app/apps/workers
 
-CMD ["uv", "run", "--package", "alrt-workers", "celery", "-A", "alrt_workers.celery_app", "worker", "--loglevel=info"]
+CMD ["uv", "run", "--package", "alrt-workers", "celery", "-A", "alrt_workers.celery_app", "worker", "--loglevel=info", "-Q", "celery,email,slack,inapp,whatsapp,discord,telegram,sms,push"]

@@ -173,7 +173,7 @@ async def accept_invite(
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id, email, name, role, team_id, is_active, created_at
     """
-    user = await execute_insert_query(CREATE_WITH_ROLE, [
+    await execute_insert_query(CREATE_WITH_ROLE, [
         user_id, invite["email"], _hash_password(body.password),
         body.name, invite["team_id"], invite["role"],
     ])

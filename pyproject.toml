@@ -1,12 +1,20 @@
 [project]
 name = "alrt"
-version = "0.1.0"
+version = "1.0.0"
+description = "Open-source, self-hostable notification infrastructure"
+readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.12"
 dependencies = [
     "h2>=4.3.0",
     "pyjwt>=2.12.1",
-    "razorpay>=2.0.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/smgusain24/alrt"
+Repository = "https://github.com/smgusain24/alrt"
+Issues = "https://github.com/smgusain24/alrt/issues"
+Changelog = "https://github.com/smgusain24/alrt/blob/main/CHANGELOG.md"
 
 [tool.uv.workspace]
 members = [

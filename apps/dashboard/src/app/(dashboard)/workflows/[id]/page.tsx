@@ -329,7 +329,8 @@ function WorkflowBuilderInner() {
 
   // Copy curl
   const handleCopyCurl = useCallback(() => {
-    const curl = `curl -X POST http://localhost:8000/events/trigger \\
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const curl = `curl -X POST ${apiUrl}/events/trigger \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{

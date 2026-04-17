@@ -1,3 +1,5 @@
+"""SMS channel delivery task supporting Twilio and Kaleyra (DLT-compliant) providers."""
+
 import json
 import logging
 import re
@@ -54,22 +56,22 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     # 1. Get subscriber — check for phone_number
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
-        log.warning(f"Subscriber {subscriber_id} not found")
+        log.warning("Subscriber %s not found", subscriber_id)
         return
     if not subscriber.get("phone_number"):
-        log.warning(f"Subscriber {subscriber_id} has no phone_number — cannot send SMS")
+        log.warning("Subscriber %s has no phone_number — cannot send SMS", subscriber_id)
         return
 
     # 2. Normalize phone
     phone = _normalize_phone(subscriber["phone_number"])
     if not phone:
-        log.warning(f"Subscriber {subscriber_id} phone_number normalizes to empty — skipping")
+        log.warning("Subscriber %s phone_number normalizes to empty — skipping", subscriber_id)
         return
 
     # 3. Get SMS provider (BYOC only — no alrt-hosted SMS)
     provider = execute_read_one_query(Q_GET_SMS_PROVIDER, [uuid.UUID(team_id)])
     if not provider:
-        log.warning(f"No SMS provider configured for team {team_id}")
+        log.warning("No SMS provider configured for team %s", team_id)
         return
 
     f = get_fernet()
@@ -92,8 +94,9 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     if provider_type == "kaleyra":
         if not template_data.get("dlt_entity_id") or not template_data.get("dlt_template_id"):
             log.error(
-                f"Kaleyra SMS requires dlt_entity_id and dlt_template_id — "
-                f"missing for team {team_id}, subscriber {subscriber_id}"
+                "Kaleyra SMS requires dlt_entity_id and dlt_template_id — "
+                "missing for team %s, subscriber %s",
+                team_id, subscriber_id,
             )
             return
 
@@ -125,39 +128,15 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
         else:
             raise _PermanentSMSError(f"Unknown SMS provider type: {provider_type}")
 
-        # 9. Mark sent + quota increment
         execute_update_query(Q_MARK_SENT, [nid])
 
-        # Get plan-based quota limit (fire-and-forget — never blocks delivery)
-        try:
-            _limit_row = execute_read_one_query(
-                """SELECT COALESCE(p.quota_limit, 1000) AS quota_limit
-                   FROM teams t LEFT JOIN plans p ON t.plan_id = p.id
-                   WHERE t.id = $1""",
-                [uuid.UUID(team_id)],
-            )
-            _quota_limit = _limit_row["quota_limit"] if _limit_row else 1000
-        except Exception:
-            _quota_limit = 1000
-        execute_update_query(
-            """
-            INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
-            VALUES ($1, date_trunc('month', now()), 1, (1 > $2))
-            ON CONFLICT (team_id, period_start) DO UPDATE
-            SET monthly_count = team_quotas.monthly_count + 1,
-                over_limit    = (team_quotas.monthly_count + 1) > $2,
-                updated_at    = now()
-            """,
-            [uuid.UUID(team_id), _quota_limit],
-        )
-
     except _PermanentSMSError as exc:
-        log.error(f"Permanent SMS error for notification {nid}: {exc}")
+        log.error("Permanent SMS error for notification %s: %s", nid, exc)
         if nid:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries])
 
     except Exception as exc:
-        log.error(f"SMS delivery failed for notification {nid}: {exc}")
+        log.error("SMS delivery failed for notification %s: %s", nid, exc)
         if nid and self.request.retries >= self.max_retries:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise

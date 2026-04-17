@@ -1,3 +1,5 @@
+"""Discord channel delivery task using webhook URLs with optional rich embeds."""
+
 import json
 import logging
 import uuid
@@ -49,7 +51,7 @@ class _PermanentDiscordError(Exception):
 def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
-        log.warning(f"Subscriber {subscriber_id} not found")
+        log.warning("Subscriber %s not found", subscriber_id)
         return
 
     # Resolve webhook URL: subscriber-level first, then team provider fallback
@@ -58,19 +60,12 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     if not webhook_url:
         provider = execute_read_one_query(Q_GET_DISCORD_PROVIDER, [uuid.UUID(team_id)])
         if provider:
-            if provider["provider_type"] == "alrt_hosted":
-                # alrt_hosted config is encrypted (contains webhook_url)
-                f = get_fernet()
-                config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
-                webhook_url = config.get("webhook_url")
-            else:
-                # BYOC path: decrypt per-team credentials
-                f = get_fernet()
-                config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
-                webhook_url = config.get("webhook_url")
+            f = get_fernet()
+            config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
+            webhook_url = config.get("webhook_url")
 
     if not webhook_url:
-        log.warning(f"Subscriber {subscriber_id} has no discord_webhook_url and team {team_id} has no Discord provider")
+        log.warning("Subscriber %s has no discord_webhook_url and team %s has no Discord provider", subscriber_id, team_id)
         return
 
     overrides = overrides or {}
@@ -111,34 +106,12 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     try:
         _send_discord_message(webhook_url, title, description, color_hex, footer, timestamp, embed_enabled)
         execute_update_query(Q_MARK_SENT, [nid])
-        # Get plan-based quota limit (fire-and-forget — never blocks delivery)
-        try:
-            _limit_row = execute_read_one_query(
-                """SELECT COALESCE(p.quota_limit, 1000) AS quota_limit
-                   FROM teams t LEFT JOIN plans p ON t.plan_id = p.id
-                   WHERE t.id = $1""",
-                [uuid.UUID(team_id)],
-            )
-            _quota_limit = _limit_row["quota_limit"] if _limit_row else 1000
-        except Exception:
-            _quota_limit = 1000
-        execute_update_query(
-            """
-            INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
-            VALUES ($1, date_trunc('month', now()), 1, (1 > $2))
-            ON CONFLICT (team_id, period_start) DO UPDATE
-            SET monthly_count = team_quotas.monthly_count + 1,
-                over_limit    = (team_quotas.monthly_count + 1) > $2,
-                updated_at    = now()
-            """,
-            [uuid.UUID(team_id), _quota_limit],
-        )
     except _PermanentDiscordError as exc:
-        log.error(f"Permanent Discord error for notification {nid}: {exc}")
+        log.error("Permanent Discord error for notification %s: %s", nid, exc)
         if nid:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries])
     except Exception as exc:
-        log.error(f"Discord delivery failed for notification {nid}: {exc}")
+        log.error("Discord delivery failed for notification %s: %s", nid, exc)
         if nid and self.request.retries >= self.max_retries:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise
@@ -157,8 +130,18 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
 def _send_discord_message(webhook_url, title, description, color_hex, footer, timestamp, embed_enabled=True):
     """Send a message to a Discord webhook.
 
-    If embed_enabled is False, sends plain content text (max 2000 chars).
-    Otherwise sends a rich embed with title, description, color, footer, and timestamp.
+    Args:
+        webhook_url: The Discord webhook URL.
+        title: Embed title (max 256 chars).
+        description: Embed description or plain-text content (max 4096/2000 chars).
+        color_hex: Hex color string for the embed sidebar (e.g. "3b82f6").
+        footer: Optional embed footer text.
+        timestamp: Optional ISO 8601 timestamp for the embed.
+        embed_enabled: If False, sends plain content text instead of a rich embed.
+
+    Raises:
+        _PermanentDiscordError: For non-retriable HTTP status codes.
+        httpx.HTTPStatusError: For other HTTP errors.
     """
     if not embed_enabled:
         # Plain content fallback — useful when embed formatting is not desired

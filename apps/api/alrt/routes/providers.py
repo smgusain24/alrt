@@ -1,3 +1,11 @@
+"""Provider CRUD and Slack OAuth integration.
+
+Providers represent BYOC (bring-your-own-credentials) channel configurations.
+Sensitive fields (API keys, tokens) are Fernet-encrypted before storage.
+This module also duplicates the Slack OAuth flow from ``channels.py`` so
+that providers can be created via the ``/providers`` prefix.
+"""
+
 import json
 import uuid
 import urllib.parse
@@ -18,16 +26,19 @@ router = APIRouter(prefix="/providers", tags=["providers"])
 
 
 def _get_fernet():
+    """Build a Fernet cipher from the app's encryption key."""
     return Fernet(settings.encryption_key.encode())
 
 
 def _encrypt_config(config: dict) -> dict:
+    """Fernet-encrypt a config dict and wrap it for JSONB storage."""
     f = _get_fernet()
     encrypted = f.encrypt(json.dumps(config).encode()).decode()
     return {"encrypted": encrypted}
 
 
 def _decrypt_config(config: dict) -> dict:
+    """Decrypt a previously encrypted config dict."""
     f = _get_fernet()
     return json.loads(f.decrypt(config["encrypted"].encode()))
 
@@ -39,6 +50,7 @@ async def create_provider(
     body: CreateProvider,
     team_id: uuid.UUID = Depends(get_current_team),
 ):
+    """Create a BYOC provider for a channel, encrypting its credentials."""
     encrypted_config = _encrypt_config(body.config)
     row = await execute_insert_query(
         prov_q.CREATE,
@@ -55,6 +67,7 @@ async def list_providers(
     request: Request,
     team_id: uuid.UUID = Depends(get_current_team),
 ):
+    """List all providers configured for the authenticated team."""
     rows = await execute_read_query(prov_q.LIST_BY_TEAM, [team_id])
     return [ProviderResponse.model_validate(row) for row in rows]
 
@@ -66,6 +79,7 @@ async def delete_provider(
     provider_id: uuid.UUID,
     team_id: uuid.UUID = Depends(get_current_team),
 ):
+    """Delete a provider by ID, scoped to the authenticated team."""
     provider = await execute_read_one_query(prov_q.FIND_BY_ID, [provider_id, team_id])
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")

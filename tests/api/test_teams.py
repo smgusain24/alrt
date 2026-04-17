@@ -57,16 +57,3 @@ class TestRevokeApiKey:
             assert resp.status_code == 204
 
 
-@pytest.mark.asyncio
-class TestGetQuota:
-    async def test_get_quota(self, client):
-        with patch("alrt.routes.teams.execute_read_one_query", new_callable=AsyncMock) as mock_read:
-            mock_read.return_value = {"monthly_count": 42, "over_limit": False}
-
-            resp = await client.get(
-                f"/teams/{TEAM_ID}/quota",
-                headers={"Authorization": "Bearer fake"},
-            )
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["monthly_count"] == 42

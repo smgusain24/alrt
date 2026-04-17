@@ -1,6 +1,12 @@
 {
   "name": "alrt",
   "private": true,
+  "description": "Open-source, self-hostable notification infrastructure",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smgusain24/alrt.git"
+  },
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",

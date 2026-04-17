@@ -37,7 +37,7 @@ async with AsyncAlrt(api_key="alrt_sk_...") as client:
 | Parameter | Type (TS / Python) | Required | Default | Description |
 |-----------|-------------------|----------|---------|-------------|
 | apiKey / api_key | string / str | Yes | — | Server API key (alrt_sk_...) |
-| baseUrl / base_url | string / str | No | https://api.alrt.dev | API base URL |
+| baseUrl / base_url | string / str | No | http://localhost:8000 | API base URL |
 | maxRetries / max_retries | number / int | No | 3 | Max retry attempts |
 | timeout | number / float | No | 30000ms / 30.0s | Request timeout |
 
@@ -140,7 +140,7 @@ in_app, email, slack, whatsapp, discord, telegram, sms, push_android, push_ios, 
 ## WebSocket (In-App)
 
 1. POST /subscribers/:id/token (server-side, with API key) -> { token: "jwt..." }
-2. Connect: wss://api.alrt.dev/ws?token=JWT
+2. Connect: ws://localhost:8000/ws?token=JWT
 3. Receive JSON notification payloads in real-time
 `;
 

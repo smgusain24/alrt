@@ -1,3 +1,10 @@
+"""Rate limiting configuration using slowapi.
+
+Defines the ``limiter`` instance (fixed-window strategy backed by Redis)
+and the custom 429 error handler.  The bucket key is derived from the
+Bearer token hash when present, falling back to the client IP.
+"""
+
 from __future__ import annotations
 
 import hashlib

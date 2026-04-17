@@ -1,3 +1,5 @@
+"""Beat-driven poller for delay node resumption and scheduled workflow executions."""
+
 import json
 import os
 import uuid
@@ -30,8 +32,15 @@ Q_UPDATE_STATUS_TO_RUNNING = """
 
 
 def _enqueue_workflow_task(execution_id: str) -> None:
-    """Push a Celery v2 message onto the default queue for workflow.execute."""
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    """Push a Celery v2 protocol message directly onto the Redis queue.
+
+    Bypasses celery_app.send_task to avoid import-time circular dependencies
+    between the delay poller and the workflow task module.
+
+    Args:
+        execution_id: UUID string of the workflow execution to enqueue.
+    """
+    redis_url = os.environ["REDIS_URL"]
     r = sync_redis.from_url(redis_url)
     try:
         task_id = str(uuid.uuid4())
@@ -68,6 +77,15 @@ def _enqueue_workflow_task(execution_id: str) -> None:
 
 @celery_app.task
 def poll_scheduled_steps():
+    """Poll for due scheduled steps and deliver_at executions.
+
+    Runs every 30 seconds via Celery Beat. Handles two cases:
+    1. Delay node resumption -- picks up scheduled_steps rows whose
+       scheduled_at has passed and re-enters step_runner.execute_step.
+    2. Scheduled executions -- picks up workflow_executions with status
+       'scheduled' whose deliver_at has passed, marks them 'running',
+       and enqueues the workflow.execute task.
+    """
     now = datetime.now(timezone.utc)
 
     # --- existing: delay node resumption ---

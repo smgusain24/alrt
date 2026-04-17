@@ -146,7 +146,7 @@ async def websocket_endpoint(ws: WebSocket, token: str = Query(...)):
             pass
 
     _connections[subscriber_id] = ws
-    log.info(f"WebSocket connected: subscriber={subscriber_id}")
+    log.info("WebSocket connected: subscriber=%s", subscriber_id)
 
     listener_task = asyncio.create_task(_redis_listener(ws, subscriber_id))
 
@@ -157,4 +157,4 @@ async def websocket_endpoint(ws: WebSocket, token: str = Query(...)):
     finally:
         listener_task.cancel()
         _connections.pop(subscriber_id, None)
-        log.info(f"WebSocket disconnected: subscriber={subscriber_id}")
+        log.info("WebSocket disconnected: subscriber=%s", subscriber_id)

@@ -1,6 +1,7 @@
+"""WhatsApp channel delivery task via the Meta Cloud API (text, template, and media messages)."""
+
 import json
 import logging
-import os
 import re
 import uuid
 
@@ -8,6 +9,7 @@ import httpx
 
 from alrt_workers.celery_app import celery_app
 from alrt_workers.db import execute_read_one_query, execute_insert_query, execute_update_query
+from alrt_workers.utils.crypto import get_fernet
 from alrt_workers.utils.retry import WHATSAPP_RETRY
 from alrt_workers.utils.template import render
 
@@ -63,26 +65,30 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     # 1. Get subscriber — check for phone_number
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
-        log.warning(f"Subscriber {subscriber_id} not found")
+        log.warning("Subscriber %s not found", subscriber_id)
         return
     if not subscriber.get("phone_number"):
-        log.warning(f"Subscriber {subscriber_id} has no phone_number — cannot send WhatsApp message")
+        log.warning("Subscriber %s has no phone_number — cannot send WhatsApp message", subscriber_id)
         return
 
     # 2. Normalize phone to digits only (E.164 without '+' prefix)
     phone = _normalize_phone(subscriber["phone_number"])
     if not phone:
-        log.warning(f"Subscriber {subscriber_id} phone_number normalizes to empty — skipping")
+        log.warning("Subscriber %s phone_number normalizes to empty — skipping", subscriber_id)
         return
 
-    # 3. Get WhatsApp credentials from environment
-    wa_token = os.getenv("WHATSAPP_TOKEN", "")
-    wa_phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+    # 3. Get WhatsApp credentials from provider config
+    Q_GET_WA_PROVIDER = "SELECT id, team_id, channel, provider_type, config, is_active FROM providers WHERE team_id = $1 AND channel = 'whatsapp' AND is_active = true LIMIT 1"
+    wa_provider = execute_read_one_query(Q_GET_WA_PROVIDER, [uuid.UUID(team_id)])
+    if not wa_provider:
+        log.warning("No WhatsApp provider configured for team %s", team_id)
+        return
+    f = get_fernet()
+    wa_config = json.loads(f.decrypt(wa_provider["config"]["encrypted"].encode()))
+    wa_token = wa_config.get("token", "")
+    wa_phone_id = wa_config.get("phone_number_id", "")
     if not wa_token or not wa_phone_id:
-        log.error(
-            f"WHATSAPP_TOKEN or WHATSAPP_PHONE_NUMBER_ID not configured — "
-            f"cannot send WhatsApp message for team {team_id}"
-        )
+        log.error("WhatsApp provider for team %s missing token or phone_number_id", team_id)
         return
 
     overrides = overrides or {}
@@ -151,44 +157,21 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
 
         execute_update_query(Q_MARK_SENT, [nid])
 
-        # Get plan-based quota limit (fire-and-forget — never blocks delivery)
-        try:
-            _limit_row = execute_read_one_query(
-                """SELECT COALESCE(p.quota_limit, 1000) AS quota_limit
-                   FROM teams t LEFT JOIN plans p ON t.plan_id = p.id
-                   WHERE t.id = $1""",
-                [uuid.UUID(team_id)],
-            )
-            _quota_limit = _limit_row["quota_limit"] if _limit_row else 1000
-        except Exception:
-            _quota_limit = 1000
-        execute_update_query(
-            """
-            INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
-            VALUES ($1, date_trunc('month', now()), 1, (1 > $2))
-            ON CONFLICT (team_id, period_start) DO UPDATE
-            SET monthly_count = team_quotas.monthly_count + 1,
-                over_limit    = (team_quotas.monthly_count + 1) > $2,
-                updated_at    = now()
-            """,
-            [uuid.UUID(team_id), _quota_limit],
-        )
-
     except _TemplateRequiredError as exc:
         # 9. No active session and no template_name — mark pending (business rule, not DLQ)
-        log.warning(f"WhatsApp template required for notification {nid}: {exc}")
+        log.warning("WhatsApp template required for notification %s: %s", nid, exc)
         if nid:
             execute_update_query(Q_MARK_PENDING_TEMPLATE, [nid, "Template required - no active session"])
 
     except _PermanentWhatsAppError as exc:
         # 10. Permanent error (400/401/403) → DLQ
-        log.error(f"Permanent WhatsApp error for notification {nid}: {exc}")
+        log.error("Permanent WhatsApp error for notification %s: %s", nid, exc)
         if nid:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries])
 
     except Exception as exc:
         # 11. Transient error → retry or DLQ on exhaustion
-        log.error(f"WhatsApp delivery failed for notification {nid}: {exc}")
+        log.error("WhatsApp delivery failed for notification %s: %s", nid, exc)
         if nid and self.request.retries >= self.max_retries:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise
@@ -290,7 +273,7 @@ def _send_whatsapp_media(
 ) -> str:
     """Send a media message (image/document/video by URL) via Meta Cloud API."""
     if media_type not in ("image", "document", "video"):
-        log.warning(f"Unsupported media_type '{media_type}' — falling back to 'image'")
+        log.warning("Unsupported media_type %r — falling back to 'image'", media_type)
         media_type = "image"
 
     media_payload = {"link": media_url}

@@ -1,6 +1,7 @@
+"""Push notification delivery task supporting FCM (Android/Web) and APNs (iOS)."""
+
 import json
 import logging
-import os
 import time
 import uuid
 
@@ -64,41 +65,28 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload,
     # 1. Get subscriber — check for push_tokens
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
-        log.warning(f"Subscriber {subscriber_id} not found")
+        log.warning("Subscriber %s not found", subscriber_id)
         return
 
     push_tokens = subscriber.get("push_tokens") or []
     if not push_tokens:
-        log.warning(f"Subscriber {subscriber_id} has no push tokens — cannot send push notification")
+        log.warning("Subscriber %s has no push tokens — cannot send push notification", subscriber_id)
         return
 
     # 2. Filter tokens by platform if specified
     if platform:
         push_tokens = [t for t in push_tokens if t.get("platform") == platform]
         if not push_tokens:
-            log.warning(f"Subscriber {subscriber_id} has no {platform} push tokens — skipping")
+            log.warning("Subscriber %s has no %s push tokens — skipping", subscriber_id, platform)
             return
 
-    # 3. Get push provider (BYOC first, then alrt-hosted fallback)
+    # 3. Get push provider credentials
     provider = execute_read_one_query(Q_GET_PUSH_PROVIDER, [uuid.UUID(team_id)])
-    if provider:
-        f = get_fernet()
-        config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
-    else:
-        # Fallback to alrt-hosted env vars
-        fcm_key = os.getenv("FCM_SERVER_KEY", "")
-        fcm_project = os.getenv("FCM_PROJECT_ID", "")
-        if not fcm_key:
-            log.warning(f"No push provider configured and FCM_SERVER_KEY not set for team {team_id}")
-            return
-        config = {
-            "fcm_server_key": fcm_key,
-            "fcm_project_id": fcm_project,
-            "apns_key_id": os.getenv("APNS_KEY_ID", ""),
-            "apns_team_id": os.getenv("APNS_TEAM_ID", ""),
-            "apns_key_path": os.getenv("APNS_KEY_PATH", ""),
-            "apns_bundle_id": os.getenv("APNS_BUNDLE_ID", ""),
-        }
+    if not provider:
+        log.warning("No push provider configured for team %s", team_id)
+        return
+    f = get_fernet()
+    config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
 
     overrides = overrides or {}
 
@@ -169,7 +157,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload,
         for token in invalid_tokens:
             try:
                 execute_update_query(Q_REMOVE_PUSH_TOKEN, [uuid.UUID(subscriber_id), token])
-                log.info(f"Removed invalid push token for subscriber {subscriber_id}: {token[:20]}...")
+                log.info("Removed invalid push token for subscriber %s: %s...", subscriber_id, token[:20])
             except Exception:
                 pass
 
@@ -182,39 +170,17 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload,
         else:
             # No FCM key or APNs key configured for these token types
             if not fcm_tokens and not apns_tokens:
-                log.warning(f"No matching tokens for push delivery to subscriber {subscriber_id}")
+                log.warning("No matching tokens for push delivery to subscriber %s", subscriber_id)
                 return
 
-        # 13. Quota increment (fire-and-forget)
-        try:
-            _limit_row = execute_read_one_query(
-                """SELECT COALESCE(p.quota_limit, 1000) AS quota_limit
-                   FROM teams t LEFT JOIN plans p ON t.plan_id = p.id
-                   WHERE t.id = $1""",
-                [uuid.UUID(team_id)],
-            )
-            _quota_limit = _limit_row["quota_limit"] if _limit_row else 1000
-        except Exception:
-            _quota_limit = 1000
-        execute_update_query(
-            """
-            INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
-            VALUES ($1, date_trunc('month', now()), 1, (1 > $2))
-            ON CONFLICT (team_id, period_start) DO UPDATE
-            SET monthly_count = team_quotas.monthly_count + 1,
-                over_limit    = (team_quotas.monthly_count + 1) > $2,
-                updated_at    = now()
-            """,
-            [uuid.UUID(team_id), _quota_limit],
-        )
 
     except _PermanentPushError as exc:
-        log.error(f"Permanent push error for notification {nid}: {exc}")
+        log.error("Permanent push error for notification %s: %s", nid, exc)
         if nid:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries])
 
     except Exception as exc:
-        log.error(f"Push delivery failed for notification {nid}: {exc}")
+        log.error("Push delivery failed for notification %s: %s", nid, exc)
         if nid and self.request.retries >= self.max_retries:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise
@@ -299,7 +265,7 @@ def _send_apns(config: dict, token: str, title: str, body: str,
         }
         auth_token = pyjwt.encode(token_payload, private_key, algorithm="ES256", headers={"kid": key_id})
     except Exception as e:
-        log.error(f"APNs JWT generation failed: {e}")
+        log.error("APNs JWT generation failed: %s", e)
         return (False, f"JWT error: {e}")
 
     # Build APNs payload
@@ -342,5 +308,5 @@ def _send_apns(config: dict, token: str, title: str, body: str,
     except httpx.HTTPStatusError:
         raise
     except Exception as e:
-        log.error(f"APNs send failed: {e}")
+        log.error("APNs send failed: %s", e)
         raise

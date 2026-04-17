@@ -56,9 +56,12 @@ Thumbs.db
 # mypy
 .mypy_cache/
 
-#notes
+# MCP config (local dev)
+.mcp.json
+
+# Internal dev files
 .note
 .planning
 .claude
-dev.sh
-docs 
+dev.sh 
+.pytest_cache

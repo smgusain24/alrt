@@ -1,3 +1,5 @@
+"""Synchronous database helpers for Celery workers backed by an asyncpg pool."""
+
 import asyncio
 import asyncpg
 import logging
@@ -9,11 +11,19 @@ _pool: asyncpg.Pool | None = None
 
 
 def _get_database_url() -> str:
-    url = os.environ.get("DATABASE_URL", "postgresql+asyncpg://alrt:alrt@localhost:5432/alrt")
+    """Read DATABASE_URL from environment and normalize to asyncpg format."""
+    url = os.environ.get("DATABASE_URL", "")
+    if not url:
+        raise RuntimeError("DATABASE_URL environment variable is required")
     return url.replace("postgresql+asyncpg://", "postgresql://")
 
 
 async def _ensure_pool() -> asyncpg.Pool:
+    """Lazily create and return the module-level asyncpg connection pool.
+
+    Returns:
+        The shared asyncpg connection pool with JSON/JSONB codecs configured.
+    """
     global _pool
     if _pool is None:
         import json as _json
@@ -27,6 +37,15 @@ async def _ensure_pool() -> asyncpg.Pool:
 
 
 async def _read_one(query: str, params: list | None = None) -> dict | None:
+    """Execute a SELECT query and return the first row as a dict, or None.
+
+    Args:
+        query: SQL query string with $1-style placeholders.
+        params: Positional parameters for the query.
+
+    Returns:
+        A dict of column-value pairs, or None if no rows matched.
+    """
     pool = await _ensure_pool()
     async with pool.acquire() as conn:
         if params:
@@ -37,6 +56,15 @@ async def _read_one(query: str, params: list | None = None) -> dict | None:
 
 
 async def _read(query: str, params: list | None = None) -> list[dict]:
+    """Execute a SELECT query and return all rows as a list of dicts.
+
+    Args:
+        query: SQL query string with $1-style placeholders.
+        params: Positional parameters for the query.
+
+    Returns:
+        A list of dicts, one per row. Empty list if no rows matched.
+    """
     pool = await _ensure_pool()
     async with pool.acquire() as conn:
         if params:
@@ -47,6 +75,15 @@ async def _read(query: str, params: list | None = None) -> list[dict]:
 
 
 async def _insert(query: str, params: list | None = None) -> dict | None:
+    """Execute an INSERT ... RETURNING query and return the inserted row.
+
+    Args:
+        query: SQL INSERT query with a RETURNING clause.
+        params: Positional parameters for the query.
+
+    Returns:
+        A dict of the returned row, or None if nothing was returned.
+    """
     pool = await _ensure_pool()
     async with pool.acquire() as conn:
         if params:
@@ -57,6 +94,15 @@ async def _insert(query: str, params: list | None = None) -> dict | None:
 
 
 async def _update(query: str, params: list | None = None) -> bool:
+    """Execute an UPDATE query and return whether any rows were affected.
+
+    Args:
+        query: SQL UPDATE query string.
+        params: Positional parameters for the query.
+
+    Returns:
+        True if at least one row was updated, False otherwise.
+    """
     pool = await _ensure_pool()
     async with pool.acquire() as conn:
         if params:
@@ -84,20 +130,56 @@ def _run(coro):
 
 
 def execute_read_query(query: str, params: list | None = None) -> list[dict]:
-    logger.debug(f"READ: {query[:80]}... params={params}")
+    """Run a SELECT query synchronously and return all matching rows.
+
+    Args:
+        query: SQL query string with $1-style placeholders.
+        params: Positional parameters for the query.
+
+    Returns:
+        A list of dicts, one per row.
+    """
+    logger.debug("READ: %s... params=%s", query[:80], params)
     return _run(_read(query, params))
 
 
 def execute_read_one_query(query: str, params: list | None = None) -> dict | None:
-    logger.debug(f"READ_ONE: {query[:80]}... params={params}")
+    """Run a SELECT query synchronously and return the first row or None.
+
+    Args:
+        query: SQL query string with $1-style placeholders.
+        params: Positional parameters for the query.
+
+    Returns:
+        A dict of column-value pairs, or None if no rows matched.
+    """
+    logger.debug("READ_ONE: %s... params=%s", query[:80], params)
     return _run(_read_one(query, params))
 
 
 def execute_insert_query(query: str, params: list | None = None) -> dict | None:
-    logger.debug(f"INSERT: {query[:80]}... params={params}")
+    """Run an INSERT ... RETURNING query synchronously and return the new row.
+
+    Args:
+        query: SQL INSERT query with a RETURNING clause.
+        params: Positional parameters for the query.
+
+    Returns:
+        A dict of the returned row, or None if nothing was returned.
+    """
+    logger.debug("INSERT: %s... params=%s", query[:80], params)
     return _run(_insert(query, params))
 
 
 def execute_update_query(query: str, params: list | None = None) -> bool:
-    logger.debug(f"UPDATE: {query[:80]}... params={params}")
+    """Run an UPDATE query synchronously and return whether rows were affected.
+
+    Args:
+        query: SQL UPDATE query string.
+        params: Positional parameters for the query.
+
+    Returns:
+        True if at least one row was updated, False otherwise.
+    """
+    logger.debug("UPDATE: %s... params=%s", query[:80], params)
     return _run(_update(query, params))

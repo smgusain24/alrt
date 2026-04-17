@@ -7,13 +7,7 @@ CREATE TABLE IF NOT EXISTS teams (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    plan_id          UUID,
-    billing_status   VARCHAR(20) NOT NULL DEFAULT 'trialing',
-    billing_provider VARCHAR(20),
-    subscription_id  VARCHAR(255),
-    trial_ends_at    TIMESTAMPTZ,
-    period_ends_at   TIMESTAMPTZ
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -163,33 +157,6 @@ CREATE TABLE IF NOT EXISTS templates (
     UNIQUE(team_id, name, channel)
 );
 
-CREATE TABLE IF NOT EXISTS plans (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name         VARCHAR(50) NOT NULL UNIQUE,
-    display_name VARCHAR(100) NOT NULL,
-    price_inr    INTEGER NOT NULL DEFAULT 0,
-    quota_limit  INTEGER NOT NULL,
-    features     JSONB NOT NULL DEFAULT '{}',
-    is_active    BOOLEAN NOT NULL DEFAULT true,
-    sort_order   INTEGER NOT NULL DEFAULT 0,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS billing_events (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    team_id      UUID NOT NULL REFERENCES teams(id),
-    provider     VARCHAR(20) NOT NULL,
-    event_type   VARCHAR(100) NOT NULL,
-    event_id     VARCHAR(255) NOT NULL,
-    payload_hash VARCHAR(64) NOT NULL,
-    metadata     JSONB NOT NULL DEFAULT '{}',
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE(provider, event_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_billing_events_team
-    ON billing_events(team_id, created_at DESC);
-
 CREATE TABLE IF NOT EXISTS team_invites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID NOT NULL REFERENCES teams(id),
@@ -203,19 +170,7 @@ CREATE TABLE IF NOT EXISTS team_invites (
     UNIQUE(team_id, email)
 );
 
-CREATE TABLE IF NOT EXISTS team_quotas (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    team_id      UUID NOT NULL REFERENCES teams(id),
-    period_start TIMESTAMPTZ NOT NULL,
-    monthly_count INTEGER NOT NULL DEFAULT 0,
-    over_limit   BOOLEAN NOT NULL DEFAULT false,
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE(team_id, period_start)
-);
-CREATE INDEX IF NOT EXISTS idx_team_quotas_team_period
-    ON team_quotas(team_id, period_start);
-
--- Ensure at most one alrt_hosted provider per channel per team
+-- Ensure at most one provider per channel type per team
 CREATE UNIQUE INDEX IF NOT EXISTS idx_providers_team_channel_type
     ON providers(team_id, channel, provider_type);
 
