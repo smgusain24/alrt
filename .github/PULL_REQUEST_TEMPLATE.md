@@ -1,12 +1,12 @@
-## What
+## Description
 
 Brief description of the change.
 
-## Why
+## What it does and why is change required
 
 Motivation and context for the change.
 
-## How
+## How is this achieved
 
 Implementation approach (if non-obvious).
 

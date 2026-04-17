@@ -1,0 +1,58 @@
+# Auto-label PRs based on the paths they modify.
+# See https://github.com/actions/labeler
+
+area/api:
+  - changed-files:
+      - any-glob-to-any-file:
+          - apps/api/**
+
+area/workers:
+  - changed-files:
+      - any-glob-to-any-file:
+          - apps/workers/**
+
+area/dashboard:
+  - changed-files:
+      - any-glob-to-any-file:
+          - apps/dashboard/**
+
+area/sdk:
+  - changed-files:
+      - any-glob-to-any-file:
+          - packages/**
+
+area/infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docker-compose.yml
+          - "**/Dockerfile"
+          - setup.sh
+          - schema.sql
+          - .env.example
+
+area/ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+
+area/docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - docs/**
+
+area/deps:
+  - changed-files:
+      - any-glob-to-any-file:
+          - pyproject.toml
+          - package.json
+          - pnpm-lock.yaml
+          - uv.lock
+          - "**/pyproject.toml"
+          - "**/package.json"
+
+area/tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tests/**
+          - "**/tests/**"

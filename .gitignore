@@ -26,9 +26,17 @@ htmlcov/
 .pytest_cache/
 coverage.xml
 
+# Linters / type checkers
+.ruff_cache/
+.mypy_cache/
+
 # Celery
 celerybeat-schedule
 celerybeat.pid
+
+# Redis dumps
+*.rdb
+dump.rdb
 
 # Environment
 .env
@@ -50,18 +58,12 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# Ruff
-.ruff_cache/
-
-# mypy
-.mypy_cache/
-
 # MCP config (local dev)
 .mcp.json
 
-# Internal dev files
-.note
-.planning
+# Internal dev artifacts (Claude Code, GSD planning, notes)
+CLAUDE.md
 .claude
-dev.sh 
-.pytest_cache
+.planning
+.note
+dev.sh
