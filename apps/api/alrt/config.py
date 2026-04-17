@@ -1,45 +1,32 @@
+"""Application configuration loaded from environment variables."""
+
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql://alrt:alrt@localhost:5432/alrt"
-    redis_url: str = "redis://localhost:6379"
-    api_secret_key: str = "change-me"
-    encryption_key: str = "change-me-generate-with-fernet"
+    """alrt API configuration.
+
+    All values are loaded from environment variables. Required values
+    have no default and will raise an error at startup if missing.
+    Optional values fall back to sensible development defaults.
+    """
+
+    # Required — no defaults, must be set via env or .env file
+    database_url: str
+    redis_url: str
+    api_secret_key: str
+    encryption_key: str
+
+    # Application URLs
     cors_origins: str = "http://localhost:3000"
-
-    # Slack OAuth
-    slack_client_id: str = ""
-    slack_client_secret: str = ""
-
-    # alrt-hosted infrastructure
-    resend_api_key: str = ""                # alrt's shared Resend account key
-    slack_signing_secret: str = ""          # Slack app signing secret for Events API verification
-
-    # Billing
-    billing_provider: str = "razorpay"
-    razorpay_key_id: str = ""
-    razorpay_key_secret: str = ""
-    razorpay_webhook_secret: str = ""
-
-    slack_redirect_uri: str = "http://localhost:8000/providers/slack/callback"
     dashboard_url: str = "http://localhost:3000"
 
-    # New channels (WhatsApp / Telegram)
-    whatsapp_token: str = ""                 # Meta System User permanent token (WABA-level)
-    whatsapp_phone_number_id: str = ""       # Meta Phone Number ID for outbound messages
-    whatsapp_app_secret: str = ""            # Meta App Secret for webhook signature verification
-    telegram_bot_token: str = ""             # alrt's shared Telegram bot token
+    # Slack OAuth (optional — needed only for Slack channel)
+    slack_client_id: str = ""
+    slack_client_secret: str = ""
+    slack_redirect_uri: str = ""
 
-    # alrt-hosted push notifications
-    fcm_server_key: str = ""
-    fcm_project_id: str = ""
-    apns_key_id: str = ""
-    apns_team_id: str = ""
-    apns_key_path: str = ""
-    apns_bundle_id: str = ""
-
-    # Cookie security (set COOKIE_SECURE=true in production)
+    # Cookie security (set to true behind HTTPS in production)
     cookie_secure: bool = False
 
     # Rate limiting
@@ -51,6 +38,7 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
+        """Parse comma-separated CORS origins into a list."""
         return [o.strip() for o in self.cors_origins.split(",")]
 
 

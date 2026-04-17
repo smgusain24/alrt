@@ -3,18 +3,10 @@ import uuid
 from datetime import datetime, timezone
 
 
-def make_team(*, id=None, name="Test Team", plan_id=None,
-              billing_status="trialing", billing_provider=None,
-              subscription_id=None, trial_ends_at=None, period_ends_at=None):
+def make_team(*, id=None, name="Test Team"):
     return {
         "id": id or uuid.uuid4(),
         "name": name,
-        "plan_id": plan_id,
-        "billing_status": billing_status,
-        "billing_provider": billing_provider,
-        "subscription_id": subscription_id,
-        "trial_ends_at": trial_ends_at,
-        "period_ends_at": period_ends_at,
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
     }
@@ -152,9 +144,9 @@ def make_template(*, id=None, team_id=None, name="Welcome Email",
 
 
 def make_provider(*, id=None, team_id=None, channel="email",
-                  provider_type="alrt_hosted", config=None, is_active=True):
+                  provider_type="resend", config=None, is_active=True):
     if config is None:
-        config = {"display_name": "Test Team"} if provider_type == "alrt_hosted" else {}
+        config = {}
     return {
         "id": id or uuid.uuid4(),
         "team_id": team_id or uuid.uuid4(),
@@ -199,33 +191,3 @@ def make_invite(*, id=None, team_id=None, email="invited@example.com",
     }
 
 
-def make_plan(*, id=None, name="free", display_name="Free Trial",
-              price_inr=0, quota_limit=1000, features=None,
-              is_active=True, sort_order=0):
-    return {
-        "id": id or uuid.uuid4(),
-        "name": name,
-        "display_name": display_name,
-        "price_inr": price_inr,
-        "quota_limit": quota_limit,
-        "features": features or {},
-        "is_active": is_active,
-        "sort_order": sort_order,
-        "created_at": datetime.now(timezone.utc),
-    }
-
-
-def make_billing_event(*, id=None, team_id=None, provider="razorpay",
-                       event_type="subscription.activated",
-                       event_id=None, payload_hash="a" * 64,
-                       metadata=None):
-    return {
-        "id": id or uuid.uuid4(),
-        "team_id": team_id or uuid.uuid4(),
-        "provider": provider,
-        "event_type": event_type,
-        "event_id": event_id or str(uuid.uuid4()),
-        "payload_hash": payload_hash,
-        "metadata": metadata or {},
-        "created_at": datetime.now(timezone.utc),
-    }

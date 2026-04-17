@@ -1,3 +1,5 @@
+"""Workflow execution task that walks a workflow definition graph via BFS."""
+
 import uuid
 import logging
 
@@ -15,6 +17,17 @@ Q_UPDATE_EXECUTION_STATUS = "UPDATE workflow_executions SET status = $2, updated
 
 @celery_app.task(bind=True, max_retries=3)
 def execute(self, execution_id):
+    """Load a workflow execution and walk its node graph via BFS.
+
+    Fetches the workflow definition, subscriber, and execution record, then
+    traverses nodes starting from the trigger. Each node is dispatched to
+    step_runner.execute_step which handles channel delivery, delays, and
+    conditions. Supports branching (one node with multiple children) and
+    diamond-pattern deduplication.
+
+    Args:
+        execution_id: UUID string of the workflow_executions row to run.
+    """
     execution = execute_read_one_query(Q_GET_EXECUTION, [uuid.UUID(execution_id)])
     if not execution:
         return
@@ -70,7 +83,7 @@ def execute(self, execution_id):
         if not node:
             continue
 
-        logger.info(f"Executing node: {node['type']} ({current_id})")
+        logger.info("Executing node: %s (%s)", node['type'], current_id)
 
         result = execute_step(
             str(execution["id"]),

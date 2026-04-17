@@ -5,7 +5,7 @@ import { isRetryable, getRetryDelay, sleep } from "./retry";
 import { EventsResource } from "./resources/events";
 import { SubscribersResource } from "./resources/subscribers";
 
-const DEFAULT_BASE_URL = "https://api.alrt.dev";
+const DEFAULT_BASE_URL = "http://localhost:8000";
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_TIMEOUT = 30000;
 

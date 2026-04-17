@@ -34,16 +34,15 @@ def _mock_httpx_response(status_code=200, text="ok"):
 
 class TestEmailDeliver:
 
-    def test_alrt_hosted_send(self):
-        """alrt_hosted provider: subscriber with email -> notification created and marked sent."""
+    def test_resend_send(self):
+        """Resend provider: subscriber with email -> notification created and marked sent."""
         team_id = uuid.uuid4()
         exec_id = uuid.uuid4()
         sub = make_subscriber(team_id=team_id, email="user@test.com")
         provider = make_provider(
             team_id=team_id,
             channel="email",
-            provider_type="alrt_hosted",
-            config={"display_name": "Test Team"},
+            provider_type="resend",
         )
         notif_id = uuid.uuid4()
 
@@ -80,8 +79,8 @@ class TestEmailDeliver:
             # Notification created
             mock_insert.assert_called_once()
 
-            # Notification marked sent (first update call) + quota increment (second)
-            assert mock_update.call_count == 2
+            # Notification marked sent
+            assert mock_update.call_count == 1
             sent_call = mock_update.call_args_list[0]
             assert "status = 'sent'" in sent_call[0][0]
 
@@ -117,8 +116,7 @@ class TestEmailDeliver:
         provider = make_provider(
             team_id=team_id,
             channel="email",
-            provider_type="alrt_hosted",
-            config={"display_name": "Test Team"},
+            provider_type="resend",
         )
         notif_id = uuid.uuid4()
 

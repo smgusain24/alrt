@@ -1,6 +1,7 @@
+"""Email channel delivery task supporting Resend and SendGrid providers."""
+
 import json
 import logging
-import os
 import uuid
 
 import httpx
@@ -38,25 +39,17 @@ class _PermanentEmailError(Exception):
 def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber or not subscriber.get("email"):
-        log.warning(f"Subscriber {subscriber_id} has no email")
+        log.warning("Subscriber %s has no email", subscriber_id)
         return
 
     provider = execute_read_one_query(Q_GET_EMAIL_PROVIDER, [uuid.UUID(team_id)])
     if not provider:
-        log.warning(f"No email provider configured for team {team_id}")
+        log.warning("No email provider configured for team %s", team_id)
         return
 
-    if provider["provider_type"] == "alrt_hosted":
-        # alrt_hosted: config stores display_name only (no secrets, no encryption)
-        config = provider["config"]  # plain dict: {"display_name": "Team Name"}
-        config["api_key"] = os.getenv("RESEND_API_KEY", "")
-        if not config["api_key"]:
-            log.error(f"RESEND_API_KEY not configured — cannot send email for team {team_id}")
-            return
-    else:
-        # BYOC path: decrypt per-team credentials (sendgrid / resend with encrypted config)
-        f = get_fernet()
-        config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
+    # Decrypt per-team credentials
+    f = get_fernet()
+    config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
 
     overrides = overrides or {}
 
@@ -101,34 +94,12 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
             reply_to=overrides.get("reply_to"),
         )
         execute_update_query(Q_MARK_SENT, [nid])
-        # Get plan-based quota limit (fire-and-forget — never blocks delivery)
-        try:
-            _limit_row = execute_read_one_query(
-                """SELECT COALESCE(p.quota_limit, 1000) AS quota_limit
-                   FROM teams t LEFT JOIN plans p ON t.plan_id = p.id
-                   WHERE t.id = $1""",
-                [uuid.UUID(team_id)],
-            )
-            _quota_limit = _limit_row["quota_limit"] if _limit_row else 1000
-        except Exception:
-            _quota_limit = 1000
-        execute_update_query(
-            """
-            INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
-            VALUES ($1, date_trunc('month', now()), 1, (1 > $2))
-            ON CONFLICT (team_id, period_start) DO UPDATE
-            SET monthly_count = team_quotas.monthly_count + 1,
-                over_limit    = (team_quotas.monthly_count + 1) > $2,
-                updated_at    = now()
-            """,
-            [uuid.UUID(team_id), _quota_limit],
-        )
     except _PermanentEmailError as exc:
-        log.error(f"Permanent email error for notification {nid}: {exc}")
+        log.error("Permanent email error for notification %s: %s", nid, exc)
         if nid:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries])
     except Exception as exc:
-        log.error(f"Email delivery failed for notification {nid}: {exc}")
+        log.error("Email delivery failed for notification %s: %s", nid, exc)
         if nid and self.request.retries >= self.max_retries:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise
@@ -145,36 +116,23 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
 
 
 def _send_email(provider_type, config, to_email, subject, body_html, cc=None, bcc=None, reply_to=None):
-    if provider_type == "alrt_hosted":
-        # Use alrt's shared Resend account. api_key injected into config dict in deliver().
-        display_name = config.get("display_name", "")
-        # Sanitize display_name: strip angle brackets, limit to 64 chars
-        display_name = display_name.replace("<", "").replace(">", "").strip()[:64]
-        from_addr = f"{display_name} <noreply@alrt.dev>" if display_name else "noreply@alrt.dev"
+    """Dispatch an email through the configured provider's HTTP API.
 
-        payload = {
-            "from": from_addr,
-            "to": [to_email],
-            "subject": subject,
-            "html": body_html,
-        }
-        if cc:
-            payload["cc"] = cc
-        if bcc:
-            payload["bcc"] = bcc
-        if reply_to:
-            payload["reply_to"] = reply_to
+    Args:
+        provider_type: Either "sendgrid" or "resend".
+        config: Decrypted provider config dict with api_key and from_email.
+        to_email: Recipient email address.
+        subject: Email subject line.
+        body_html: HTML body content.
+        cc: Optional list of CC email addresses.
+        bcc: Optional list of BCC email addresses.
+        reply_to: Optional reply-to email address.
 
-        resp = httpx.post(
-            "https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {config['api_key']}"},
-            json=payload,
-            timeout=15,
-        )
-        _check_response(resp)
-        return
-
-    elif provider_type == "sendgrid":
+    Raises:
+        _PermanentEmailError: For non-retriable HTTP status codes (400/401/403/422).
+        httpx.HTTPStatusError: For other HTTP errors.
+    """
+    if provider_type == "sendgrid":
         personalization = {"to": [{"email": to_email}]}
         if cc:
             personalization["cc"] = [{"email": email} for email in cc]
@@ -183,7 +141,7 @@ def _send_email(provider_type, config, to_email, subject, body_html, cc=None, bc
 
         payload = {
             "personalizations": [personalization],
-            "from": {"email": config.get("from_email", "noreply@alrt.dev")},
+            "from": {"email": config.get("from_email", "no-reply@example.com")},
             "subject": subject,
             "content": [{"type": "text/html", "value": body_html}],
         }
@@ -199,7 +157,7 @@ def _send_email(provider_type, config, to_email, subject, body_html, cc=None, bc
 
     elif provider_type == "resend":
         payload = {
-            "from": config.get("from_email", "noreply@alrt.dev"),
+            "from": config.get("from_email", "no-reply@example.com"),
             "to": [to_email],
             "subject": subject,
             "html": body_html,

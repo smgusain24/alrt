@@ -1,3 +1,5 @@
+"""Slack channel delivery task using the chat.postMessage API."""
+
 import json
 import logging
 import uuid
@@ -41,34 +43,27 @@ Q_GET_TEMPLATE = "SELECT id, name, channel, subject, body, variables FROM templa
 def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
-        log.warning(f"Subscriber {subscriber_id} not found")
+        log.warning("Subscriber %s not found", subscriber_id)
         return
 
     overrides = overrides or {}
     target = overrides.get("channel_id") or template_data.get("slack_channel_id") or subscriber.get("slack_user_id")
     if not target:
-        log.warning(f"Subscriber {subscriber_id} has no slack_user_id and no slack_channel_id in template")
+        log.warning("Subscriber %s has no slack_user_id and no slack_channel_id in template", subscriber_id)
         return
 
     provider = execute_read_one_query(Q_GET_SLACK_PROVIDER, [uuid.UUID(team_id)])
     if not provider:
-        log.warning(f"No Slack provider configured for team {team_id}")
+        log.warning("No Slack provider configured for team %s", team_id)
         return
 
-    if provider["provider_type"] == "alrt_hosted":
-        # alrt_hosted: config is encrypted (contains bot_token — it IS a secret)
-        f = get_fernet()
-        config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
-        bot_token = config.get("bot_token")
-        if not bot_token:
-            # Provider is inactive placeholder (OAuth not completed yet)
-            log.warning(f"Slack alrt_hosted provider for team {team_id} has no bot_token — OAuth incomplete")
-            return
-    else:
-        # BYOC path: existing slack_oauth provider type
-        f = get_fernet()
-        config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
-        bot_token = config["bot_token"]
+    # Decrypt provider credentials
+    f = get_fernet()
+    config = json.loads(f.decrypt(provider["config"]["encrypted"].encode()))
+    bot_token = config.get("bot_token")
+    if not bot_token:
+        log.warning("Slack provider for team %s has no bot_token", team_id)
+        return
 
     # Resolve template_id → template content (fallback to inline)
     template_id = template_data.get("template_id")
@@ -100,34 +95,12 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     try:
         _send_slack_message(bot_token, target, text, blocks, thread_ts=overrides.get("thread_ts"))
         execute_update_query(Q_MARK_SENT, [nid])
-        # Get plan-based quota limit (fire-and-forget — never blocks delivery)
-        try:
-            _limit_row = execute_read_one_query(
-                """SELECT COALESCE(p.quota_limit, 1000) AS quota_limit
-                   FROM teams t LEFT JOIN plans p ON t.plan_id = p.id
-                   WHERE t.id = $1""",
-                [uuid.UUID(team_id)],
-            )
-            _quota_limit = _limit_row["quota_limit"] if _limit_row else 1000
-        except Exception:
-            _quota_limit = 1000
-        execute_update_query(
-            """
-            INSERT INTO team_quotas (team_id, period_start, monthly_count, over_limit)
-            VALUES ($1, date_trunc('month', now()), 1, (1 > $2))
-            ON CONFLICT (team_id, period_start) DO UPDATE
-            SET monthly_count = team_quotas.monthly_count + 1,
-                over_limit    = (team_quotas.monthly_count + 1) > $2,
-                updated_at    = now()
-            """,
-            [uuid.UUID(team_id), _quota_limit],
-        )
     except _PermanentSlackError as exc:
-        log.error(f"Permanent Slack error for notification {nid}: {exc}")
+        log.error("Permanent Slack error for notification %s: %s", nid, exc)
         if nid:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries])
     except Exception as exc:
-        log.error(f"Slack delivery failed for notification {nid}: {exc}")
+        log.error("Slack delivery failed for notification %s: %s", nid, exc)
         if nid and self.request.retries >= self.max_retries:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise
@@ -165,7 +138,19 @@ def _build_message(template_data, payload, subscriber=None):
 
 
 def _send_slack_message(bot_token, channel, text, blocks=None, thread_ts=None):
-    """Send message via Slack chat.postMessage API."""
+    """Send a message via the Slack chat.postMessage API.
+
+    Args:
+        bot_token: OAuth bot token for the team's Slack workspace.
+        channel: Slack channel ID or user ID to post to.
+        text: Plain-text fallback content (shown in notifications).
+        blocks: Optional Block Kit block list for rich formatting.
+        thread_ts: Optional thread timestamp for threaded replies.
+
+    Raises:
+        _PermanentSlackError: For non-retriable Slack API errors.
+        RuntimeError: For other Slack API errors.
+    """
     message_payload = {
         "channel": channel,
         "text": text,

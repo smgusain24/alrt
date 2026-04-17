@@ -1,13 +1,13 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CreateWorkflow(BaseModel):
     name: str
     event_name: str
-    definition: dict = {}
+    definition: dict = Field(default_factory=dict)
 
 
 class UpdateWorkflow(BaseModel):

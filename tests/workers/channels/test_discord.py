@@ -100,8 +100,8 @@ class TestDiscordHappyPath:
             assert call_args[0][0] == "https://discord.com/api/webhooks/123/abc"
             json_body = call_args[1]["json"]
             assert "embeds" in json_body
-            # Assert — notification marked sent + quota incremented
-            assert mock_update.call_count == 2
+            # Assert — notification marked sent
+            assert mock_update.call_count == 1
 
     def test_team_provider_fallback_decrypts_and_sends(self):
         """No subscriber webhook URL -> falls back to team Discord provider, decrypts config."""
@@ -109,7 +109,7 @@ class TestDiscordHappyPath:
         team_id = uuid.uuid4()
         sub = make_subscriber(team_id=team_id, discord_webhook_url=None)
         provider = make_provider(
-            team_id=team_id, channel="discord", provider_type="alrt_hosted",
+            team_id=team_id, channel="discord", provider_type="discord",
             config={"encrypted": "encrypted_blob"},
         )
         notif_id = uuid.uuid4()

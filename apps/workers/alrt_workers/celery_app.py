@@ -11,10 +11,13 @@ for env_path in [Path(__file__).resolve().parents[3] / ".env", Path(".env")]:
                     os.environ.setdefault(key.strip(), value.strip())
         break
 
-from celery import Celery
-from celery.schedules import crontab
+"""Celery application configuration with per-channel task routing and Beat schedules."""
 
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+from celery import Celery  # noqa: E402 — must load .env before importing celery
+
+redis_url = os.getenv("REDIS_URL")
+if not redis_url:
+    raise RuntimeError("REDIS_URL environment variable is required")
 broker_url = os.getenv("CELERY_BROKER_URL", redis_url)
 result_backend = os.getenv("CELERY_RESULT_BACKEND", redis_url)
 
@@ -42,7 +45,7 @@ celery_app.conf.update(
              "alrt_workers.tasks.channels.inapp", "alrt_workers.tasks.channels.email",
              "alrt_workers.tasks.channels.slack", "alrt_workers.tasks.retention",
              "alrt_workers.tasks.channels.whatsapp", "alrt_workers.tasks.channels.discord",
-             "alrt_workers.tasks.channels.telegram", "alrt_workers.tasks.billing",
+             "alrt_workers.tasks.channels.telegram",
              "alrt_workers.tasks.channels.sms", "alrt_workers.tasks.channels.push"],
 )
 
@@ -54,18 +57,6 @@ celery_app.conf.beat_schedule = {
     "archive-old-notifications": {
         "task": "alrt_workers.tasks.retention.archive_old_notifications",
         "schedule": 86400.0,  # 24 hours
-    },
-    "expire-trials": {
-        "task": "alrt_workers.tasks.billing.expire_trials",
-        "schedule": 86400.0,
-    },
-    "expire-cancelled": {
-        "task": "alrt_workers.tasks.billing.expire_cancelled",
-        "schedule": 86400.0,
-    },
-    "reset-monthly-quotas": {
-        "task": "alrt_workers.tasks.billing.reset_monthly_quotas",
-        "schedule": crontab(day_of_month=1, hour=0, minute=0),
     },
 }
 
@@ -79,4 +70,4 @@ def setup_error_handling(sender, **kwargs):
 
     @task_rejected.connect
     def on_task_rejected(sender=None, body=None, **kwargs):
-        logger.warning(f"Task rejected (malformed message): {body}")
+        logger.warning("Task rejected (malformed message): %s", body)

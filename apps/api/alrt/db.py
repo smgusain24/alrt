@@ -1,3 +1,10 @@
+"""Async database layer backed by asyncpg.
+
+Manages a module-level connection pool, auto-creates the schema on first
+startup, and exposes typed helper functions for common query patterns
+(read, insert, update, delete).
+"""
+
 import asyncpg
 import logging
 
@@ -35,7 +42,7 @@ async def init_pool(database_url: str):
 REQUIRED_TABLES = [
     "teams", "users", "api_keys", "subscribers", "workflows",
     "workflow_executions", "notifications", "providers", "scheduled_steps",
-    "event_logs", "templates", "team_quotas", "plans", "billing_events",
+    "event_logs", "templates",
 ]
 
 REQUIRED_INDEXES = [
@@ -57,7 +64,6 @@ REQUIRED_INDEXES = [
     ("idx_event_logs_created_at", "event_logs", "team_id, created_at DESC"),
     ("idx_notifications_status", "notifications", "team_id, status"),
     ("idx_templates_team_id", "templates", "team_id"),
-    ("idx_team_quotas_team_period", "team_quotas", "team_id, period_start"),
     ("idx_notifications_execution", "notifications", "workflow_execution_id"),
 ]
 
@@ -68,13 +74,7 @@ CREATE TABLE IF NOT EXISTS teams (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    plan_id          UUID,
-    billing_status   VARCHAR(20) NOT NULL DEFAULT 'trialing',
-    billing_provider VARCHAR(20),
-    subscription_id  VARCHAR(255),
-    trial_ends_at    TIMESTAMPTZ,
-    period_ends_at   TIMESTAMPTZ
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -224,44 +224,7 @@ CREATE TABLE IF NOT EXISTS templates (
     UNIQUE(team_id, name, channel)
 );
 
-CREATE TABLE IF NOT EXISTS plans (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name         VARCHAR(50) NOT NULL UNIQUE,
-    display_name VARCHAR(100) NOT NULL,
-    price_inr    INTEGER NOT NULL DEFAULT 0,
-    quota_limit  INTEGER NOT NULL,
-    features     JSONB NOT NULL DEFAULT '{}',
-    is_active    BOOLEAN NOT NULL DEFAULT true,
-    sort_order   INTEGER NOT NULL DEFAULT 0,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS billing_events (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    team_id      UUID NOT NULL REFERENCES teams(id),
-    provider     VARCHAR(20) NOT NULL,
-    event_type   VARCHAR(100) NOT NULL,
-    event_id     VARCHAR(255) NOT NULL,
-    payload_hash VARCHAR(64) NOT NULL,
-    metadata     JSONB NOT NULL DEFAULT '{}',
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE(provider, event_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_billing_events_team
-    ON billing_events(team_id, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS team_quotas (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    team_id      UUID NOT NULL REFERENCES teams(id),
-    period_start TIMESTAMPTZ NOT NULL,
-    monthly_count INTEGER NOT NULL DEFAULT 0,
-    over_limit   BOOLEAN NOT NULL DEFAULT false,
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE(team_id, period_start)
-);
-
--- Ensure at most one alrt_hosted provider per channel per team (enables ON CONFLICT upsert)
+-- Ensure at most one provider per channel type per team
 CREATE UNIQUE INDEX IF NOT EXISTS idx_providers_team_channel_type
     ON providers(team_id, channel, provider_type);
 
@@ -286,12 +249,6 @@ SCHEMA_MIGRATIONS = [
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS discord_webhook_url VARCHAR(500)",
     "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR(100)",
-    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS plan_id UUID",
-    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS billing_status VARCHAR(20) NOT NULL DEFAULT 'trialing'",
-    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS billing_provider VARCHAR(20)",
-    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS subscription_id VARCHAR(255)",
-    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ",
-    "ALTER TABLE teams ADD COLUMN IF NOT EXISTS period_ends_at TIMESTAMPTZ",
     "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS push_tokens JSONB NOT NULL DEFAULT '[]'",
 ]
 
@@ -308,7 +265,7 @@ async def ensure_schema():
         missing = [t for t in REQUIRED_TABLES if t not in existing_set]
 
         if missing:
-            logger.info(f"Missing tables: {missing}. Creating schema...")
+            logger.info("Missing tables: %s. Creating schema...", missing)
             await conn.execute(SCHEMA_SQL)
             logger.info("Schema created successfully")
         else:
@@ -324,7 +281,7 @@ async def ensure_schema():
             if idx_name not in existing_idx_set:
                 sql = f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table} ({columns})"
                 await conn.execute(sql)
-                logger.info(f"Created index: {idx_name}")
+                logger.info("Created index: %s", idx_name)
 
         logger.info("Schema and indexes verified")
 
@@ -334,22 +291,6 @@ async def ensure_schema():
                 await conn.execute(migration)
             except Exception:
                 pass  # Column already exists — idempotent
-
-        # Seed billing plans (idempotent upsert)
-        await conn.execute("""
-            INSERT INTO plans (name, display_name, price_inr, quota_limit, features, sort_order)
-            VALUES
-                ('free',   'Free Trial', 0,      1000,   '{}',                                    0),
-                ('pro',    'Pro',        99900,  25000,  '{"byoc_email": true, "byoc_slack": true}', 1),
-                ('growth', 'Growth',     499900, 200000, '{"byoc_email": true, "byoc_slack": true, "byoc_all": true, "priority_support": true}', 2)
-            ON CONFLICT (name) DO UPDATE SET
-                display_name = EXCLUDED.display_name,
-                price_inr    = EXCLUDED.price_inr,
-                quota_limit  = EXCLUDED.quota_limit,
-                features     = EXCLUDED.features,
-                sort_order   = EXCLUDED.sort_order
-        """)
-        logger.info("Billing plans seeded")
 
 
 async def close_pool():
@@ -368,80 +309,121 @@ def get_pool() -> asyncpg.Pool:
 
 
 async def execute_read_query(query: str, params: list | None = None) -> list[dict]:
-    """Execute a SELECT query and return all rows as list of dicts."""
+    """Execute a SELECT query and return all rows as dicts.
+
+    Args:
+        query: SQL SELECT statement with $N-style positional placeholders.
+        params: Bind parameters matching the placeholders in ``query``.
+
+    Returns:
+        A list of dicts, one per row. Returns an empty list on error.
+    """
     pool = get_pool()
     try:
         async with pool.acquire() as conn:
-            logger.debug(f"READ: {query[:100]}... params={params}")
+            logger.debug("READ: %s... params=%s", query[:100], params)
             if params:
                 rows = await conn.fetch(query, *params)
             else:
                 rows = await conn.fetch(query)
             return [dict(row) for row in rows]
     except Exception as e:
-        logger.error(f"Error executing read query: {e}", exc_info=True)
+        logger.error("Error executing read query: %s", e, exc_info=True)
         return []
 
 
 async def execute_read_one_query(query: str, params: list | None = None) -> dict | None:
-    """Execute a SELECT query and return a single row as dict, or None."""
+    """Execute a SELECT query and return a single row as a dict.
+
+    Args:
+        query: SQL SELECT statement expected to return at most one row.
+        params: Bind parameters matching the placeholders in ``query``.
+
+    Returns:
+        A dict representing the row, or ``None`` if no row matched or an
+        error occurred.
+    """
     pool = get_pool()
     try:
         async with pool.acquire() as conn:
-            logger.debug(f"READ_ONE: {query[:100]}... params={params}")
+            logger.debug("READ_ONE: %s... params=%s", query[:100], params)
             if params:
                 row = await conn.fetchrow(query, *params)
             else:
                 row = await conn.fetchrow(query)
             return dict(row) if row else None
     except Exception as e:
-        logger.error(f"Error executing read one query: {e}", exc_info=True)
+        logger.error("Error executing read one query: %s", e, exc_info=True)
         return None
 
 
 async def execute_insert_query(query: str, params: list | None = None) -> dict | None:
-    """Execute an INSERT ... RETURNING query and return the inserted row as dict."""
+    """Execute an INSERT ... RETURNING query and return the new row.
+
+    Args:
+        query: SQL INSERT statement with a RETURNING clause.
+        params: Bind parameters matching the placeholders in ``query``.
+
+    Returns:
+        A dict of the inserted row, or ``None`` on error.
+    """
     pool = get_pool()
     try:
         async with pool.acquire() as conn:
-            logger.debug(f"INSERT: {query[:100]}... params={params}")
+            logger.debug("INSERT: %s... params=%s", query[:100], params)
             if params:
                 row = await conn.fetchrow(query, *params)
             else:
                 row = await conn.fetchrow(query)
             return dict(row) if row else None
     except Exception as e:
-        logger.error(f"Error executing insert query: {e}", exc_info=True)
+        logger.error("Error executing insert query: %s", e, exc_info=True)
         return None
 
 
 async def execute_update_query(query: str, params: list | None = None) -> bool:
-    """Execute an UPDATE query. Returns True on success, False on error."""
+    """Execute an UPDATE query.
+
+    Args:
+        query: SQL UPDATE statement.
+        params: Bind parameters matching the placeholders in ``query``.
+
+    Returns:
+        ``True`` if the statement executed without error, ``False`` otherwise.
+    """
     pool = get_pool()
     try:
         async with pool.acquire() as conn:
-            logger.debug(f"UPDATE: {query[:100]}... params={params}")
+            logger.debug("UPDATE: %s... params=%s", query[:100], params)
             if params:
                 await conn.execute(query, *params)
             else:
                 await conn.execute(query)
             return True
     except Exception as e:
-        logger.error(f"Error executing update query: {e}", exc_info=True)
+        logger.error("Error executing update query: %s", e, exc_info=True)
         return False
 
 
 async def execute_delete_query(query: str, params: list | None = None) -> bool:
-    """Execute a DELETE query. Returns True on success, False on error."""
+    """Execute a DELETE query.
+
+    Args:
+        query: SQL DELETE statement.
+        params: Bind parameters matching the placeholders in ``query``.
+
+    Returns:
+        ``True`` if the statement executed without error, ``False`` otherwise.
+    """
     pool = get_pool()
     try:
         async with pool.acquire() as conn:
-            logger.debug(f"DELETE: {query[:100]}... params={params}")
+            logger.debug("DELETE: %s... params=%s", query[:100], params)
             if params:
                 await conn.execute(query, *params)
             else:
                 await conn.execute(query)
             return True
     except Exception as e:
-        logger.error(f"Error executing delete query: {e}", exc_info=True)
+        logger.error("Error executing delete query: %s", e, exc_info=True)
         return False

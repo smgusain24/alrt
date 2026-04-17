@@ -1,3 +1,5 @@
+"""Per-channel Celery retry policies with exponential backoff configuration."""
+
 from dataclasses import dataclass, asdict
 
 
@@ -12,7 +14,7 @@ class RetryPolicy:
     retry_jitter: bool = True
 
     def as_task_kwargs(self) -> dict:
-        """Return dict to unpack into @celery_app.task(...)."""
+        """Return a dict suitable for unpacking into ``@celery_app.task(**kwargs)``."""
         d = asdict(self)
         if not self.retry_backoff:
             d.pop("retry_backoff_max")

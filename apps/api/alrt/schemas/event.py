@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 VALID_CHANNELS = {"in_app", "email", "slack", "whatsapp", "discord", "telegram"}
 ChannelType = Literal["in_app", "email", "slack", "whatsapp", "discord", "telegram"]
@@ -12,8 +12,8 @@ class EmailOverrides(BaseModel):
     to: str | None = None
     subject: str | None = None
     reply_to: str | None = None
-    cc: list[str] = []
-    bcc: list[str] = []
+    cc: list[str] = Field(default_factory=list)
+    bcc: list[str] = Field(default_factory=list)
 
 
 class SlackOverrides(BaseModel):
@@ -36,18 +36,18 @@ class SubscriberInline(BaseModel):
     email: str | None = None
     name: str | None = None
     phone: str | None = None        # for WhatsApp (Phase 4)
-    data: dict = {}                 # merged into custom_properties
+    data: dict = Field(default_factory=dict)  # merged into custom_properties
 
 
 class TriggerEvent(BaseModel):
     workflow: str
     subscriber: SubscriberInline | None = None
     subscriber_id: str | None = None   # deprecated — use subscriber.id instead
-    payload: dict = {}
+    payload: dict = Field(default_factory=dict)
     channels: list[ChannelType] | None = None
     overrides: ChannelOverrides | None = None
     deliver_at: datetime | None = None
-    metadata: dict = {}
+    metadata: dict = Field(default_factory=dict)
     idempotency_key: str | None = None
 
     @field_validator("channels")
@@ -70,18 +70,18 @@ class TriggerResponse(BaseModel):
     status: str = "accepted"
     channels_requested: list[str] | None = None
     channels_matched: list[str] | None = None
-    warnings: list[str] = []
+    warnings: list[str] = Field(default_factory=list)
     scheduled_at: datetime | None = None
 
 
 class TriggerBulkEvent(BaseModel):
     workflow: str
     subscribers: list[SubscriberInline]
-    payload: dict = {}
+    payload: dict = Field(default_factory=dict)
     channels: list[ChannelType] | None = None
     overrides: ChannelOverrides | None = None
     deliver_at: datetime | None = None
-    metadata: dict = {}
+    metadata: dict = Field(default_factory=dict)
     idempotency_key: str | None = None
 
     @field_validator("channels")

@@ -29,8 +29,8 @@ class CreateSubscriber(BaseModel):
     slack_user_id: str | None = None
     discord_webhook_url: str | None = None
     telegram_chat_id: str | None = None
-    custom_properties: dict = {}
-    channel_preferences: dict = {}
+    custom_properties: dict = Field(default_factory=dict)
+    channel_preferences: dict = Field(default_factory=dict)
 
 
 class UpdateSubscriber(BaseModel):
@@ -55,7 +55,7 @@ class SubscriberResponse(BaseModel):
     telegram_chat_id: str | None
     custom_properties: dict
     channel_preferences: dict
-    push_tokens: list[dict] = []
+    push_tokens: list[dict] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

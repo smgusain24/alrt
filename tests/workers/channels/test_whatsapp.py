@@ -99,8 +99,8 @@ class TestWhatsAppHappyPath:
             mock_httpx.post.assert_called_once()
             call_args = mock_httpx.post.call_args
             assert "graph.facebook.com" in call_args[0][0]
-            # Assert — wamid stored + marked sent + quota incremented (3 update calls)
-            assert mock_update.call_count == 3
+            # Assert — wamid stored + marked sent (2 update calls)
+            assert mock_update.call_count == 2
 
     def test_template_message_sends_correct_meta_payload(self):
         """template_name + template_variables in template_data -> Meta template payload."""

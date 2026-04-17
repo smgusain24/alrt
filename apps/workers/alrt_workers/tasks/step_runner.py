@@ -1,5 +1,6 @@
+"""Step router that dispatches workflow nodes to channel, delay, or condition handlers."""
+
 import uuid
-import json
 import re
 from datetime import datetime, timedelta, timezone
 import os
@@ -16,6 +17,23 @@ Q_CREATE_SCHEDULED_STEP = """
 
 
 def execute_step(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels=None, overrides=None, workflow_category=None):
+    """Route a single workflow node to its handler based on node type.
+
+    Args:
+        execution_id: UUID string of the current workflow execution.
+        node: Workflow node dict with at least "type" and "data" keys.
+        subscriber_id: UUID string of the target subscriber.
+        team_id: UUID string of the owning team.
+        payload: Event payload dict for template rendering.
+        preferences: Subscriber channel preference dict.
+        allowed_channels: Optional list restricting which channels to deliver to.
+        overrides: Optional per-channel override dict from the trigger API.
+        workflow_category: Optional workflow category for category-level preferences.
+
+    Returns:
+        "ok" if the step completed, "paused" if deferred (delay/DND), or
+        "skipped" if filtered out by preferences or conditions.
+    """
     node_type = node.get("type")
 
     if node_type == "channel":
@@ -29,6 +47,7 @@ def execute_step(execution_id, node, subscriber_id, team_id, payload, preference
 
 
 def _handle_channel(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels=None, overrides=None, workflow_category=None):
+    """Apply preference checks (global, category, DND, frequency cap) then enqueue channel delivery."""
     channel = node.get("data", {}).get("channel", "in_app")
     CHANNEL_ALIASES = {"inapp": "in_app", "in-app": "in_app", "wa": "whatsapp"}
     channel = CHANNEL_ALIASES.get(channel, channel)
@@ -101,7 +120,7 @@ def _handle_channel(execution_id, node, subscriber_id, team_id, payload, prefere
     if freq:
         max_daily = freq.get("max_per_day")
         if max_daily:
-            r = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
+            r = redis.Redis.from_url(os.environ["REDIS_URL"])
             key = f"freq:{team_id}:{subscriber_id}:{pref_channel}:day"
             count = r.incr(key)
             if count == 1:
@@ -146,6 +165,7 @@ def _handle_channel(execution_id, node, subscriber_id, team_id, payload, prefere
 
 
 def _handle_delay(execution_id, node, payload, subscriber_id=None, team_id=None):
+    """Persist a scheduled_steps row to resume execution after the configured delay."""
     duration = node.get("data", {}).get("duration_seconds", 60)
     next_step_id = node.get("id")
 
@@ -211,6 +231,11 @@ CONDITION_OPERATORS = {
 
 
 def _handle_condition(node, payload):
+    """Evaluate a condition node against the event payload.
+
+    Returns:
+        "ok" if the condition passes, "skipped" if it fails.
+    """
     data = node.get("data", {})
     field = data.get("field", "")
     operator = data.get("operator", "equals")

@@ -35,22 +35,12 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [quotaExceeded, setQuotaExceeded] = useState(false);
 
   useEffect(() => {
     api.auth.me()
       .then((data: any) => setUser(data))
       .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    const teamId = (user as any).team_id;
-    if (!teamId) return;
-    api.teams.getQuota(teamId)
-      .then((data) => setQuotaExceeded(data.over_limit))
-      .catch(() => {});
-  }, [user]);
 
   const handleLogout = () => {
     api.auth.logout().finally(() => {
@@ -282,23 +272,6 @@ export default function DashboardLayout({
 
         {/* Main content area */}
         <main style={{ overflow: "auto" }}>
-          {quotaExceeded && (
-            <div
-              role="alert"
-              style={{
-                background: "rgba(239, 68, 68, 0.1)",
-                border: "1px solid var(--color-danger)",
-                borderRadius: "6px",
-                margin: "16px 16px 0",
-                padding: "8px 16px",
-                fontSize: "14px",
-                color: "var(--color-danger)",
-                textAlign: "center",
-              }}
-            >
-              You&apos;ve exceeded your monthly notification limit. Contact support to continue sending.
-            </div>
-          )}
           <div style={{ padding: "24px" }}>
             {children}
           </div>

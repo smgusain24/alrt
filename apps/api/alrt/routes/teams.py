@@ -1,3 +1,10 @@
+"""Team and API key management routes.
+
+Provides CRUD for teams and their API keys.  Each team can have multiple
+server (``alrt_sk_``) and client (``alrt_ck_``) keys.  Raw key values are
+returned only once at creation time; only the SHA-256 hash is stored.
+"""
+
 import hashlib
 import secrets
 import uuid
@@ -5,34 +12,36 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from alrt.config import settings
-from alrt.db import execute_insert_query, execute_read_query, execute_read_one_query, execute_update_query
+from alrt.db import execute_insert_query, execute_read_query, execute_read_one_query
 from alrt.deps import get_current_team
 from alrt.middleware.rate_limit import limiter
-from alrt.queries import api_keys as api_key_q, teams as team_q, quotas as quotas_q
+from alrt.queries import api_keys as api_key_q, teams as team_q
 from alrt.schemas.team import (
     ApiKeyCreatedResponse,
     ApiKeyResponse,
     CreateApiKey,
     CreateTeam,
     TeamCreatedResponse,
-    TeamResponse,
 )
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
 
 def _generate_key(key_type: str) -> str:
+    """Generate a prefixed random API key (``alrt_sk_`` or ``alrt_ck_``)."""
     prefix = "alrt_sk_" if key_type == "server" else "alrt_ck_"
     return prefix + secrets.token_hex(32)
 
 
 def _hash_key(raw_key: str) -> str:
+    """Return the SHA-256 hex digest of ``raw_key`` for storage."""
     return hashlib.sha256(raw_key.encode()).hexdigest()
 
 
 @router.post("", response_model=TeamCreatedResponse, status_code=201)
 @limiter.limit(settings.rate_limit_write)
 async def create_team(request: Request, body: CreateTeam):
+    """Create a new team and auto-generate an initial server API key."""
     team_id = uuid.uuid4()
     team = await execute_insert_query(team_q.CREATE, [team_id, body.name])
 
@@ -58,6 +67,14 @@ async def create_team_api_key(
     body: CreateApiKey = CreateApiKey(),
     current_team: uuid.UUID = Depends(get_current_team),
 ):
+    """Create a new API key for the team.
+
+    The raw key is returned in the response and is never stored or
+    retrievable again.
+
+    Raises:
+        HTTPException: 403 if the caller does not own this team.
+    """
     if current_team != team_id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
@@ -77,6 +94,7 @@ async def list_team_api_keys(
     team_id: uuid.UUID,
     current_team: uuid.UUID = Depends(get_current_team),
 ):
+    """List all API keys for the team (prefixes only, no raw values)."""
     if current_team != team_id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
@@ -92,6 +110,7 @@ async def delete_team_api_key(
     key_id: uuid.UUID,
     current_team: uuid.UUID = Depends(get_current_team),
 ):
+    """Revoke (soft-delete) an API key by marking it inactive."""
     if current_team != team_id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
@@ -100,19 +119,3 @@ async def delete_team_api_key(
         raise HTTPException(status_code=404, detail="API key not found")
 
 
-@router.get("/{team_id}/quota")
-@limiter.limit(settings.rate_limit_read)
-async def get_team_quota(
-    request: Request,
-    team_id: uuid.UUID,
-    current_team: uuid.UUID = Depends(get_current_team),
-):
-    """Return current month's quota status for the team."""
-    if current_team != team_id:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    row = await execute_read_one_query(quotas_q.GET_QUOTA_STATUS, [team_id])
-    return {
-        "over_limit": row["over_limit"] if row else False,
-        "monthly_count": row["monthly_count"] if row else 0,
-    }

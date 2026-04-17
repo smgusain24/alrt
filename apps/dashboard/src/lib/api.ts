@@ -95,15 +95,8 @@ export const api = {
     delete: (id: string) => request(`/providers/${id}`, { method: "DELETE" }),
   },
   channels: {
-    list: () => request<any[]>("/channels"),
-    activateWhatsApp: () => request("/channels/whatsapp/activate", { method: "POST" }),
-    deactivateWhatsApp: () => request("/channels/whatsapp/deactivate", { method: "POST" }),
     updateDiscordConfig: (webhookUrl: string) =>
       request("/channels/discord/config", { method: "PUT", body: JSON.stringify({ webhook_url: webhookUrl }) }),
-  },
-  teams: {
-    getQuota: (teamId: string) =>
-      request<{ over_limit: boolean; monthly_count: number }>(`/teams/${teamId}/quota`),
   },
   analytics: {
     overview: (days: number = 30) => request(`/analytics/overview?days=${days}`),

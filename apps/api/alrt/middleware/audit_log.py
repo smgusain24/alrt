@@ -1,3 +1,11 @@
+"""Request audit logging middleware.
+
+Records every API request (except health, docs, and WebSocket paths) into
+the ``event_logs`` table.  Logging is fire-and-forget so it never blocks
+the response.  Sensitive fields in request bodies are scrubbed before
+storage.
+"""
+
 import asyncio
 import hashlib
 import json
@@ -66,6 +74,10 @@ async def _extract_team_id_from_api_key(request: Request):
 
 
 async def _log_request(team_id, method, path, status_code, latency_ms, body, response_summary, ip, user_agent):
+    """Insert a single audit row into ``event_logs``.
+
+    Silently swallows errors so a logging failure never surfaces to callers.
+    """
     try:
         pool = get_pool()
         async with pool.acquire() as conn:
@@ -78,10 +90,18 @@ async def _log_request(team_id, method, path, status_code, latency_ms, body, res
         # Pool not initialized yet (startup)
         pass
     except Exception as e:
-        logger.warning(f"Failed to write audit log: {e}")
+        logger.warning("Failed to write audit log: %s", e)
 
 
 class AuditLogMiddleware(BaseHTTPMiddleware):
+    """Starlette middleware that writes per-request audit logs.
+
+    For each non-skipped request, captures method, path, latency, request
+    body (for mutating methods), and a response body snippet for non-2xx
+    responses.  The log write is dispatched as an ``asyncio.Task`` so it
+    does not add latency to the response.
+    """
+
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 

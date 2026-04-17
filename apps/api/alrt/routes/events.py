@@ -1,3 +1,12 @@
+"""Event trigger endpoints.
+
+These are the primary API entry points for sending notifications.
+``POST /events/trigger`` fires a single workflow execution;
+``POST /events/trigger-bulk`` fires up to 1 000 executions in one call.
+Both support idempotency keys, scheduled delivery, channel filtering,
+and inline subscriber upsert.
+"""
+
 import json
 import uuid
 from datetime import datetime, timezone
@@ -7,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from alrt.config import settings
 from alrt.db import execute_read_one_query, execute_insert_query
-from alrt.billing.deps import enforce_quota
+from alrt.deps import get_current_team
 from alrt.middleware.rate_limit import limiter
 from alrt.queries import workflows as wf_q, subscribers as sub_q, executions as exec_q
 from alrt.schemas.event import (
@@ -113,8 +122,18 @@ async def _enqueue_execution(r: aioredis.Redis, execution_id: str) -> None:
 async def trigger_event(
     request: Request,
     body: TriggerEvent,
-    team_id: uuid.UUID = Depends(enforce_quota),
+    team_id: uuid.UUID = Depends(get_current_team),
 ):
+    """Trigger a single workflow execution for one subscriber.
+
+    Resolves the subscriber (upserting if inline data is provided), looks up
+    the published workflow by event name, creates an execution record, and
+    enqueues it for immediate processing or marks it as scheduled.
+
+    Idempotency is enforced via a Redis SET NX guard when
+    ``idempotency_key`` is provided -- duplicate requests return the
+    original execution ID with status ``"duplicate"``.
+    """
     subscriber_inline = _get_subscriber_inline(body)
 
     # Look up published workflow
@@ -223,8 +242,15 @@ async def trigger_event(
 async def trigger_event_bulk(
     request: Request,
     body: TriggerBulkEvent,
-    team_id: uuid.UUID = Depends(enforce_quota),
+    team_id: uuid.UUID = Depends(get_current_team),
 ):
+    """Trigger a workflow execution for multiple subscribers in one request.
+
+    Processes each subscriber sequentially, upserting and creating an
+    execution per subscriber.  Per-subscriber failures are captured in the
+    response rather than aborting the entire batch.  Batch-level
+    idempotency is supported via ``idempotency_key``.
+    """
     batch_id = uuid.uuid4()
 
     # Open one Redis connection for the whole batch

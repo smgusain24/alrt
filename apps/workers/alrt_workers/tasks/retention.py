@@ -1,3 +1,5 @@
+"""Notification retention task that archives old notifications in batches."""
+
 import logging
 import os
 
@@ -27,7 +29,11 @@ Q_ARCHIVE_OLD = """
 
 @celery_app.task
 def archive_old_notifications():
-    """Archive notifications older than RETENTION_DAYS. Runs daily via Beat."""
+    """Archive notifications older than RETENTION_DAYS in batched updates.
+
+    Processes up to BATCH_SIZE rows per iteration, looping until fewer than
+    BATCH_SIZE rows remain. Runs daily via Celery Beat.
+    """
     total_archived = 0
     while True:
         row = execute_read_one_query(Q_ARCHIVE_OLD, [str(RETENTION_DAYS), BATCH_SIZE])
@@ -35,4 +41,4 @@ def archive_old_notifications():
         total_archived += count
         if count < BATCH_SIZE:
             break
-    log.info(f"Archived {total_archived} notifications older than {RETENTION_DAYS} days")
+    log.info("Archived %s notifications older than %s days", total_archived, RETENTION_DAYS)

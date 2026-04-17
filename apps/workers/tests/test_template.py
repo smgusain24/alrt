@@ -1,4 +1,3 @@
-import pytest
 from alrt_workers.utils.template import render
 
 

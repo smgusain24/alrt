@@ -1,19 +1,93 @@
+x-app-env: &app-env
+  env_file: .env
+  restart: unless-stopped
+
+x-depends-healthy: &depends-healthy
+  postgres:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+
 services:
   postgres:
-    image: postgres:16-alpine
-    ports:
-      - "5432:5432"
+    image: postgres:16.4-alpine
+    restart: unless-stopped
+    ports: ["5432:5432"]
     environment:
       POSTGRES_USER: alrt
       POSTGRES_PASSWORD: alrt
       POSTGRES_DB: alrt
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alrt -d alrt"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    <<: *app-env
+    image: alrt-api:local
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      cache_from:
+        - alrt-api:local
+    ports: ["8000:8000"]
+    depends_on: *depends-healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  worker:
+    <<: *app-env
+    image: alrt-workers:local           # <-- named image
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile
+      cache_from:
+        - alrt-workers:local
+    depends_on: *depends-healthy
+
+  beat:
+    <<: *app-env
+    image: alrt-workers:local           # <-- reuses worker image, no rebuild
+    command: ["uv", "run", "--package", "alrt-workers", "celery", "-A", "alrt_workers.celery_app", "beat", "--loglevel=info"]
+    depends_on:
+      worker:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  dashboard:
+    image: alrt-dashboard:local
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      cache_from:
+        - alrt-dashboard:local
+    ports: ["3000:3000"]
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   pgdata:

@@ -20,7 +20,7 @@ def _mock_self():
 
 
 def _encrypted_config(bot_token="xoxb-test-token"):
-    """Return a provider config dict that looks like encrypted BYOC/alrt_hosted config."""
+    """Return a provider config dict that looks like encrypted provider config."""
     return {"encrypted": "ENCRYPTED_BLOB"}
 
 
@@ -45,7 +45,7 @@ class TestSlackDeliver:
         provider = make_provider(
             team_id=team_id,
             channel="slack",
-            provider_type="alrt_hosted",
+            provider_type="slack",
             config=_encrypted_config(),
         )
         notif_id = uuid.uuid4()
@@ -88,8 +88,8 @@ class TestSlackDeliver:
             # Notification created
             mock_insert.assert_called_once()
 
-            # Notification marked sent + quota increment
-            assert mock_update.call_count == 2
+            # Notification marked sent
+            assert mock_update.call_count == 1
             sent_call = mock_update.call_args_list[0]
             assert "status = 'sent'" in sent_call[0][0]
 
@@ -101,7 +101,7 @@ class TestSlackDeliver:
         provider = make_provider(
             team_id=team_id,
             channel="slack",
-            provider_type="alrt_hosted",
+            provider_type="slack",
             config=_encrypted_config(),
         )
         notif_id = uuid.uuid4()

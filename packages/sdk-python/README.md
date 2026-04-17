@@ -43,7 +43,7 @@ async with AsyncAlrt(api_key="alrt_sk_...") as alrt:
 ```python
 alrt = Alrt(
     api_key="alrt_sk_...",              # Required
-    base_url="https://api.alrt.dev",    # Optional (default)
+    base_url="http://localhost:8000",    # Optional (default)
     max_retries=3,                       # Optional (default: 3)
     timeout=30.0,                        # Optional (default: 30s)
 )

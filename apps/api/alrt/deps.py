@@ -1,3 +1,10 @@
+"""FastAPI dependency functions for authentication.
+
+Provides two injectable dependencies: ``get_current_team`` (dual JWT / API-key
+auth used by most endpoints) and ``get_current_user`` (JWT-only auth used by
+dashboard endpoints that need the full user record).
+"""
+
 import hashlib
 import uuid
 
@@ -14,7 +21,22 @@ security = HTTPBearer()
 
 async def get_current_team(
     credentials: HTTPAuthorizationCredentials = Security(security),
-):
+) -> uuid.UUID:
+    """Resolve the calling team's UUID from a Bearer token.
+
+    Supports two auth methods, tried in order:
+    1. **JWT** -- issued to dashboard users at login/signup.
+    2. **API key** (``alrt_sk_`` / ``alrt_ck_``) -- looked up by SHA-256 hash.
+
+    Args:
+        credentials: Bearer token extracted by FastAPI's HTTPBearer scheme.
+
+    Returns:
+        The ``team_id`` UUID associated with the token.
+
+    Raises:
+        HTTPException: 401 if neither method yields a valid team.
+    """
     raw_key = credentials.credentials
 
     # Try JWT first (dashboard sessions)
@@ -41,7 +63,22 @@ async def get_current_team(
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
-):
+) -> dict:
+    """Return the full user record for a JWT-authenticated dashboard session.
+
+    Unlike ``get_current_team``, this does **not** accept API keys -- it
+    requires a JWT containing a ``user_id`` claim and fetches the
+    corresponding user row from the database.
+
+    Args:
+        credentials: Bearer JWT extracted by FastAPI's HTTPBearer scheme.
+
+    Returns:
+        A dict of the user row (id, email, name, team_id, etc.).
+
+    Raises:
+        HTTPException: 401 if the token is invalid or the user does not exist.
+    """
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.api_secret_key, algorithms=["HS256"])

@@ -1,5 +1,3 @@
 packages:
   - "apps/dashboard"
-  - "packages/api-types"
   - "packages/sdk-node"
-  - "packages/sdk-python"

@@ -1,3 +1,5 @@
+"""In-app channel delivery task using Redis Pub/Sub for real-time WebSocket fanout."""
+
 import json
 import logging
 import os
@@ -31,7 +33,7 @@ Q_GET_TEMPLATE = "SELECT id, name, channel, subject, body, variables FROM templa
 def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
     subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
-        log.warning(f"Subscriber {subscriber_id} not found, marking as permanent failure")
+        log.warning("Subscriber %s not found, marking as permanent failure", subscriber_id)
         if notification_id:
             execute_update_query(Q_MARK_FAILED, [uuid.UUID(notification_id), "Subscriber not found"])
         return
@@ -69,7 +71,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
     nid = notification["id"] if notification else None
 
     try:
-        r = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
+        r = redis.Redis.from_url(os.environ["REDIS_URL"])
         r.publish(
             f"subscriber:{subscriber_id}",
             json.dumps({
@@ -86,7 +88,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
         )
         execute_update_query(Q_MARK_SENT, [nid])
     except Exception as exc:
-        log.error(f"In-app delivery failed for notification {nid}: {exc}")
+        log.error("In-app delivery failed for notification %s: %s", nid, exc)
         if nid and self.request.retries >= self.max_retries:
             execute_update_query(Q_MARK_DEAD_LETTER, [nid, str(exc), self.request.retries + 1])
             raise

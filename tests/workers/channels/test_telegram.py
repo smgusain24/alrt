@@ -100,8 +100,8 @@ class TestTelegramHappyPath:
             call_url = mock_httpx.post.call_args[0][0]
             assert "api.telegram.org" in call_url
             assert "sendMessage" in call_url
-            # Assert — sent + quota incremented
-            assert mock_update.call_count == 2
+            # Assert — marked sent
+            assert mock_update.call_count == 1
 
     def test_long_message_truncated_to_4096_chars(self):
         """Message body exceeding 4096 chars -> truncated to Telegram's hard limit."""

@@ -10,7 +10,7 @@ from alrt_sdk.retry import is_retryable, get_retry_delay, sync_sleep, async_slee
 from alrt_sdk.resources.events import EventsResource, AsyncEventsResource
 from alrt_sdk.resources.subscribers import SubscribersResource, AsyncSubscribersResource
 
-DEFAULT_BASE_URL = "https://api.alrt.dev"
+DEFAULT_BASE_URL = "http://localhost:8000"
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_TIMEOUT = 30.0
 

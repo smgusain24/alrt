@@ -29,7 +29,7 @@ await alrt.events.trigger({
 ```typescript
 const alrt = new Alrt({
   apiKey: "alrt_sk_...",         // Required
-  baseUrl: "https://api.alrt.dev", // Optional (default)
+  baseUrl: "http://localhost:8000", // Optional (default)
   maxRetries: 3,                    // Optional (default: 3)
   timeout: 30000,                   // Optional (default: 30s)
 });
