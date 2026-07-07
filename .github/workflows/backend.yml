@@ -1,0 +1,62 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "apps/api/**"
+      - "apps/workers/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "schema.sql"
+      - ".github/workflows/backend.yml"
+  push:
+    branches: [main, dev]
+    paths:
+      - "apps/api/**"
+      - "apps/workers/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "schema.sql"
+      - ".github/workflows/backend.yml"
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.4-alpine
+        env:
+          POSTGRES_USER: alrt
+          POSTGRES_PASSWORD: alrt
+          POSTGRES_DB: alrt_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U alrt -d alrt_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://alrt:alrt@localhost:5432/alrt_test
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-packages
+      - name: Lint (ruff, apps only)
+        run: uvx ruff@0.15.20 check apps/
+      - name: Tests
+        run: uv run pytest tests/ -q

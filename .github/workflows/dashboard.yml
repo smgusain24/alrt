@@ -1,0 +1,41 @@
+name: Dashboard CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "apps/dashboard/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".github/workflows/dashboard.yml"
+  push:
+    branches: [main, dev]
+    paths:
+      - "apps/dashboard/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".github/workflows/dashboard.yml"
+
+concurrency:
+  group: dashboard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Type-check dashboard
+        run: pnpm --filter @alrt/dashboard run typecheck
