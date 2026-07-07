@@ -111,7 +111,7 @@ async def _handle_client_messages(ws: WebSocket, subscriber_id: str):
             if notification_id:
                 await execute_update_query(
                     notif_q.UPDATE_READ_STATUS,
-                    [uuid.UUID(notification_id), True],
+                    [uuid.UUID(notification_id), True, uuid.UUID(subscriber_id)],
                 )
                 await ws.send_text(json.dumps({"type": "mark_read_ok", "notification_id": notification_id}))
 

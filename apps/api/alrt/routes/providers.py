@@ -17,7 +17,7 @@ from fastapi.responses import RedirectResponse
 
 from alrt.config import settings
 from alrt.db import execute_read_query, execute_read_one_query, execute_insert_query, execute_delete_query
-from alrt.deps import get_current_team
+from alrt.deps import get_current_team, require_write
 from alrt.middleware.rate_limit import limiter
 from alrt.schemas.provider import CreateProvider, ProviderResponse
 from alrt.queries import providers as prov_q
@@ -49,6 +49,7 @@ async def create_provider(
     request: Request,
     body: CreateProvider,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     """Create a BYOC provider for a channel, encrypting its credentials."""
     encrypted_config = _encrypt_config(body.config)
@@ -78,6 +79,7 @@ async def delete_provider(
     request: Request,
     provider_id: uuid.UUID,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     """Delete a provider by ID, scoped to the authenticated team."""
     provider = await execute_read_one_query(prov_q.FIND_BY_ID, [provider_id, team_id])

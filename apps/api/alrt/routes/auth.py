@@ -33,12 +33,13 @@ def _verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode(), password_hash.encode())
 
 
-def _create_jwt(user_id: str, team_id: str, email: str) -> str:
-    """Build a signed HS256 JWT containing user, team, and email claims."""
+def _create_jwt(user_id: str, team_id: str, email: str, role: str) -> str:
+    """Build a signed HS256 JWT containing user, team, email, and role claims."""
     payload = {
         "user_id": user_id,
         "team_id": team_id,
         "email": email,
+        "role": role,
         "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
     }
     return jwt.encode(payload, settings.api_secret_key, algorithm=JWT_ALGORITHM)
@@ -66,7 +67,7 @@ async def signup(body: SignupRequest, response: Response):
         user_id, body.email, _hash_password(body.password), body.name, team_id
     ])
 
-    token = _create_jwt(str(user_id), str(team_id), body.email)
+    token = _create_jwt(str(user_id), str(team_id), body.email, (user or {}).get("role") or "admin")
 
     response.set_cookie(
         key="alrt_token", value=token, httponly=True,
@@ -95,7 +96,7 @@ async def login(body: LoginRequest, response: Response):
 
     await execute_update_query(user_q.UPDATE_LAST_LOGIN, [user["id"]])
 
-    token = _create_jwt(str(user["id"]), str(user["team_id"]), user["email"])
+    token = _create_jwt(str(user["id"]), str(user["team_id"]), user["email"], user.get("role") or "admin")
 
     response.set_cookie(
         key="alrt_token", value=token, httponly=True,

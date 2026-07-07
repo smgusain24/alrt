@@ -81,9 +81,10 @@ CREATE TABLE IF NOT EXISTS workflow_executions (
     deliver_at TIMESTAMPTZ,
     metadata JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'running',
-    idempotency_key VARCHAR(255) UNIQUE,
+    idempotency_key VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, idempotency_key)
 );
 
 CREATE TABLE IF NOT EXISTS notifications (
@@ -127,6 +128,17 @@ CREATE TABLE IF NOT EXISTS scheduled_steps (
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS step_executions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_execution_id UUID NOT NULL REFERENCES workflow_executions(id),
+    node_id VARCHAR(255) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'running',
+    attempt INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(workflow_execution_id, node_id)
 );
 
 CREATE TABLE IF NOT EXISTS event_logs (

@@ -97,6 +97,7 @@ class TestWorkflowExecute:
             return None
 
         with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=read_one_side_effect), \
+             patch("alrt_workers.tasks.workflow.execute_insert_query", return_value={"id": uuid.uuid4()}), \
              patch("alrt_workers.tasks.workflow.execute_update_query") as mock_update, \
              patch("alrt_workers.tasks.step_runner.execute_step", return_value="ok") as mock_step:
 
@@ -108,10 +109,8 @@ class TestWorkflowExecute:
             node_arg = mock_step.call_args[0][1]
             assert node_arg["id"] == "email-1"
 
-            # Execution marked completed
-            mock_update.assert_called_once()
-            args = mock_update.call_args[0]
-            assert args[1] == [execution["id"], "completed"]
+            # Execution marked completed (ledger also records per-step status)
+            assert any(c[0][1] == [execution["id"], "completed"] for c in mock_update.call_args_list)
 
     def test_branching_execution(self):
         """Trigger -> [email, slack] -> both steps called."""
@@ -134,6 +133,7 @@ class TestWorkflowExecute:
             return None
 
         with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=read_one_side_effect), \
+             patch("alrt_workers.tasks.workflow.execute_insert_query", return_value={"id": uuid.uuid4()}), \
              patch("alrt_workers.tasks.workflow.execute_update_query") as mock_update, \
              patch("alrt_workers.tasks.step_runner.execute_step", return_value="ok") as mock_step:
 
@@ -146,7 +146,7 @@ class TestWorkflowExecute:
             assert called_node_ids == {"email-1", "slack-1"}
 
             # Execution marked completed
-            mock_update.assert_called_once()
+            assert any(c[0][1] == [execution["id"], "completed"] for c in mock_update.call_args_list)
 
     def test_diamond_no_double_execute(self):
         """Trigger -> [A, B] -> C : C should be executed exactly once."""
@@ -169,6 +169,7 @@ class TestWorkflowExecute:
             return None
 
         with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=read_one_side_effect), \
+             patch("alrt_workers.tasks.workflow.execute_insert_query", return_value={"id": uuid.uuid4()}), \
              patch("alrt_workers.tasks.workflow.execute_update_query") as mock_update, \
              patch("alrt_workers.tasks.step_runner.execute_step", return_value="ok") as mock_step:
 
@@ -181,7 +182,7 @@ class TestWorkflowExecute:
             assert called_node_ids.count("email-c") == 1
 
             # Execution marked completed
-            mock_update.assert_called_once()
+            assert any(c[0][1] == [execution["id"], "completed"] for c in mock_update.call_args_list)
 
     def test_missing_workflow_marks_failed(self):
         """When the workflow row is missing, execution should be marked failed."""

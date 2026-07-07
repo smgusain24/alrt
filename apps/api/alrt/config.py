@@ -34,7 +34,9 @@ class Settings(BaseSettings):
     rate_limit_read: str = "120/minute"
     rate_limit_public: str = "30/minute"
 
-    model_config = {"env_file": ["../../.env", ".env"]}
+    # extra="ignore" so a shared repo .env carrying dashboard/worker keys
+    # (e.g. NEXT_PUBLIC_API_URL) doesn't fail API startup with extra_forbidden.
+    model_config = {"env_file": ["../../.env", ".env"], "extra": "ignore"}
 
     @property
     def cors_origins_list(self) -> list[str]:
