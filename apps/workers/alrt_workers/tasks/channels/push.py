@@ -167,11 +167,19 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload,
         elif invalid_tokens and not any_success:
             # All tokens were invalid — permanent failure
             raise _PermanentPushError(f"All {len(invalid_tokens)} push tokens are invalid/expired")
+        elif not fcm_tokens and not apns_tokens:
+            # No tokens matched a supported platform — nothing to deliver.
+            log.warning("No matching tokens for push delivery to subscriber %s", subscriber_id)
+            return
         else:
-            # No FCM key or APNs key configured for these token types
-            if not fcm_tokens and not apns_tokens:
-                log.warning("No matching tokens for push delivery to subscriber %s", subscriber_id)
-                return
+            # Tokens existed but nothing succeeded and none were flagged invalid
+            # (transient send failures, or provider key missing). Raise so Celery
+            # retries; the generic handler dead-letters on exhaustion. Never leave
+            # the notification silently stuck 'pending'.
+            raise RuntimeError(
+                f"Push delivery had no successes for subscriber {subscriber_id} "
+                f"({len(fcm_tokens)} FCM, {len(apns_tokens)} APNs tokens)"
+            )
 
 
     except _PermanentPushError as exc:

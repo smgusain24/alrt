@@ -8,14 +8,19 @@ from datetime import datetime, timezone
 import redis as sync_redis
 
 from alrt_workers.celery_app import celery_app
-from alrt_workers.db import execute_read_query, execute_read_one_query, execute_update_query
+from alrt_workers.db import execute_read_query, execute_update_query
 
 # Queries — scheduled_steps (delay node resumption)
 Q_GET_DUE_STEPS = """
-    SELECT id, workflow_execution_id, next_step_id, payload, scheduled_at, status
+    SELECT id, workflow_execution_id, next_step_id
     FROM scheduled_steps
     WHERE status = 'pending' AND scheduled_at <= $1
+    ORDER BY scheduled_at ASC
+    LIMIT 100
 """
+# Conditional claim: only the poll that flips pending->processing runs the step,
+# so two overlapping 30s ticks can't resume the same step twice.
+Q_CLAIM_STEP = "UPDATE scheduled_steps SET status = 'processing', updated_at = now() WHERE id = $1 AND status = 'pending'"
 Q_UPDATE_STEP_STATUS = "UPDATE scheduled_steps SET status = $2, updated_at = now() WHERE id = $1"
 
 # Queries — scheduled executions (deliver_at on trigger)
@@ -88,36 +93,21 @@ def poll_scheduled_steps():
     """
     now = datetime.now(timezone.utc)
 
-    # --- existing: delay node resumption ---
+    # --- delay / DND node resumption ---
     due_steps = execute_read_query(Q_GET_DUE_STEPS, [now])
 
     for step in due_steps:
-        execute_update_query(Q_UPDATE_STEP_STATUS, [step["id"], "processing"])
+        if not execute_update_query(Q_CLAIM_STEP, [step["id"]]):
+            continue  # already claimed by an overlapping poll
 
-        payload = dict(step["payload"] or {})
-        subscriber_id = payload.pop("__subscriber_id", None)
-        team_id = payload.pop("__team_id", None)
+        # Lazy import avoids an import-time cycle with the workflow task module.
+        from alrt_workers.tasks.workflow import resume_from, maybe_complete
+        resume_from(str(step["workflow_execution_id"]), step["next_step_id"])
 
-        preferences = {}
-        if subscriber_id:
-            sub = execute_read_one_query(
-                "SELECT channel_preferences FROM subscribers WHERE id = $1",
-                [uuid.UUID(subscriber_id)]
-            )
-            if sub:
-                preferences = sub.get("channel_preferences") or {}
-
-        from alrt_workers.tasks.step_runner import execute_step
-        execute_step(
-            str(step["workflow_execution_id"]),
-            {"id": step["next_step_id"], "type": "resume"},
-            subscriber_id,
-            team_id,
-            payload,
-            preferences,
-        )
-
+        # Mark the step done BEFORE finalizing, so this row doesn't hold the
+        # execution open in maybe_complete.
         execute_update_query(Q_UPDATE_STEP_STATUS, [step["id"], "completed"])
+        maybe_complete(step["workflow_execution_id"])
 
     # --- new: scheduled executions (deliver_at on trigger) ---
     due_executions = execute_read_query(Q_GET_DUE_SCHEDULED, [now])

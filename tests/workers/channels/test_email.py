@@ -43,6 +43,7 @@ class TestEmailDeliver:
             team_id=team_id,
             channel="email",
             provider_type="resend",
+            secrets={"api_key": "re_test_key", "from_email": "no-reply@test.com"},
         )
         notif_id = uuid.uuid4()
 
@@ -117,6 +118,7 @@ class TestEmailDeliver:
             team_id=team_id,
             channel="email",
             provider_type="resend",
+            secrets={"api_key": "re_test_key", "from_email": "no-reply@test.com"},
         )
         notif_id = uuid.uuid4()
 

@@ -13,7 +13,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from tests.fixtures.data import make_subscriber, make_template
+from tests.fixtures.data import make_subscriber, make_template, make_provider
 
 # Pre-import the module so patch() can resolve attributes on it
 import alrt_workers.tasks.channels.whatsapp  # noqa: F401
@@ -56,8 +56,37 @@ def _mock_httpx_response(status_code=200, json_data=None, text="ok"):
     return resp
 
 
-# Standard environment variables for WhatsApp tests
+# Standard environment variables for WhatsApp tests.
+# NOTE: The worker no longer reads credentials from env — it decrypts them from
+# the team's provider config. WA_ENV is kept only as a harmless no-op so the
+# existing patch.dict lines still work; creds come from _wa_provider().
 WA_ENV = {"WHATSAPP_TOKEN": "wa_test_token", "WHATSAPP_PHONE_NUMBER_ID": "123456789"}
+
+
+def _wa_provider(team_id=None, token="wa_test_token", phone_number_id="123456789"):
+    """WhatsApp provider whose encrypted config carries the Meta token and
+    phone_number_id the worker reads via get_fernet().decrypt(config['encrypted'])."""
+    return make_provider(
+        team_id=team_id,
+        channel="whatsapp",
+        provider_type="meta",
+        secrets={"token": token, "phone_number_id": phone_number_id},
+    )
+
+
+def _read_one(subscriber=None, provider=None, template=None):
+    """Query-aware side_effect: the worker calls execute_read_one_query multiple
+    times (subscriber, then provider, then optionally template). A single
+    return_value would hand the subscriber row back for the provider lookup."""
+    def _side_effect(query, params):
+        if "subscribers" in query:
+            return subscriber
+        if "providers" in query:
+            return provider
+        if "templates" in query:
+            return template
+        return None
+    return _side_effect
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +104,7 @@ class TestWhatsAppHappyPath:
         sub = make_subscriber(team_id=team_id, phone_number="+1-555-123-4567")
         notif_id = uuid.uuid4()
 
-        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", side_effect=_read_one(sub, _wa_provider())), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}) as mock_insert, \
              patch("alrt_workers.tasks.channels.whatsapp.execute_update_query", return_value=True) as mock_update, \
@@ -110,7 +139,7 @@ class TestWhatsAppHappyPath:
         sub = make_subscriber(team_id=team_id, phone_number="+15551234567")
         notif_id = uuid.uuid4()
 
-        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", side_effect=_read_one(sub, _wa_provider())), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_update_query", return_value=True), \
@@ -147,7 +176,7 @@ class TestWhatsAppHappyPath:
         sub = make_subscriber(team_id=team_id, phone_number="+15551234567")
         notif_id = uuid.uuid4()
 
-        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", side_effect=_read_one(sub, _wa_provider())), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_update_query", return_value=True), \
@@ -185,7 +214,7 @@ class TestWhatsAppValidation:
         # Arrange
         sub = make_subscriber(phone_number=None)
 
-        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", side_effect=_read_one(sub, _wa_provider())), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query") as mock_insert, \
              patch("alrt_workers.tasks.channels.whatsapp.httpx") as mock_httpx:
 
@@ -214,7 +243,8 @@ class TestWhatsAppValidation:
         # Arrange
         sub = make_subscriber(phone_number="+15551234567")
 
-        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query",
+                   side_effect=_read_one(sub, _wa_provider(token="", phone_number_id=""))), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query") as mock_insert, \
              patch("alrt_workers.tasks.channels.whatsapp.httpx") as mock_httpx, \
              patch.dict("os.environ", {"WHATSAPP_TOKEN": "", "WHATSAPP_PHONE_NUMBER_ID": ""}, clear=False):
@@ -241,7 +271,7 @@ class TestWhatsAppErrorHandling:
         sub = make_subscriber(team_id=team_id, phone_number="+15551234567")
         notif_id = uuid.uuid4()
 
-        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", side_effect=_read_one(sub, _wa_provider())), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_update_query", return_value=True) as mock_update, \
@@ -273,7 +303,7 @@ class TestWhatsAppErrorHandling:
         sub = make_subscriber(team_id=team_id, phone_number="+15551234567")
         notif_id = uuid.uuid4()
 
-        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", side_effect=_read_one(sub, _wa_provider())), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_update_query", return_value=True) as mock_update, \
@@ -309,7 +339,7 @@ class TestWhatsAppErrorHandling:
         notif_id = uuid.uuid4()
         mock_self = _mock_self(retries=0, max_retries=5)
 
-        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", side_effect=_read_one(sub, _wa_provider())), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_update_query", return_value=True), \
@@ -347,7 +377,7 @@ class TestWhatsAppErrorHandling:
         notif_id = uuid.uuid4()
         mock_self = _mock_self(retries=5, max_retries=5)
 
-        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query", side_effect=_read_one(sub, _wa_provider())), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_update_query", return_value=True) as mock_update, \
@@ -399,15 +429,8 @@ class TestWhatsAppHelpers:
         notif_id = uuid.uuid4()
         template = make_template(body="DB template body: {{payload.name}}")
 
-        def read_one_side_effect(query, params):
-            if "subscribers" in query:
-                return sub
-            if "templates" in query:
-                return template
-            return None
-
         with patch("alrt_workers.tasks.channels.whatsapp.execute_read_one_query",
-                   side_effect=read_one_side_effect), \
+                   side_effect=_read_one(sub, _wa_provider(team_id=team_id), template)), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.whatsapp.execute_update_query", return_value=True), \

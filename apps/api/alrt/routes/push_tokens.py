@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from alrt.config import settings
 from alrt.db import execute_read_one_query
-from alrt.deps import get_current_team
+from alrt.deps import get_current_team, require_write
 from alrt.middleware.rate_limit import limiter
 from alrt.queries import subscribers as sub_q
 from alrt.schemas.subscriber import PushTokenRegister, PushTokenResponse
@@ -23,6 +23,7 @@ async def register_push_token(
     external_id: str,
     body: PushTokenRegister,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     if body.platform not in VALID_PLATFORMS:
         raise HTTPException(status_code=400, detail=f"Invalid platform. Must be one of: {', '.join(VALID_PLATFORMS)}")
@@ -49,6 +50,7 @@ async def remove_push_token(
     external_id: str,
     token: str,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     subscriber = await execute_read_one_query(sub_q.FIND_BY_EXTERNAL_ID, [team_id, external_id])
     if not subscriber:

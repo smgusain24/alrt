@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from alrt.config import settings
 from alrt.db import execute_insert_query, execute_read_query, execute_read_one_query
-from alrt.deps import get_current_team
+from alrt.deps import get_current_team, require_write
 from alrt.middleware.rate_limit import limiter
 from alrt.queries import api_keys as api_key_q, teams as team_q
 from alrt.schemas.team import (
@@ -66,6 +66,7 @@ async def create_team_api_key(
     team_id: uuid.UUID,
     body: CreateApiKey = CreateApiKey(),
     current_team: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     """Create a new API key for the team.
 

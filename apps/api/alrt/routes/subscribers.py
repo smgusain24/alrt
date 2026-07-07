@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from alrt.config import settings
 from alrt.db import execute_read_query, execute_read_one_query, execute_insert_query, execute_update_query
-from alrt.deps import get_current_team
+from alrt.deps import get_current_team, require_write
 from alrt.middleware.rate_limit import limiter
 from alrt.queries import subscribers as sub_q
 from alrt.schemas.subscriber import (
@@ -28,6 +28,7 @@ async def create_subscriber(
     request: Request,
     body: CreateSubscriber,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     existing = await _find_subscriber(team_id, body.external_id)
     if existing:
@@ -95,6 +96,7 @@ async def update_subscriber(
     external_id: str,
     body: UpdateSubscriber,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     subscriber = await _find_subscriber(team_id, external_id)
     if not subscriber:
@@ -131,6 +133,7 @@ async def delete_subscriber(
     request: Request,
     external_id: str,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     subscriber = await _find_subscriber(team_id, external_id)
     if not subscriber:

@@ -98,6 +98,82 @@ class TestTrigger:
             assert resp.status_code == 202
             assert resp.json()["status"] == "duplicate"
 
+    async def test_trigger_idempotency_key_from_header(self, client):
+        """The Idempotency-Key HTTP header is honored even with no body field.
+
+        Regression guard for the SDK bug where the key was sent as a header but
+        the server only read the body. Asserts the header value flows through to
+        the execution-create call as its idempotency_key argument ($8).
+        """
+        workflow = make_workflow(id=WORKFLOW_ID, team_id=TEAM_ID)
+        subscriber = make_subscriber(id=SUBSCRIBER_ID, team_id=TEAM_ID)
+        execution = make_execution(id=uuid.uuid4(), team_id=TEAM_ID, workflow_id=WORKFLOW_ID)
+
+        with patch("alrt.routes.events.execute_read_one_query", new_callable=AsyncMock) as mock_read, \
+             patch("alrt.routes.events.execute_insert_query", new_callable=AsyncMock) as mock_insert, \
+             patch("alrt.routes.events.aioredis") as mock_redis_mod:
+            mock_read.return_value = workflow
+            mock_insert.side_effect = [subscriber, execution]
+
+            mock_redis = AsyncMock()
+            mock_redis_mod.from_url.return_value = mock_redis
+            mock_redis.set = AsyncMock(return_value=True)  # SET NX acquired
+            mock_redis.lpush = AsyncMock()
+            mock_redis.close = AsyncMock()
+
+            resp = await client.post(
+                "/events/trigger",
+                json={
+                    "workflow": "test.event",
+                    "subscriber_id": "user-1",
+                    # NOTE: no idempotency_key in the body
+                },
+                headers={
+                    "Authorization": "Bearer fake",
+                    "Idempotency-Key": "header-key-123",
+                },
+            )
+
+            assert resp.status_code == 202
+
+            # Second insert is the execution create; $8 (index 7) is idempotency_key
+            exec_call = mock_insert.call_args_list[1]
+            params = exec_call.args[1]
+            assert params[7] == "header-key-123"
+
+    async def test_trigger_idempotency_pending_returns_409(self, client):
+        """A concurrent in-flight duplicate (Redis holds 'pending') returns 409.
+
+        The original request has acquired the key but not yet written the real
+        execution id. The server must not fabricate a UUID — it tells the client
+        to retry with HTTP 409.
+        """
+        workflow = make_workflow(id=WORKFLOW_ID, team_id=TEAM_ID)
+
+        with patch("alrt.routes.events.execute_read_one_query", new_callable=AsyncMock) as mock_read, \
+             patch("alrt.routes.events.execute_insert_query", new_callable=AsyncMock), \
+             patch("alrt.routes.events.aioredis") as mock_redis_mod:
+            mock_read.return_value = workflow
+            mock_redis = AsyncMock()
+            mock_redis_mod.from_url.return_value = mock_redis
+            # SET NX fails (key already held by the in-flight original request)
+            mock_redis.set = AsyncMock(return_value=False)
+            # GET returns the "pending" placeholder (no real id yet)
+            mock_redis.get = AsyncMock(return_value=b"pending")
+            mock_redis.close = AsyncMock()
+
+            resp = await client.post(
+                "/events/trigger",
+                json={
+                    "workflow": "test.event",
+                    "subscriber_id": "user-1",
+                    "idempotency_key": "in-flight-key",
+                },
+                headers={"Authorization": "Bearer fake"},
+            )
+
+            assert resp.status_code == 409
+
     async def test_trigger_channel_filtering_warning(self, client):
         workflow = make_workflow(id=WORKFLOW_ID, team_id=TEAM_ID, definition={
             "nodes": [

@@ -45,6 +45,8 @@ class TestDelayAndSchedule:
         )
 
         def wf_read_one_side_effect(query, params):
+            if "scheduled_steps" in query:
+                return {"exists": 1}  # an open step remains -> execution must not complete
             if "workflow_executions" in query:
                 return execution
             if "workflows" in query:
@@ -54,6 +56,7 @@ class TestDelayAndSchedule:
             return None
 
         with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=wf_read_one_side_effect), \
+             patch("alrt_workers.tasks.workflow.execute_insert_query", return_value={"id": uuid.uuid4()}), \
              patch("alrt_workers.tasks.workflow.execute_update_query", return_value=True) as wf_update, \
              patch("alrt_workers.tasks.step_runner.execute_insert_query", return_value={"id": uuid.uuid4()}) as sr_insert, \
              patch("alrt_workers.tasks.channels.email.deliver") as mock_email_deliver:

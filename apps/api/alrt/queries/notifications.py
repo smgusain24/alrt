@@ -29,7 +29,7 @@ LIST_BY_SUBSCRIBER_FILTERED = """
 
 UPDATE_READ_STATUS = """
     UPDATE notifications SET is_read = $2, updated_at = now()
-    WHERE id = $1
+    WHERE id = $1 AND subscriber_id = $3
     RETURNING id, channel, title, body, action_url, payload, status, is_read, is_archived, created_at
 """
 

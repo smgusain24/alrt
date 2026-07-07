@@ -42,7 +42,7 @@ async def init_pool(database_url: str):
 REQUIRED_TABLES = [
     "teams", "users", "api_keys", "subscribers", "workflows",
     "workflow_executions", "notifications", "providers", "scheduled_steps",
-    "event_logs", "templates",
+    "step_executions", "event_logs", "templates",
 ]
 
 REQUIRED_INDEXES = [
@@ -58,6 +58,7 @@ REQUIRED_INDEXES = [
     ("idx_providers_team_id", "providers", "team_id"),
     ("idx_providers_team_channel", "providers", "team_id, channel"),
     ("idx_scheduled_steps_due", "scheduled_steps", "status, scheduled_at"),
+    ("idx_step_executions_exec", "step_executions", "workflow_execution_id, status"),
     ("idx_users_email", "users", "email"),
     ("idx_users_team_id", "users", "team_id"),
     ("idx_event_logs_team_id", "event_logs", "team_id"),
@@ -148,9 +149,10 @@ CREATE TABLE IF NOT EXISTS workflow_executions (
     deliver_at TIMESTAMPTZ,
     metadata JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'running',
-    idempotency_key VARCHAR(255) UNIQUE,
+    idempotency_key VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, idempotency_key)
 );
 
 CREATE TABLE IF NOT EXISTS notifications (
@@ -194,6 +196,17 @@ CREATE TABLE IF NOT EXISTS scheduled_steps (
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS step_executions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_execution_id UUID NOT NULL REFERENCES workflow_executions(id),
+    node_id VARCHAR(255) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'running',
+    attempt INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(workflow_execution_id, node_id)
 );
 
 CREATE TABLE IF NOT EXISTS event_logs (

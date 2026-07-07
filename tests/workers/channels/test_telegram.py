@@ -13,7 +13,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from tests.fixtures.data import make_subscriber, make_template
+from tests.fixtures.data import make_subscriber, make_template, make_provider
 
 # Pre-import the module so patch() can resolve attributes on it
 import alrt_workers.tasks.channels.telegram  # noqa: F401
@@ -56,8 +56,37 @@ def _mock_httpx_response(status_code=200, json_data=None, text="ok"):
     return resp
 
 
-# Standard environment variables for Telegram tests
+# Standard environment variables for Telegram tests.
+# NOTE: The worker no longer reads the bot token from env — it decrypts it from
+# the team's provider config. TG_ENV is kept only as a harmless no-op so the
+# existing patch.dict lines still work; the token comes from _tg_provider().
 TG_ENV = {"TELEGRAM_BOT_TOKEN": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"}
+
+
+def _tg_provider(team_id=None, bot_token="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"):
+    """Telegram provider whose encrypted config carries the bot token the worker
+    reads via get_fernet().decrypt(provider['config']['encrypted'])."""
+    return make_provider(
+        team_id=team_id,
+        channel="telegram",
+        provider_type="telegram",
+        secrets={"bot_token": bot_token},
+    )
+
+
+def _read_one(subscriber=None, provider=None, template=None):
+    """Query-aware side_effect: the worker calls execute_read_one_query multiple
+    times (subscriber, then provider, then optionally template). A single
+    return_value would hand the subscriber row back for the provider lookup."""
+    def _side_effect(query, params):
+        if "subscribers" in query:
+            return subscriber
+        if "providers" in query:
+            return provider
+        if "templates" in query:
+            return template
+        return None
+    return _side_effect
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +104,7 @@ class TestTelegramHappyPath:
         sub = make_subscriber(team_id=team_id, telegram_chat_id="987654321")
         notif_id = uuid.uuid4()
 
-        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", side_effect=_read_one(sub, _tg_provider())), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}) as mock_insert, \
              patch("alrt_workers.tasks.channels.telegram.execute_update_query", return_value=True) as mock_update, \
@@ -110,7 +139,7 @@ class TestTelegramHappyPath:
         notif_id = uuid.uuid4()
         long_body = "A" * 5000  # Exceeds 4096 char limit
 
-        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", side_effect=_read_one(sub, _tg_provider())), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.telegram.execute_update_query", return_value=True), \
@@ -138,7 +167,7 @@ class TestTelegramHappyPath:
         sub = make_subscriber(telegram_chat_id="987654321")
         notif_id = uuid.uuid4()
 
-        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", side_effect=_read_one(sub, _tg_provider())), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.telegram.execute_update_query", return_value=True), \
@@ -168,15 +197,8 @@ class TestTelegramHappyPath:
         template = make_template(body="Welcome {{payload.user}}!")
         notif_id = uuid.uuid4()
 
-        def read_one_side_effect(query, params):
-            if "subscribers" in query:
-                return sub
-            if "templates" in query:
-                return template
-            return None
-
         with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query",
-                   side_effect=read_one_side_effect), \
+                   side_effect=_read_one(sub, _tg_provider(team_id=team_id), template)), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.telegram.execute_update_query", return_value=True), \
@@ -211,7 +233,7 @@ class TestTelegramValidation:
         # Arrange
         sub = make_subscriber(telegram_chat_id=None)
 
-        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", side_effect=_read_one(sub, _tg_provider())), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query") as mock_insert, \
              patch("alrt_workers.tasks.channels.telegram.httpx") as mock_httpx:
 
@@ -240,7 +262,8 @@ class TestTelegramValidation:
         # Arrange
         sub = make_subscriber(telegram_chat_id="987654321")
 
-        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query",
+                   side_effect=_read_one(sub, _tg_provider(bot_token=""))), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query") as mock_insert, \
              patch("alrt_workers.tasks.channels.telegram.httpx") as mock_httpx, \
              patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": ""}, clear=False):
@@ -266,7 +289,7 @@ class TestTelegramErrorHandling:
         sub = make_subscriber(telegram_chat_id="987654321")
         notif_id = uuid.uuid4()
 
-        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", side_effect=_read_one(sub, _tg_provider())), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.telegram.execute_update_query", return_value=True) as mock_update, \
@@ -298,7 +321,7 @@ class TestTelegramErrorHandling:
         notif_id = uuid.uuid4()
         mock_self = _mock_self(retries=0, max_retries=3)
 
-        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", side_effect=_read_one(sub, _tg_provider())), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.telegram.execute_update_query", return_value=True), \
@@ -333,7 +356,7 @@ class TestTelegramErrorHandling:
         notif_id = uuid.uuid4()
         mock_self = _mock_self(retries=3, max_retries=3)
 
-        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", side_effect=_read_one(sub, _tg_provider())), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.telegram.execute_update_query", return_value=True) as mock_update, \
@@ -367,7 +390,7 @@ class TestTelegramErrorHandling:
         notif_id = uuid.uuid4()
         mock_self = _mock_self(retries=0, max_retries=3)
 
-        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", return_value=sub), \
+        with patch("alrt_workers.tasks.channels.telegram.execute_read_one_query", side_effect=_read_one(sub, _tg_provider())), \
              patch("alrt_workers.tasks.channels.telegram.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.telegram.execute_update_query", return_value=True), \

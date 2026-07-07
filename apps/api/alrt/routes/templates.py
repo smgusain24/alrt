@@ -10,7 +10,7 @@ from alrt.db import (
     execute_insert_query,
     execute_delete_query,
 )
-from alrt.deps import get_current_team
+from alrt.deps import get_current_team, require_write
 from alrt.middleware.rate_limit import limiter
 from alrt.queries import templates as tmpl_q, subscribers as sub_q
 from alrt.schemas.template import (
@@ -34,6 +34,7 @@ async def create_template(
     request: Request,
     body: CreateTemplate,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     row = await execute_insert_query(
         tmpl_q.CREATE,
@@ -88,6 +89,7 @@ async def update_template(
     template_id: uuid.UUID,
     body: UpdateTemplate,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     existing = await execute_read_one_query(tmpl_q.FIND_BY_ID, [template_id, team_id])
     if not existing:
@@ -110,6 +112,7 @@ async def delete_template(
     request: Request,
     template_id: uuid.UUID,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     existing = await execute_read_one_query(tmpl_q.FIND_BY_ID, [template_id, team_id])
     if not existing:

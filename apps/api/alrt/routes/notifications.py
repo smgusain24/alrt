@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from alrt.config import settings
 from alrt.db import execute_read_query, execute_read_one_query, execute_update_query
-from alrt.deps import get_current_team
+from alrt.deps import get_current_team, require_write
 from alrt.middleware.rate_limit import limiter
 from alrt.schemas.notification import NotificationResponse, UpdateNotification, DeadLetterResponse, DeadLetterListResponse
 from alrt.queries import notifications as notif_q, subscribers as sub_q
@@ -68,7 +68,7 @@ async def update_notification(
     if "is_read" in updates:
         # execute_read_one_query works for UPDATE...RETURNING (uses fetchrow)
         updated = await execute_read_one_query(
-            notif_q.UPDATE_READ_STATUS, [notification_id, updates["is_read"]]
+            notif_q.UPDATE_READ_STATUS, [notification_id, updates["is_read"], sub["id"]]
         )
 
     if "is_archived" in updates:
@@ -124,6 +124,7 @@ async def retry_dead_letter(
     request: Request,
     notification_id: uuid.UUID,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     # Reset status and re-enqueue
     row = await execute_read_one_query(

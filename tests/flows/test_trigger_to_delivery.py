@@ -56,6 +56,7 @@ class TestTriggerToDelivery:
             return None
 
         with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=wf_read_one_side_effect), \
+             patch("alrt_workers.tasks.workflow.execute_insert_query", return_value={"id": uuid.uuid4()}), \
              patch("alrt_workers.tasks.workflow.execute_update_query", return_value=True) as wf_update, \
              patch("alrt_workers.tasks.channels.email.deliver") as mock_email_deliver:
 
@@ -73,9 +74,8 @@ class TestTriggerToDelivery:
             assert call_args[0][1] == str(subscriber["id"])
             assert call_args[0][2] == str(team_id)
 
-            # Execution marked completed
-            wf_update.assert_called_once()
-            assert wf_update.call_args[0][1] == [execution["id"], "completed"]
+            # Execution marked completed (ledger also records per-step status)
+            assert any(c[0][1] == [execution["id"], "completed"] for c in wf_update.call_args_list)
 
     def test_opted_out_channel_skipped(self):
         """Subscriber with email opt-out -> email.deliver.delay NOT called."""
@@ -117,6 +117,7 @@ class TestTriggerToDelivery:
             return None
 
         with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=wf_read_one_side_effect), \
+             patch("alrt_workers.tasks.workflow.execute_insert_query", return_value={"id": uuid.uuid4()}), \
              patch("alrt_workers.tasks.workflow.execute_update_query", return_value=True), \
              patch("alrt_workers.tasks.channels.email.deliver") as mock_email_deliver:
 

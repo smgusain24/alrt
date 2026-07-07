@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from alrt.config import settings
 from alrt.db import execute_read_one_query, execute_insert_query
-from alrt.deps import get_current_team
+from alrt.deps import get_current_team, require_write
 from alrt.middleware.rate_limit import limiter
 from alrt.queries import workflows as wf_q, subscribers as sub_q, executions as exec_q
 from alrt.schemas.event import (
@@ -123,6 +123,7 @@ async def trigger_event(
     request: Request,
     body: TriggerEvent,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     """Trigger a single workflow execution for one subscriber.
 
@@ -157,27 +158,29 @@ async def trigger_event(
 
     overrides = body.overrides.model_dump(exclude_none=True) if body.overrides else {}
 
+    # Idempotency key: prefer the standard header, fall back to the body field.
+    idem_key = request.headers.get("Idempotency-Key") or body.idempotency_key
+    cache_key = f"idempotency:{team_id}:{idem_key}" if idem_key else None
+
     # Open one Redis connection for the remainder of the handler
     r = aioredis.from_url(settings.redis_url)
+    placeholder_set = False
 
     try:
-        # Atomic idempotency check using SET NX
-        if body.idempotency_key:
-            cache_key = f"idempotency:{team_id}:{body.idempotency_key}"
+        # Atomic idempotency guard using SET NX
+        if cache_key:
             acquired = await r.set(cache_key, "pending", nx=True, ex=86400)
             if not acquired:
-                # Key already existed — another request owns this idempotency_key
                 existing = await r.get(cache_key)
-                if existing:
-                    raw = existing.decode()
-                    try:
-                        existing_id = uuid.UUID(raw)
-                    except ValueError:
-                        # Still "pending" (concurrent in-flight) — safe fallback
-                        existing_id = uuid.uuid4()
-                else:
-                    existing_id = uuid.uuid4()
+                raw = existing.decode() if existing else ""
+                try:
+                    existing_id = uuid.UUID(raw)
+                except ValueError:
+                    # Still "pending": the original request is in flight. Don't
+                    # fabricate an id — tell the client to retry.
+                    raise HTTPException(status_code=409, detail="Duplicate request in progress; retry shortly")
                 return TriggerResponse(event_id=existing_id, status="duplicate")
+            placeholder_set = True
 
         # Upsert subscriber
         subscriber = await _resolve_subscriber(team_id, subscriber_inline)
@@ -205,7 +208,7 @@ async def trigger_event(
                 body.payload or {},     # $5  event_payload
                 body.channels,          # $6  channels
                 overrides,              # $7  overrides
-                body.idempotency_key,   # $8  idempotency_key
+                idem_key,               # $8  idempotency_key
                 deliver_at,             # $9  deliver_at
                 body.metadata or {},    # $10 metadata
                 exec_status,            # $11 status
@@ -214,9 +217,8 @@ async def trigger_event(
         if not execution:
             raise HTTPException(status_code=500, detail="Failed to create execution")
 
-        # Promote idempotency placeholder to real execution id
-        if body.idempotency_key:
-            cache_key = f"idempotency:{team_id}:{body.idempotency_key}"
+        # Promote the placeholder to the real execution id so retries replay it.
+        if cache_key:
             await r.set(cache_key, str(execution["id"]), ex=86400)
 
         # Enqueue immediately only for running executions; scheduled ones are
@@ -224,6 +226,12 @@ async def trigger_event(
         if exec_status == "running":
             await _enqueue_execution(r, str(execution["id"]))
 
+    except Exception:
+        # A failure after acquiring the placeholder would otherwise poison the key
+        # for 24h and block legitimate retries — drop it so the client can retry.
+        if placeholder_set and cache_key:
+            await r.delete(cache_key)
+        raise
     finally:
         await r.close()
 
@@ -243,6 +251,7 @@ async def trigger_event_bulk(
     request: Request,
     body: TriggerBulkEvent,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     """Trigger a workflow execution for multiple subscribers in one request.
 

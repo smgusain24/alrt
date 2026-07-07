@@ -2,7 +2,18 @@
 import uuid
 from unittest.mock import patch, MagicMock
 
-from tests.fixtures.data import make_subscriber
+from tests.fixtures.data import make_subscriber, make_provider
+
+
+def _push_provider(team_id):
+    """Push provider whose encrypted config carries the FCM server key the
+    worker reads via get_fernet().decrypt(config['encrypted'])."""
+    return make_provider(
+        team_id=team_id,
+        channel="push",
+        provider_type="fcm",
+        secrets={"fcm_server_key": "test_server_key"},
+    )
 
 
 def _mock_self():
@@ -35,26 +46,20 @@ class TestPushHappyPath:
             push_tokens=[{"token": "fcm_token_1", "platform": "android", "device_id": "dev1"}],
         )
         notif_id = uuid.uuid4()
+        provider = _push_provider(team_id)
 
         def read_one_side_effect(query, params):
             if "subscribers" in query:
                 return sub
             if "providers" in query:
-                return None  # No BYOC, use env fallback
+                return provider
             return None
 
         with patch("alrt_workers.tasks.channels.push.execute_read_one_query", side_effect=read_one_side_effect), \
              patch("alrt_workers.tasks.channels.push.execute_insert_query",
                    return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.push.execute_update_query", return_value=True), \
-             patch("alrt_workers.tasks.channels.push.os.getenv") as mock_getenv, \
              patch("alrt_workers.tasks.channels.push.httpx") as mock_httpx:
-
-            mock_getenv.side_effect = lambda k, d="": {
-                "FCM_SERVER_KEY": "test_server_key",
-                "FCM_PROJECT_ID": "test_project",
-                "APNS_KEY_ID": "", "APNS_TEAM_ID": "", "APNS_KEY_PATH": "", "APNS_BUNDLE_ID": "",
-            }.get(k, d)
 
             mock_httpx.post.return_value = _mock_httpx_response(200, {
                 "multicast_id": 123, "success": 1, "failure": 0,
@@ -86,24 +91,20 @@ class TestPushHappyPath:
             ],
         )
 
+        provider = _push_provider(team_id)
+
         def read_one_side_effect(query, params):
             if "subscribers" in query:
                 return sub
             if "providers" in query:
-                return None
+                return provider
             return None
 
         with patch("alrt_workers.tasks.channels.push.execute_read_one_query", side_effect=read_one_side_effect), \
              patch("alrt_workers.tasks.channels.push.execute_insert_query",
                    return_value={"id": uuid.uuid4(), "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.push.execute_update_query", return_value=True), \
-             patch("alrt_workers.tasks.channels.push.os.getenv") as mock_getenv, \
              patch("alrt_workers.tasks.channels.push.httpx") as mock_httpx:
-
-            mock_getenv.side_effect = lambda k, d="": {
-                "FCM_SERVER_KEY": "test_key", "FCM_PROJECT_ID": "proj",
-                "APNS_KEY_ID": "", "APNS_TEAM_ID": "", "APNS_KEY_PATH": "", "APNS_BUNDLE_ID": "",
-            }.get(k, d)
 
             mock_httpx.post.return_value = _mock_httpx_response(200, {
                 "results": [{"message_id": "ok"}],
@@ -158,24 +159,20 @@ class TestPushTokenCleanup:
             push_tokens=[{"token": "bad_token", "platform": "android"}],
         )
 
+        provider = _push_provider(team_id)
+
         def read_one_side_effect(query, params):
             if "subscribers" in query:
                 return sub
             if "providers" in query:
-                return None
+                return provider
             return None
 
         with patch("alrt_workers.tasks.channels.push.execute_read_one_query", side_effect=read_one_side_effect), \
              patch("alrt_workers.tasks.channels.push.execute_insert_query",
                    return_value={"id": uuid.uuid4(), "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.push.execute_update_query", return_value=True) as mock_update, \
-             patch("alrt_workers.tasks.channels.push.os.getenv") as mock_getenv, \
              patch("alrt_workers.tasks.channels.push.httpx") as mock_httpx:
-
-            mock_getenv.side_effect = lambda k, d="": {
-                "FCM_SERVER_KEY": "test_key", "FCM_PROJECT_ID": "proj",
-                "APNS_KEY_ID": "", "APNS_TEAM_ID": "", "APNS_KEY_PATH": "", "APNS_BUNDLE_ID": "",
-            }.get(k, d)
 
             mock_httpx.post.return_value = _mock_httpx_response(200, {
                 "results": [{"error": "NotRegistered"}],

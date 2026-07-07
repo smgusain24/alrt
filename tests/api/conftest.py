@@ -32,10 +32,19 @@ async def client():
         mock_audit_pool.return_value = mock_pool_inst
 
         from alrt.main import app
-        from alrt.deps import get_current_team, get_current_user
+        from alrt.deps import (
+            get_current_team,
+            get_current_user,
+            get_current_principal,
+            require_write,
+        )
 
-        # Override auth dependencies
+        # Override auth dependencies (default: full-access server principal)
+        principal = {"team_id": TEAM_ID, "role": "admin", "key_type": "server",
+                     "scope": None, "user_id": USER_ID}
         app.dependency_overrides[get_current_team] = lambda: TEAM_ID
+        app.dependency_overrides[get_current_principal] = lambda: principal
+        app.dependency_overrides[require_write] = lambda: principal
         app.dependency_overrides[get_current_user] = lambda: make_user(
             id=USER_ID, team_id=TEAM_ID
         )

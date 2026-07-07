@@ -62,6 +62,7 @@ class TestConditionBranching:
             return None
 
         with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=wf_read_one_side_effect), \
+             patch("alrt_workers.tasks.workflow.execute_insert_query", return_value={"id": uuid.uuid4()}), \
              patch("alrt_workers.tasks.workflow.execute_update_query", return_value=True), \
              patch("alrt_workers.tasks.channels.email.deliver") as mock_email_deliver:
 
@@ -115,6 +116,7 @@ class TestConditionBranching:
             return None
 
         with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=wf_read_one_side_effect), \
+             patch("alrt_workers.tasks.workflow.execute_insert_query", return_value={"id": uuid.uuid4()}), \
              patch("alrt_workers.tasks.workflow.execute_update_query", return_value=True), \
              patch("alrt_workers.tasks.channels.email.deliver") as mock_email_deliver:
 

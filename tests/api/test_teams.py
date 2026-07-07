@@ -45,10 +45,11 @@ class TestRevokeApiKey:
     async def test_revoke(self, client):
         key_id = uuid.uuid4()
         key = make_api_key(id=key_id, team_id=TEAM_ID)
-        with patch("alrt.routes.teams.execute_read_one_query", new_callable=AsyncMock) as mock_read, \
-             patch("alrt.routes.teams.execute_update_query", new_callable=AsyncMock) as mock_update:
+        # The revoke path soft-deletes via execute_read_one_query(api_key_q.REVOKE,
+        # ...) — an UPDATE ... RETURNING — so there is no execute_update_query
+        # symbol in the module to patch. A truthy row means the key was found.
+        with patch("alrt.routes.teams.execute_read_one_query", new_callable=AsyncMock) as mock_read:
             mock_read.return_value = key
-            mock_update.return_value = True
 
             resp = await client.delete(
                 f"/teams/{TEAM_ID}/api-keys/{key_id}",

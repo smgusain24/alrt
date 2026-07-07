@@ -143,10 +143,28 @@ def make_template(*, id=None, team_id=None, name="Welcome Email",
     }
 
 
+def make_encrypted_config(secrets: dict) -> dict:
+    """Build a provider ``config`` dict whose ``encrypted`` field is a Fernet
+    token decrypting to ``secrets`` (JSON).
+
+    Channel delivery workers read per-team credentials via
+    ``get_fernet().decrypt(provider["config"]["encrypted"].encode())``, so tests
+    must supply the config in that exact shape. Uses the same ENCRYPTION_KEY the
+    worker reads (set at import time in tests/conftest.py). Imported lazily so
+    this module stays importable even where the worker package isn't on path.
+    """
+    import json
+
+    from alrt_workers.utils.crypto import get_fernet
+
+    return {"encrypted": get_fernet().encrypt(json.dumps(secrets).encode()).decode()}
+
+
 def make_provider(*, id=None, team_id=None, channel="email",
-                  provider_type="resend", config=None, is_active=True):
+                  provider_type="resend", config=None, is_active=True,
+                  secrets=None):
     if config is None:
-        config = {}
+        config = make_encrypted_config(secrets) if secrets is not None else {}
     return {
         "id": id or uuid.uuid4(),
         "team_id": team_id or uuid.uuid4(),

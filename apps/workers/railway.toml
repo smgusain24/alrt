@@ -3,6 +3,6 @@ builder = "dockerfile"
 dockerfilePath = "apps/workers/Dockerfile"
 
 [deploy]
-startCommand = "uv run --package alrt-workers celery -A alrt_workers.celery_app worker --loglevel=info --concurrency=2 --pool=prefork"
+startCommand = "uv run --package alrt-workers celery -A alrt_workers.celery_app worker --loglevel=info --concurrency=2 --pool=prefork -Q celery,email,slack,inapp,whatsapp,discord,telegram,sms,push"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
