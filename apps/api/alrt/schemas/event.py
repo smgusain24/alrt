@@ -115,4 +115,16 @@ class TriggerBulkResponse(BaseModel):
     accepted: int
     duplicates: int
     errors: int
-    results: list[SubscriberTriggerStatus]
+    results: list[SubscriberTriggerStatus] = Field(default_factory=list)
+
+
+class BulkBatchStatus(BaseModel):
+    """Pollable status of an async bulk trigger (GET /events/batches/{batch_id})."""
+    batch_id: uuid.UUID
+    workflow_id: uuid.UUID
+    total: int
+    accepted: int
+    errors: int
+    status: str   # "pending" | "processing" | "completed"
+    created_at: datetime
+    updated_at: datetime

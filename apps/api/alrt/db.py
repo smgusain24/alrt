@@ -32,17 +32,31 @@ async def _setup_connection(conn):
 
 async def init_pool(database_url: str):
     """Initialize the asyncpg connection pool. Call once at startup."""
+    from alrt.config import settings
+
     global _pool
     # Convert SQLAlchemy-style URL to asyncpg format
     url = database_url.replace("postgresql+asyncpg://", "postgresql://")
-    _pool = await asyncpg.create_pool(url, min_size=2, max_size=10, init=_setup_connection)
+    _pool = await asyncpg.create_pool(
+        url,
+        min_size=2,
+        max_size=10,
+        init=_setup_connection,
+        command_timeout=settings.db_command_timeout,
+        statement_cache_size=settings.db_statement_cache_size,
+        server_settings={
+            "statement_timeout": str(settings.db_statement_timeout_ms),
+            "idle_in_transaction_session_timeout": str(settings.db_idle_in_txn_timeout_ms),
+        },
+    )
     logger.info("Database pool initialized")
 
 
 REQUIRED_TABLES = [
     "teams", "users", "api_keys", "subscribers", "workflows",
     "workflow_executions", "notifications", "providers", "scheduled_steps",
-    "step_executions", "event_logs", "templates",
+    "step_executions", "event_logs", "templates", "bulk_batches", "step_skips",
+    "team_invites",
 ]
 
 REQUIRED_INDEXES = [
@@ -58,7 +72,10 @@ REQUIRED_INDEXES = [
     ("idx_providers_team_id", "providers", "team_id"),
     ("idx_providers_team_channel", "providers", "team_id, channel"),
     ("idx_scheduled_steps_due", "scheduled_steps", "status, scheduled_at"),
+    ("idx_scheduled_steps_status_updated", "scheduled_steps", "status, updated_at"),
     ("idx_step_executions_exec", "step_executions", "workflow_execution_id, status"),
+    ("idx_step_executions_status_updated", "step_executions", "status, updated_at"),
+    ("idx_executions_status_updated", "workflow_executions", "status, updated_at"),
     ("idx_users_email", "users", "email"),
     ("idx_users_team_id", "users", "team_id"),
     ("idx_event_logs_team_id", "event_logs", "team_id"),
@@ -66,6 +83,22 @@ REQUIRED_INDEXES = [
     ("idx_notifications_status", "notifications", "team_id, status"),
     ("idx_templates_team_id", "templates", "team_id"),
     ("idx_notifications_execution", "notifications", "workflow_execution_id"),
+    ("idx_bulk_batches_team", "bulk_batches", "team_id"),
+    ("idx_bulk_batches_idem", "bulk_batches", "team_id, idempotency_key"),
+    ("idx_step_skips_execution", "step_skips", "workflow_execution_id"),
+    ("idx_step_skips_team_created", "step_skips", "team_id, created_at DESC"),
+    ("idx_we_workflow_id", "workflow_executions", "workflow_id"),
+    ("idx_we_subscriber_id", "workflow_executions", "subscriber_id"),
+    ("idx_sched_steps_execution", "scheduled_steps", "workflow_execution_id"),
+    ("idx_notifications_team_created", "notifications", "team_id, created_at DESC"),
+]
+
+# Non-tuple DDL the (name, table, cols) form can't express (BRIN, partial, GIN).
+# Run unconditionally in ensure_schema (idempotent), so existing DBs get them too.
+EXTRA_DDL = [
+    "CREATE INDEX IF NOT EXISTS idx_notifications_created_brin ON notifications USING brin(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_event_logs_created_brin ON event_logs USING brin(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_we_created_brin ON workflow_executions USING brin(created_at)",
 ]
 
 SCHEMA_SQL = """
@@ -150,6 +183,7 @@ CREATE TABLE IF NOT EXISTS workflow_executions (
     metadata JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'running',
     idempotency_key VARCHAR(255),
+    request_id VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(team_id, idempotency_key)
@@ -237,6 +271,42 @@ CREATE TABLE IF NOT EXISTS templates (
     UNIQUE(team_id, name, channel)
 );
 
+CREATE TABLE IF NOT EXISTS bulk_batches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    workflow_id UUID NOT NULL REFERENCES workflows(id),
+    idempotency_key VARCHAR(255),
+    total INTEGER NOT NULL DEFAULT 0,
+    accepted INTEGER NOT NULL DEFAULT 0,
+    errors INTEGER NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS step_skips (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_execution_id UUID NOT NULL REFERENCES workflow_executions(id),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    node_id VARCHAR(255) NOT NULL,
+    channel VARCHAR(20),
+    reason VARCHAR(50) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS team_invites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    email VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'viewer',
+    token_hash VARCHAR(64) NOT NULL,
+    invited_by UUID NOT NULL REFERENCES users(id),
+    accepted_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(team_id, email)
+);
+
 -- Ensure at most one provider per channel type per team
 CREATE UNIQUE INDEX IF NOT EXISTS idx_providers_team_channel_type
     ON providers(team_id, channel, provider_type);
@@ -263,47 +333,66 @@ SCHEMA_MIGRATIONS = [
     "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS discord_webhook_url VARCHAR(500)",
     "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR(100)",
     "ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS push_tokens JSONB NOT NULL DEFAULT '[]'",
+    "ALTER TABLE workflow_executions ADD COLUMN IF NOT EXISTS request_id VARCHAR(255)",
 ]
 
 
+# 'alrt' as an int — a fixed advisory-lock key so concurrent replica startups
+# serialize their DDL instead of racing the same (non-CONCURRENT) CREATE INDEX.
+_SCHEMA_LOCK_KEY = 0x616C7274
+
+
 async def ensure_schema():
-    """Create tables and indexes if they don't exist. Called on startup."""
+    """Create tables and indexes if they don't exist. Called on startup.
+
+    Runs under a session advisory lock so multiple API replicas booting at once can't
+    race the same DDL. Alembic is the migration path for existing prod DBs; this stays
+    the greenfield/dev/test bootstrap and shares its DDL with the Alembic baseline.
+    """
     pool = get_pool()
     async with pool.acquire() as conn:
-        # Check which tables exist
-        existing_tables = await conn.fetch(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
-        )
-        existing_set = {row["tablename"] for row in existing_tables}
-        missing = [t for t in REQUIRED_TABLES if t not in existing_set]
+        await conn.execute("SELECT pg_advisory_lock($1)", _SCHEMA_LOCK_KEY)
+        try:
+            # Check which tables exist
+            existing_tables = await conn.fetch(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+            )
+            existing_set = {row["tablename"] for row in existing_tables}
+            missing = [t for t in REQUIRED_TABLES if t not in existing_set]
 
-        if missing:
-            logger.info("Missing tables: %s. Creating schema...", missing)
-            await conn.execute(SCHEMA_SQL)
-            logger.info("Schema created successfully")
-        else:
-            logger.info("All tables exist")
+            if missing:
+                logger.info("Missing tables: %s. Creating schema...", missing)
+                await conn.execute(SCHEMA_SQL)
+                logger.info("Schema created successfully")
+            else:
+                logger.info("All tables exist")
 
-        # Check and create indexes
-        existing_indexes = await conn.fetch(
-            "SELECT indexname FROM pg_indexes WHERE schemaname = 'public'"
-        )
-        existing_idx_set = {row["indexname"] for row in existing_indexes}
+            # Check and create indexes
+            existing_indexes = await conn.fetch(
+                "SELECT indexname FROM pg_indexes WHERE schemaname = 'public'"
+            )
+            existing_idx_set = {row["indexname"] for row in existing_indexes}
 
-        for idx_name, table, columns in REQUIRED_INDEXES:
-            if idx_name not in existing_idx_set:
-                sql = f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table} ({columns})"
-                await conn.execute(sql)
-                logger.info("Created index: %s", idx_name)
+            for idx_name, table, columns in REQUIRED_INDEXES:
+                if idx_name not in existing_idx_set:
+                    sql = f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table} ({columns})"
+                    await conn.execute(sql)
+                    logger.info("Created index: %s", idx_name)
 
-        logger.info("Schema and indexes verified")
+            # Non-tuple indexes (BRIN/partial) — idempotent, runs on existing DBs too
+            for ddl in EXTRA_DDL:
+                await conn.execute(ddl)
 
-        # Run column migrations for existing tables (idempotent)
-        for migration in SCHEMA_MIGRATIONS:
-            try:
-                await conn.execute(migration)
-            except Exception:
-                pass  # Column already exists — idempotent
+            logger.info("Schema and indexes verified")
+
+            # Run column migrations for existing tables (idempotent)
+            for migration in SCHEMA_MIGRATIONS:
+                try:
+                    await conn.execute(migration)
+                except Exception:
+                    pass  # Column already exists — idempotent
+        finally:
+            await conn.execute("SELECT pg_advisory_unlock($1)", _SCHEMA_LOCK_KEY)
 
 
 async def close_pool():

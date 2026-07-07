@@ -31,6 +31,8 @@ celery_app.conf.update(
     enable_utc=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    # Nothing reads task results (no AsyncResult .get anywhere); don't store them.
+    task_ignore_result=True,
     task_routes={
         "alrt_workers.tasks.channels.email.deliver": {"queue": "email"},
         "alrt_workers.tasks.channels.slack.deliver": {"queue": "slack"},
@@ -42,6 +44,7 @@ celery_app.conf.update(
         "alrt_workers.tasks.channels.push.deliver": {"queue": "push"},
     },
     imports=["alrt_workers.tasks.workflow", "alrt_workers.tasks.step_runner", "alrt_workers.tasks.delay",
+             "alrt_workers.tasks.reconcile", "alrt_workers.tasks.bulk",
              "alrt_workers.tasks.channels.inapp", "alrt_workers.tasks.channels.email",
              "alrt_workers.tasks.channels.slack", "alrt_workers.tasks.retention",
              "alrt_workers.tasks.channels.whatsapp", "alrt_workers.tasks.channels.discord",
@@ -54,11 +57,35 @@ celery_app.conf.beat_schedule = {
         "task": "alrt_workers.tasks.delay.poll_scheduled_steps",
         "schedule": 30.0,
     },
-    "archive-old-notifications": {
-        "task": "alrt_workers.tasks.retention.archive_old_notifications",
+    "purge-old-notifications": {
+        "task": "alrt_workers.tasks.retention.purge_old_notifications",
         "schedule": 86400.0,  # 24 hours
     },
+    "purge-old-event-logs": {
+        "task": "alrt_workers.tasks.retention.purge_old_event_logs",
+        "schedule": 86400.0,  # 24 hours
+    },
+    "reconcile-orphaned-executions": {
+        "task": "alrt_workers.tasks.reconcile.reconcile_orphaned_executions",
+        "schedule": 300.0,  # 5 minutes
+    },
 }
+
+# Optional Sentry — no-op and dependency-free unless SENTRY_DSN is set.
+_sentry_dsn = os.getenv("SENTRY_DSN")
+if _sentry_dsn:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.celery import CeleryIntegration
+
+        sentry_sdk.init(
+            dsn=_sentry_dsn,
+            environment=os.getenv("ENVIRONMENT", "development"),
+            integrations=[CeleryIntegration()],
+        )
+    except ImportError:
+        import logging
+        logging.getLogger("alrt.workers").warning("SENTRY_DSN set but sentry-sdk not installed")
 
 # Reject malformed messages instead of crashing the worker
 @celery_app.on_after_configure.connect

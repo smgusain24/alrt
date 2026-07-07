@@ -30,8 +30,8 @@ Q_GET_TEMPLATE = "SELECT id, name, channel, subject, body, variables FROM templa
 
 
 @celery_app.task(bind=True, **INAPP_RETRY.as_task_kwargs())
-def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
-    subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
+def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None, subscriber=None):
+    subscriber = subscriber or execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
         log.warning("Subscriber %s not found, marking as permanent failure", subscriber_id)
         if notification_id:

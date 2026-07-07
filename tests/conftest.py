@@ -7,6 +7,9 @@ import uuid
 os.environ.setdefault("DATABASE_URL", "postgresql://alrt:alrt@localhost:5432/alrt_test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("API_SECRET_KEY", "test-secret-key-not-for-production")
+# Provider cache is best-effort and team+channel-keyed; disable it suite-wide so a
+# live Redis can't leak a cached provider across tests. The cache has its own test.
+os.environ.setdefault("DISABLE_PROVIDER_CACHE", "1")
 if "ENCRYPTION_KEY" not in os.environ:
     from cryptography.fernet import Fernet
 

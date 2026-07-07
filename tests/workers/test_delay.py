@@ -1,8 +1,11 @@
-"""Tests for alrt_workers.tasks.delay.poll_scheduled_steps.
+"""Tests for alrt_workers.tasks.delay — the scheduled-step poller and resume task.
 
-Regression guard: resuming a due delay step must actually deliver the post-delay
-node. This path was previously a no-op (the poller sent a `type:"resume"` node
-that the router ignored), so trigger -> delay -> email delivered nothing.
+Two guards:
+- The poller claims due steps (SKIP LOCKED) and fans each out as its own
+  resume_scheduled_step task instead of resuming inline on the Beat thread.
+- Resuming a due delay step must actually deliver the post-delay node. This path was
+  once a no-op (the poller sent a `type:"resume"` node the router ignored), so
+  trigger -> delay -> email delivered nothing — the behavioral test below guards it.
 """
 import uuid
 from unittest.mock import patch, MagicMock
@@ -37,8 +40,60 @@ def _delay_workflow(team_id):
 
 class TestPollScheduledSteps:
 
+    def test_claims_and_fans_out(self):
+        """Each claimed due step is fanned out as its own resume_scheduled_step task."""
+        exec_id = uuid.uuid4()
+        step_id = uuid.uuid4()
+        claimed = {
+            "id": step_id,
+            "workflow_execution_id": exec_id,
+            "next_step_id": "delay-1",
+        }
+
+        # First read = claim due steps; second read = due scheduled executions (none).
+        with patch("alrt_workers.tasks.delay.execute_read_query", side_effect=[[claimed], []]), \
+             patch("alrt_workers.tasks.delay.resume_scheduled_step") as mock_resume:
+
+            from alrt_workers.tasks.delay import poll_scheduled_steps
+            poll_scheduled_steps()
+
+            mock_resume.delay.assert_called_once_with(str(step_id), str(exec_id), "delay-1")
+
+    def test_no_due_steps(self):
+        """No due steps and no due executions -> nothing fanned out."""
+        with patch("alrt_workers.tasks.delay.execute_read_query", side_effect=[[], []]), \
+             patch("alrt_workers.tasks.delay.resume_scheduled_step") as mock_resume, \
+             patch("alrt_workers.tasks.delay.execute_update_query") as mock_update:
+
+            from alrt_workers.tasks.delay import poll_scheduled_steps
+            poll_scheduled_steps()
+
+            mock_resume.delay.assert_not_called()
+            mock_update.assert_not_called()
+
+    def test_due_execution_enqueued_via_send_task(self):
+        """A due deliver_at execution is claimed (marked running) and enqueued by
+        name via celery_app.send_task — not a hand-rolled Redis envelope."""
+        exec_id = uuid.uuid4()
+        due = {"id": exec_id}
+        # First read = due steps (none); second read = due scheduled executions.
+        with patch("alrt_workers.tasks.delay.execute_read_query", side_effect=[[], [due]]), \
+             patch("alrt_workers.tasks.delay.execute_update_query", return_value=True), \
+             patch("alrt_workers.tasks.delay.celery_app") as mock_capp:
+
+            from alrt_workers.tasks.delay import poll_scheduled_steps
+            poll_scheduled_steps()
+
+            mock_capp.send_task.assert_called_once_with(
+                "alrt_workers.tasks.workflow.execute", args=[str(exec_id)]
+            )
+
+
+class TestResumeScheduledStep:
+
     def test_resume_delivers_post_delay_step(self):
-        """A due delay step -> poller resumes -> email fires and execution completes."""
+        """resume_scheduled_step runs the REAL resume path: the post-delay email fires,
+        the step is marked completed, and the execution completes."""
         team_id = uuid.uuid4()
         subscriber = make_subscriber(team_id=team_id, email="user@test.com")
         workflow = _delay_workflow(team_id)
@@ -49,15 +104,12 @@ class TestPollScheduledSteps:
             event_payload={"action": "signup"},
         )
         step_id = uuid.uuid4()
-        due_step = {
-            "id": step_id,
-            "workflow_execution_id": execution["id"],
-            "next_step_id": "delay-1",
-        }
 
         def wf_read_one(query, params):
             if "scheduled_steps" in query:
-                return None  # no open steps remain -> execution completes
+                return None  # no open scheduled steps remain
+            if "step_executions" in query:
+                return None  # no open ledger rows -> execution may complete
             if "workflow_executions" in query:
                 return execution
             if "workflows" in query:
@@ -66,8 +118,7 @@ class TestPollScheduledSteps:
                 return subscriber
             return None
 
-        with patch("alrt_workers.tasks.delay.execute_read_query", side_effect=[[due_step], []]), \
-             patch("alrt_workers.tasks.delay.execute_update_query", return_value=True) as delay_update, \
+        with patch("alrt_workers.tasks.delay.execute_update_query", return_value=True) as delay_update, \
              patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=wf_read_one), \
              patch("alrt_workers.tasks.workflow.execute_insert_query", return_value={"id": uuid.uuid4()}), \
              patch("alrt_workers.tasks.workflow.execute_update_query", return_value=True) as wf_update, \
@@ -75,30 +126,16 @@ class TestPollScheduledSteps:
 
             mock_email.delay = MagicMock()
 
-            from alrt_workers.tasks.delay import poll_scheduled_steps
-            poll_scheduled_steps()
+            from alrt_workers.tasks.delay import resume_scheduled_step
+            resume_scheduled_step(str(step_id), str(execution["id"]), "delay-1")
 
-            # The fix: the post-delay email actually fires on resume.
+            # The post-delay email actually fires on resume.
             mock_email.delay.assert_called_once()
             assert mock_email.delay.call_args[0][0] == str(execution["id"])
             assert mock_email.delay.call_args[0][1] == str(subscriber["id"])
 
-            # Scheduled step marked completed.
+            # Scheduled step marked completed (uuid round-trips through the string arg).
             assert any(c[0][1] == [step_id, "completed"] for c in delay_update.call_args_list)
 
             # Execution marked completed once the branch finished.
             assert any(c[0][1] == [execution["id"], "completed"] for c in wf_update.call_args_list)
-
-    def test_no_due_steps(self):
-        """No due steps and no due executions -> nothing dispatched."""
-        with patch("alrt_workers.tasks.delay.execute_read_query", side_effect=[[], []]), \
-             patch("alrt_workers.tasks.delay.execute_update_query") as delay_update, \
-             patch("alrt_workers.tasks.channels.email.deliver") as mock_email:
-
-            mock_email.delay = MagicMock()
-
-            from alrt_workers.tasks.delay import poll_scheduled_steps
-            poll_scheduled_steps()
-
-            mock_email.delay.assert_not_called()
-            delay_update.assert_not_called()

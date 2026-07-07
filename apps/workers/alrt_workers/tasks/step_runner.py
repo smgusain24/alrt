@@ -1,5 +1,6 @@
 """Step router that dispatches workflow nodes to channel, delay, or condition handlers."""
 
+import logging
 import uuid
 import re
 from datetime import datetime, timedelta, timezone
@@ -8,6 +9,8 @@ import redis
 
 from alrt_workers.db import execute_insert_query
 
+logger = logging.getLogger("alrt.workers.step_runner")
+
 # Queries
 Q_CREATE_SCHEDULED_STEP = """
     INSERT INTO scheduled_steps (id, workflow_execution_id, next_step_id, payload, scheduled_at)
@@ -15,8 +18,31 @@ Q_CREATE_SCHEDULED_STEP = """
     RETURNING id
 """
 
+Q_RECORD_SKIP = """
+    INSERT INTO step_skips (id, workflow_execution_id, team_id, node_id, channel, reason)
+    VALUES ($1, $2, $3, $4, $5, $6)
+"""
 
-def execute_step(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels=None, overrides=None, workflow_category=None):
+
+def _record_skip(execution_id, team_id, node_id, channel, reason):
+    """Record why a step was skipped so "why didn't subscriber X get notified" is
+    answerable from the DB. Best-effort — observability must never break delivery.
+    """
+    try:
+        execute_insert_query(Q_RECORD_SKIP, [
+            uuid.uuid4(),
+            uuid.UUID(execution_id),
+            uuid.UUID(team_id),
+            node_id,
+            channel,
+            reason,
+        ])
+    except Exception:
+        logger.warning("failed to record skip (%s) for execution %s node %s",
+                       reason, execution_id, node_id)
+
+
+def execute_step(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels=None, overrides=None, workflow_category=None, subscriber=None):
     """Route a single workflow node to its handler based on node type.
 
     Args:
@@ -29,6 +55,8 @@ def execute_step(execution_id, node, subscriber_id, team_id, payload, preference
         allowed_channels: Optional list restricting which channels to deliver to.
         overrides: Optional per-channel override dict from the trigger API.
         workflow_category: Optional workflow category for category-level preferences.
+        subscriber: Optional JSON-safe subscriber snapshot forwarded to the channel
+            task so it can skip re-fetching the row (falls back to a fetch if omitted).
 
     Returns:
         "ok" if the step completed, "paused" if deferred (delay/DND), or
@@ -37,33 +65,38 @@ def execute_step(execution_id, node, subscriber_id, team_id, payload, preference
     node_type = node.get("type")
 
     if node_type == "channel":
-        return _handle_channel(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels, overrides, workflow_category)
+        return _handle_channel(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels, overrides, workflow_category, subscriber)
     elif node_type == "delay":
         return _handle_delay(execution_id, node, payload, subscriber_id, team_id)
     elif node_type == "condition":
-        return _handle_condition(node, payload)
+        return _handle_condition(execution_id, team_id, node, payload)
 
     return "ok"
 
 
-def _handle_channel(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels=None, overrides=None, workflow_category=None):
+def _handle_channel(execution_id, node, subscriber_id, team_id, payload, preferences, allowed_channels=None, overrides=None, workflow_category=None, subscriber=None):
     """Apply preference checks (global, category, DND, frequency cap) then enqueue channel delivery."""
     channel = node.get("data", {}).get("channel", "in_app")
     CHANNEL_ALIASES = {"inapp": "in_app", "in-app": "in_app", "wa": "whatsapp"}
     channel = CHANNEL_ALIASES.get(channel, channel)
 
+    node_id = node.get("id")
+
     if allowed_channels is not None and channel not in allowed_channels:
+        _record_skip(execution_id, team_id, node_id, channel, "channel_not_allowed")
         return "skipped"
 
     pref_channel = "push" if channel.startswith("push_") else channel
 
     # 1. Global preferences
     if not preferences.get("global", {}).get(pref_channel, True):
+        _record_skip(execution_id, team_id, node_id, channel, "pref_global_off")
         return "skipped"
 
     # 2. Category preferences
     if workflow_category and workflow_category in preferences.get("categories", {}):
         if not preferences["categories"][workflow_category].get(pref_channel, True):
+            _record_skip(execution_id, team_id, node_id, channel, "pref_category_off")
             return "skipped"
 
     # 3. DND (Do Not Disturb)
@@ -129,37 +162,38 @@ def _handle_channel(execution_id, node, subscriber_id, team_id, payload, prefere
                 tomorrow = (now_utc + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
                 r.expireat(key, int(tomorrow.timestamp()))
             if count > max_daily:
+                _record_skip(execution_id, team_id, node_id, channel, "frequency_cap")
                 return "skipped"
 
     template_data = node.get("data", {}).get("template", {})
 
     if channel == "in_app":
         from alrt_workers.tasks.channels.inapp import deliver
-        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("in_app") if overrides else None)
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("in_app") if overrides else None, subscriber=subscriber)
     elif channel == "email":
         from alrt_workers.tasks.channels.email import deliver
-        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("email") if overrides else None)
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("email") if overrides else None, subscriber=subscriber)
     elif channel == "slack":
         from alrt_workers.tasks.channels.slack import deliver
-        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("slack") if overrides else None)
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("slack") if overrides else None, subscriber=subscriber)
     elif channel == "whatsapp":
         from alrt_workers.tasks.channels.whatsapp import deliver
-        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("whatsapp") if overrides else None)
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("whatsapp") if overrides else None, subscriber=subscriber)
     elif channel == "discord":
         from alrt_workers.tasks.channels.discord import deliver
-        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("discord") if overrides else None)
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("discord") if overrides else None, subscriber=subscriber)
     elif channel == "telegram":
         from alrt_workers.tasks.channels.telegram import deliver
-        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("telegram") if overrides else None)
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("telegram") if overrides else None, subscriber=subscriber)
     elif channel == "sms":
         from alrt_workers.tasks.channels.sms import deliver
-        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("sms") if overrides else None)
+        deliver.delay(execution_id, subscriber_id, team_id, template_data, payload, overrides=overrides.get("sms") if overrides else None, subscriber=subscriber)
     elif channel in ("push_android", "push_ios", "push_web", "push"):
         from alrt_workers.tasks.channels.push import deliver
         platform_map = {"push_android": "android", "push_ios": "ios", "push_web": "web", "push": None}
         deliver.delay(execution_id, subscriber_id, team_id, template_data, payload,
                       overrides=overrides.get("push") if overrides else None,
-                      platform=platform_map.get(channel))
+                      platform=platform_map.get(channel), subscriber=subscriber)
 
     return "ok"
 
@@ -230,7 +264,7 @@ CONDITION_OPERATORS = {
 }
 
 
-def _handle_condition(node, payload):
+def _handle_condition(execution_id, team_id, node, payload):
     """Evaluate a condition node against the event payload.
 
     Returns:
@@ -250,6 +284,10 @@ def _handle_condition(node, payload):
     try:
         result = op_fn(actual, value)
     except (TypeError, ValueError, re.error):
+        _record_skip(execution_id, team_id, node.get("id"), None, "condition_error")
         return "skipped"
 
-    return "ok" if result else "skipped"
+    if result:
+        return "ok"
+    _record_skip(execution_id, team_id, node.get("id"), None, "condition_false")
+    return "skipped"

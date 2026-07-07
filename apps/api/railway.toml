@@ -3,6 +3,9 @@ builder = "dockerfile"
 dockerfilePath = "apps/api/Dockerfile"
 
 [deploy]
+# Run pending migrations against the prod DB before booting (existing DBs need the
+# per-team idempotency migration). Baseline DDL is idempotent, so this is safe.
+preDeployCommand = "uv run --package alrt-api alembic upgrade head"
 startCommand = "bash -c 'uv run --package alrt-api uvicorn alrt.main:app --host 0.0.0.0 --port ${PORT:-8000}'"
 healthcheckPath = "/health"
 healthcheckTimeout = 300

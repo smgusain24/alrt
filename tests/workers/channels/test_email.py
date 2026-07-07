@@ -2,8 +2,6 @@
 import uuid
 from unittest.mock import patch, MagicMock
 
-import pytest
-
 from tests.fixtures.data import make_subscriber, make_provider
 
 
@@ -85,6 +83,50 @@ class TestEmailDeliver:
             sent_call = mock_update.call_args_list[0]
             assert "status = 'sent'" in sent_call[0][0]
 
+    def test_uses_subscriber_snapshot_without_refetch(self):
+        """A threaded subscriber snapshot lets the channel skip the DB re-fetch."""
+        team_id = uuid.uuid4()
+        exec_id = uuid.uuid4()
+        sub = make_subscriber(team_id=team_id, email="user@test.com")
+        provider = make_provider(
+            team_id=team_id,
+            channel="email",
+            provider_type="resend",
+            secrets={"api_key": "re_test_key", "from_email": "no-reply@test.com"},
+        )
+        queried = []
+
+        def read_one_side_effect(query, params):
+            queried.append(query)
+            if "providers" in query:
+                return provider
+            if "subscribers" in query:
+                return sub  # must NOT be reached when a snapshot is provided
+            return None
+
+        with patch("alrt_workers.tasks.channels.email.execute_read_one_query", side_effect=read_one_side_effect), \
+             patch("alrt_workers.tasks.channels.email.execute_insert_query", return_value={"id": uuid.uuid4(), "created_at": "2026-01-01T00:00:00Z"}), \
+             patch("alrt_workers.tasks.channels.email.execute_update_query", return_value=True), \
+             patch("alrt_workers.tasks.channels.email.httpx") as mock_httpx:
+
+            mock_httpx.post.return_value = _mock_httpx_response(200)
+
+            from alrt_workers.tasks.channels.email import deliver
+            deliver(
+                _mock_self(),
+                str(exec_id),
+                str(sub["id"]),
+                str(team_id),
+                {"subject": "Hi", "body": "B"},
+                {"k": "v"},
+                subscriber=dict(sub),   # snapshot threaded from the workflow
+            )
+
+            # The subscriber came from the snapshot — no subscribers query issued.
+            assert not any("subscribers" in q for q in queried)
+            # Delivery still happened.
+            mock_httpx.post.assert_called_once()
+
     def test_no_subscriber_email_skips(self):
         """Subscriber without email -> returns without sending."""
         team_id = uuid.uuid4()
@@ -130,7 +172,7 @@ class TestEmailDeliver:
             return None
 
         with patch("alrt_workers.tasks.channels.email.execute_read_one_query", side_effect=read_one_side_effect), \
-             patch("alrt_workers.tasks.channels.email.execute_insert_query", return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}) as mock_insert, \
+             patch("alrt_workers.tasks.channels.email.execute_insert_query", return_value={"id": notif_id, "created_at": "2026-01-01T00:00:00Z"}), \
              patch("alrt_workers.tasks.channels.email.execute_update_query", return_value=True) as mock_update, \
              patch("alrt_workers.tasks.channels.email.httpx") as mock_httpx, \
              patch.dict("os.environ", {"RESEND_API_KEY": "re_test_key"}):

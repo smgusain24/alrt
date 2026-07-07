@@ -1,9 +1,9 @@
 CREATE = """
     INSERT INTO workflow_executions
-        (id, team_id, workflow_id, subscriber_id, event_payload, channels, overrides, idempotency_key, deliver_at, metadata, status)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        (id, team_id, workflow_id, subscriber_id, event_payload, channels, overrides, idempotency_key, deliver_at, metadata, status, request_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     RETURNING id, team_id, workflow_id, subscriber_id, event_payload, channels, overrides,
-              status, idempotency_key, deliver_at, metadata, created_at
+              status, idempotency_key, deliver_at, metadata, request_id, created_at
 """
 
 FIND_BY_ID = """

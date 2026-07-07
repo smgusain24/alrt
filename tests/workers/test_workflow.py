@@ -212,3 +212,54 @@ class TestWorkflowExecute:
             mock_update.assert_called_once()
             args = mock_update.call_args[0]
             assert args[1] == [execution["id"], "failed"]
+
+
+class TestMaybeComplete:
+    """maybe_complete must not finalize an execution while any work is still open —
+    a pending/processing scheduled step OR a 'running' ledger row (a node that
+    crashed mid-dispatch). Completing on a stuck ledger row would silently drop that
+    branch; the reconciler reaps and re-drives it instead.
+    """
+
+    def test_open_running_ledger_blocks_completion(self):
+        exec_id = uuid.uuid4()
+
+        def read_one(query, params):
+            if "scheduled_steps" in query:
+                return None                 # no open scheduled steps
+            if "step_executions" in query:
+                return {"exists": 1}        # a 'running' ledger row is still open
+            return None
+
+        with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=read_one), \
+             patch("alrt_workers.tasks.workflow.execute_update_query") as mock_update:
+            from alrt_workers.tasks.workflow import maybe_complete
+            maybe_complete(exec_id)
+
+        assert not any(c[0][1] == [exec_id, "completed"] for c in mock_update.call_args_list)
+
+    def test_open_scheduled_step_blocks_completion(self):
+        exec_id = uuid.uuid4()
+
+        def read_one(query, params):
+            if "scheduled_steps" in query:
+                return {"exists": 1}        # a pending/processing step is still open
+            return None
+
+        with patch("alrt_workers.tasks.workflow.execute_read_one_query", side_effect=read_one), \
+             patch("alrt_workers.tasks.workflow.execute_update_query") as mock_update:
+            from alrt_workers.tasks.workflow import maybe_complete
+            maybe_complete(exec_id)
+
+        assert not any(c[0][1] == [exec_id, "completed"] for c in mock_update.call_args_list)
+
+    def test_no_open_work_completes(self):
+        exec_id = uuid.uuid4()
+
+        with patch("alrt_workers.tasks.workflow.execute_read_one_query", return_value=None), \
+             patch("alrt_workers.tasks.workflow.execute_update_query") as mock_update:
+            from alrt_workers.tasks.workflow import maybe_complete
+            maybe_complete(exec_id)
+
+        mock_update.assert_called_once()
+        assert mock_update.call_args[0][1] == [exec_id, "completed"]

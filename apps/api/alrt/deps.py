@@ -8,6 +8,7 @@ that need the full user row.
 """
 
 import hashlib
+import time
 import uuid
 
 from fastapi import Depends, HTTPException, Security
@@ -19,6 +20,22 @@ from alrt.db import execute_read_one_query, execute_update_query
 from alrt.queries import api_keys as api_key_q, users as user_q
 
 security = HTTPBearer()
+
+# Throttle the api_keys.last_used_at write: without this it fires on every
+# API-key request, hammering a hot table. last_used_at is an approximate
+# "last seen" — ~1min granularity per process is plenty.
+_LAST_USED_THROTTLE_S = 60.0
+_last_used_writes: dict = {}
+
+
+def _should_write_last_used(key_id) -> bool:
+    """True at most once per throttle window per key in this process."""
+    now = time.monotonic()
+    prev = _last_used_writes.get(key_id)
+    if prev is not None and now - prev < _LAST_USED_THROTTLE_S:
+        return False
+    _last_used_writes[key_id] = now
+    return True
 
 
 async def _resolve_principal(credentials: HTTPAuthorizationCredentials) -> dict:
@@ -51,7 +68,8 @@ async def _resolve_principal(credentials: HTTPAuthorizationCredentials) -> dict:
     if not api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    await execute_update_query(api_key_q.UPDATE_LAST_USED, [api_key["id"]])
+    if _should_write_last_used(api_key["id"]):
+        await execute_update_query(api_key_q.UPDATE_LAST_USED, [api_key["id"]])
     return {
         "team_id": api_key["team_id"],
         "role": None,

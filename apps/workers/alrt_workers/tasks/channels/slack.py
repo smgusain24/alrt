@@ -8,6 +8,7 @@ import httpx
 
 from alrt_workers.celery_app import celery_app
 from alrt_workers.db import execute_read_one_query, execute_insert_query, execute_update_query
+from alrt_workers.providers_cache import get_provider
 from alrt_workers.utils.crypto import get_fernet
 from alrt_workers.utils.retry import SLACK_RETRY
 from alrt_workers.utils.template import render
@@ -40,8 +41,8 @@ Q_GET_TEMPLATE = "SELECT id, name, channel, subject, body, variables FROM templa
 
 
 @celery_app.task(bind=True, **SLACK_RETRY.as_task_kwargs())
-def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None):
-    subscriber = execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
+def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, notification_id=None, overrides=None, subscriber=None):
+    subscriber = subscriber or execute_read_one_query(Q_GET_SUBSCRIBER, [uuid.UUID(subscriber_id)])
     if not subscriber:
         log.warning("Subscriber %s not found", subscriber_id)
         return
@@ -52,7 +53,7 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
         log.warning("Subscriber %s has no slack_user_id and no slack_channel_id in template", subscriber_id)
         return
 
-    provider = execute_read_one_query(Q_GET_SLACK_PROVIDER, [uuid.UUID(team_id)])
+    provider = get_provider(team_id, "slack", lambda: execute_read_one_query(Q_GET_SLACK_PROVIDER, [uuid.UUID(team_id)]))
     if not provider:
         log.warning("No Slack provider configured for team %s", team_id)
         return

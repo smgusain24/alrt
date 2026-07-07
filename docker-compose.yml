@@ -7,6 +7,8 @@ x-depends-healthy: &depends-healthy
     condition: service_healthy
   redis:
     condition: service_healthy
+  redis-cache:
+    condition: service_healthy
 
 services:
   postgres:
@@ -30,12 +32,51 @@ services:
     image: redis:7.4-alpine
     restart: unless-stopped
     ports: ["6379:6379"]
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    # AOF for durability (a broker/idempotency loss = duplicate sends); noeviction
+    # so we fail closed under memory pressure instead of silently dropping keys.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # Ephemeral cache Redis, split from the durable broker. A cache MAY evict under
+  # pressure (allkeys-lru) and needs no persistence — the opposite of the broker.
+  redis-cache:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    ports: ["6380:6379"]
+    command: ["redis-server", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Reference PgBouncer in transaction mode. The app pools are pgbouncer-safe
+  # (asyncpg statement_cache_size=0, psycopg3 prepare_threshold=None). To route
+  # through it, point DATABASE_URL at pgbouncer:6432; left direct-to-postgres by
+  # default so local dev is unchanged. Prod pool sizing/auth is deferred.
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: alrt
+      DB_PASSWORD: alrt
+      DB_NAME: alrt
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "1000"
+      DEFAULT_POOL_SIZE: "20"
+      AUTH_TYPE: scram-sha-256
+    ports: ["6432:6432"]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   api:
     <<: *app-env
@@ -45,6 +86,10 @@ services:
       dockerfile: apps/api/Dockerfile
       cache_from:
         - alrt-api:local
+    # Ephemeral caches (provider config) use the cache Redis; the broker Redis
+    # (REDIS_URL, from .env) keeps queues + durable idempotency keys.
+    environment:
+      CACHE_REDIS_URL: redis://redis-cache:6379
     ports: ["8000:8000"]
     depends_on: *depends-healthy
     healthcheck:
@@ -62,6 +107,8 @@ services:
       dockerfile: apps/workers/Dockerfile
       cache_from:
         - alrt-workers:local
+    environment:
+      CACHE_REDIS_URL: redis://redis-cache:6379
     depends_on: *depends-healthy
 
   beat:
@@ -91,3 +138,4 @@ services:
 
 volumes:
   pgdata:
+  redisdata:

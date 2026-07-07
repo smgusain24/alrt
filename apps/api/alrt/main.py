@@ -5,6 +5,7 @@ logging), mounts all route modules, and defines the lifespan that
 initializes the database pool and schema on startup.
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request  # noqa: F401 — Request needed for rate-limited health endpoint
@@ -16,7 +17,22 @@ from alrt.config import settings
 from alrt.db import init_pool, close_pool, ensure_schema
 from alrt.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from alrt.middleware.audit_log import AuditLogMiddleware
+from alrt.middleware.request_id import RequestIdMiddleware
 from alrt.routes import activity, analytics, auth, channels, events, invites, logs, notifications, providers, push_tokens, subscribers, teams, templates, websocket, workflows
+
+logger = logging.getLogger("alrt.main")
+
+
+def _init_sentry():
+    """Initialize Sentry if a DSN is configured. No-op (and dependency-free) otherwise."""
+    if not settings.sentry_dsn:
+        return
+    try:
+        import sentry_sdk
+        sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment)
+        logger.info("Sentry initialized")
+    except ImportError:
+        logger.warning("SENTRY_DSN is set but sentry-sdk is not installed")
 
 
 @asynccontextmanager
@@ -26,6 +42,7 @@ async def lifespan(app):
     On startup, initializes the asyncpg connection pool and ensures the
     database schema is up to date. On shutdown, closes the pool.
     """
+    _init_sentry()
     await init_pool(settings.database_url)
     await ensure_schema()
     yield
@@ -48,6 +65,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Added last so it is the outermost layer — every request gets a correlation id
+# before any other middleware or handler runs.
+app.add_middleware(RequestIdMiddleware)
 
 app.include_router(auth.router)
 app.include_router(channels.router)

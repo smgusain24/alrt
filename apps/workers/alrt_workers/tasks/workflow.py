@@ -16,12 +16,33 @@ from alrt_workers.db import (
     execute_read_one_query,
     execute_update_query,
 )
+from alrt_workers.serialization import json_safe
 
 logger = logging.getLogger("alrt.workers.workflow")
 
-Q_GET_EXECUTION = "SELECT id, team_id, workflow_id, subscriber_id, event_payload, channels, overrides, status FROM workflow_executions WHERE id = $1"
+
+class _BoundLogger(logging.LoggerAdapter):
+    """Prefixes every log line with the request + execution correlation ids so a
+    delivery can be traced back to the originating API request, regardless of the
+    (Celery-default) log formatter."""
+
+    def process(self, msg, kwargs):
+        extra = self.extra or {}
+        return f"[req={extra.get('request_id')} exec={extra.get('execution_id')}] {msg}", kwargs
+
+
+def _bind_logger(execution):
+    return _BoundLogger(logger, {
+        "request_id": execution.get("request_id"),
+        "execution_id": execution["id"],
+    })
+
+
+Q_GET_EXECUTION = "SELECT id, team_id, workflow_id, subscriber_id, event_payload, channels, overrides, status, request_id FROM workflow_executions WHERE id = $1"
 Q_GET_WORKFLOW = "SELECT id, team_id, name, event_name, category, definition, status FROM workflows WHERE id = $1"
-Q_GET_SUBSCRIBER = "SELECT id, team_id, external_id, email, name, slack_user_id, custom_properties, channel_preferences FROM subscribers WHERE id = $1 AND is_deleted = false"
+# Superset of every field any channel reads, so the snapshot threaded to channel
+# tasks (below) is complete and they can skip re-fetching the subscriber.
+Q_GET_SUBSCRIBER = "SELECT id, team_id, external_id, email, name, slack_user_id, phone_number, discord_webhook_url, telegram_chat_id, push_tokens, custom_properties, channel_preferences FROM subscribers WHERE id = $1 AND is_deleted = false"
 Q_UPDATE_EXECUTION_STATUS = "UPDATE workflow_executions SET status = $2, updated_at = now() WHERE id = $1"
 
 # Step-execution ledger
@@ -35,6 +56,7 @@ Q_GET_STEP_STATUS = "SELECT status FROM step_executions WHERE workflow_execution
 Q_SET_STEP_STATUS = "UPDATE step_executions SET status = $3, attempt = attempt + 1, updated_at = now() WHERE workflow_execution_id = $1 AND node_id = $2"
 Q_DELETE_STEP = "DELETE FROM step_executions WHERE workflow_execution_id = $1 AND node_id = $2"
 Q_HAS_OPEN_STEPS = "SELECT 1 FROM scheduled_steps WHERE workflow_execution_id = $1 AND status IN ('pending', 'processing') LIMIT 1"
+Q_HAS_OPEN_LEDGER = "SELECT 1 FROM step_executions WHERE workflow_execution_id = $1 AND status = 'running' LIMIT 1"
 
 
 def _load_context(execution):
@@ -59,6 +81,9 @@ def _load_context(execution):
     return {
         "workflow": workflow,
         "subscriber": subscriber,
+        # JSON-safe snapshot (UUID/datetime → str) threaded to channel tasks so
+        # they skip re-fetching the subscriber. Computed once per execution.
+        "subscriber_safe": json_safe(subscriber),
         "node_map": {n["id"]: n for n in nodes},
         "children_map": children_map,
     }
@@ -92,12 +117,13 @@ def _run_node_once(execution, ctx, node_id, node):
         allowed_channels=execution["channels"],
         overrides=execution.get("overrides") or {},
         workflow_category=ctx["workflow"].get("category"),
+        subscriber=ctx["subscriber_safe"],
     )
     execute_update_query(Q_SET_STEP_STATUS, [exec_id, node_id, result])
     return result
 
 
-def _walk(execution, ctx, start_ids):
+def _walk(execution, ctx, start_ids, log):
     """BFS the definition from start_ids, dispatching each node once via the ledger.
 
     Returns True if any branch paused (delay/DND), meaning the execution is not yet
@@ -120,7 +146,7 @@ def _walk(execution, ctx, start_ids):
         if not node:
             continue
 
-        logger.info("execution %s: node %s (%s)", execution["id"], current_id, node.get("type"))
+        log.info("node %s (%s)", current_id, node.get("type"))
         result = _run_node_once(execution, ctx, current_id, node)
 
         if result is None:
@@ -137,13 +163,21 @@ def _walk(execution, ctx, start_ids):
 
 
 def maybe_complete(execution_id):
-    """Mark the execution completed once no scheduled steps remain open.
+    """Mark the execution completed once no work remains open.
+
+    "Open" means either a pending/processing scheduled step, or a 'running' ledger
+    row — a node claimed but never resolved because the worker crashed mid-dispatch.
+    Holding the execution open on a stuck ledger row is what stops a dropped branch
+    from being silently completed; the reconciler reaps and re-drives it instead.
 
     Callers must mark the resuming scheduled step done *before* calling this, so a
     still-'processing' row for the current step doesn't hold the execution open.
     """
-    if not execute_read_one_query(Q_HAS_OPEN_STEPS, [execution_id]):
-        execute_update_query(Q_UPDATE_EXECUTION_STATUS, [execution_id, "completed"])
+    if execute_read_one_query(Q_HAS_OPEN_STEPS, [execution_id]):
+        return
+    if execute_read_one_query(Q_HAS_OPEN_LEDGER, [execution_id]):
+        return
+    execute_update_query(Q_UPDATE_EXECUTION_STATUS, [execution_id, "completed"])
 
 
 @celery_app.task(bind=True, max_retries=3)
@@ -167,7 +201,7 @@ def execute(self, execution_id):
         execute_update_query(Q_UPDATE_EXECUTION_STATUS, [execution["id"], "failed"])
         return
 
-    _walk(execution, ctx, ctx["children_map"].get(trigger["id"], []))
+    _walk(execution, ctx, ctx["children_map"].get(trigger["id"], []), _bind_logger(execution))
     maybe_complete(execution["id"])
 
 
@@ -200,4 +234,4 @@ def resume_from(execution_id, node_id):
         execute_update_query(Q_DELETE_STEP, [execution["id"], node_id])
         start_ids = [node_id]
 
-    _walk(execution, ctx, start_ids)
+    _walk(execution, ctx, start_ids, _bind_logger(execution))

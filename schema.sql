@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS workflow_executions (
     metadata JSONB NOT NULL DEFAULT '{}',
     status VARCHAR(20) NOT NULL DEFAULT 'running',
     idempotency_key VARCHAR(255),
+    request_id VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(team_id, idempotency_key)
@@ -169,6 +170,29 @@ CREATE TABLE IF NOT EXISTS templates (
     UNIQUE(team_id, name, channel)
 );
 
+CREATE TABLE IF NOT EXISTS bulk_batches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    workflow_id UUID NOT NULL REFERENCES workflows(id),
+    idempotency_key VARCHAR(255),
+    total INTEGER NOT NULL DEFAULT 0,
+    accepted INTEGER NOT NULL DEFAULT 0,
+    errors INTEGER NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS step_skips (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_execution_id UUID NOT NULL REFERENCES workflow_executions(id),
+    team_id UUID NOT NULL REFERENCES teams(id),
+    node_id VARCHAR(255) NOT NULL,
+    channel VARCHAR(20),
+    reason VARCHAR(50) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS team_invites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID NOT NULL REFERENCES teams(id),
@@ -201,3 +225,30 @@ CREATE INDEX IF NOT EXISTS idx_templates_team_id
 CREATE INDEX IF NOT EXISTS idx_notifications_active_window
     ON notifications(subscriber_id, created_at DESC)
     WHERE status NOT IN ('archived', 'dead_letter');
+
+-- Stream 3 reliability: reconciler scans for stale rows by (status, updated_at)
+CREATE INDEX IF NOT EXISTS idx_scheduled_steps_status_updated
+    ON scheduled_steps(status, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_step_executions_status_updated
+    ON step_executions(status, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_executions_status_updated
+    ON workflow_executions(status, updated_at);
+
+-- Async bulk trigger + skip records
+CREATE INDEX IF NOT EXISTS idx_bulk_batches_team ON bulk_batches(team_id);
+CREATE INDEX IF NOT EXISTS idx_bulk_batches_idem ON bulk_batches(team_id, idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_step_skips_execution ON step_skips(workflow_execution_id);
+CREATE INDEX IF NOT EXISTS idx_step_skips_team_created ON step_skips(team_id, created_at DESC);
+
+-- Stream 4a scale: FK/hot indexes the audit flagged as missing
+CREATE INDEX IF NOT EXISTS idx_we_workflow_id ON workflow_executions(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_we_subscriber_id ON workflow_executions(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_sched_steps_execution ON scheduled_steps(workflow_execution_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_team_created ON notifications(team_id, created_at DESC);
+
+-- BRIN on created_at: tiny, ideal for append-only time-range scans (analytics + retention)
+CREATE INDEX IF NOT EXISTS idx_notifications_created_brin ON notifications USING brin(created_at);
+CREATE INDEX IF NOT EXISTS idx_event_logs_created_brin ON event_logs USING brin(created_at);
+CREATE INDEX IF NOT EXISTS idx_we_created_brin ON workflow_executions USING brin(created_at);

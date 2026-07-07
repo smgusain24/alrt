@@ -6,12 +6,14 @@ keys, viewer users) must be blocked from mutating routes.
 """
 import uuid
 from datetime import datetime, timezone, timedelta
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from jose import jwt
 
+import alrt.deps as deps
 from alrt.config import settings
 from alrt.deps import get_current_principal, require_write
 
@@ -60,3 +62,18 @@ class TestRequireWrite:
     def test_allows_server_key(self):
         p = {"team_id": uuid.uuid4(), "role": None, "key_type": "server", "scope": None, "user_id": None}
         assert require_write(p) is p
+
+
+class TestLastUsedThrottle:
+
+    async def test_last_used_written_once_within_window(self):
+        """Two rapid API-key requests write api_keys.last_used_at only once."""
+        api_key = {"id": uuid.uuid4(), "team_id": uuid.uuid4(), "key_type": "server"}
+        deps._last_used_writes.clear()
+        with patch("alrt.deps.execute_read_one_query", new_callable=AsyncMock, return_value=api_key), \
+             patch("alrt.deps.execute_update_query", new_callable=AsyncMock) as mock_update:
+            # A non-JWT raw key falls through to the API-key hash path.
+            await deps._resolve_principal(_creds("alrt_sk_rawkey"))
+            await deps._resolve_principal(_creds("alrt_sk_rawkey"))
+
+        assert mock_update.await_count == 1
