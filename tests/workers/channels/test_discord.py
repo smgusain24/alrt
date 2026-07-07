@@ -145,6 +145,28 @@ class TestDiscordHappyPath:
             call_url = mock_httpx.post.call_args[0][0]
             assert call_url == "https://discord.com/api/webhooks/456/def"
 
+    def test_ssrf_webhook_blocked_no_send(self):
+        """A subscriber webhook pointed at a non-Discord/internal host is blocked."""
+        sub = make_subscriber(discord_webhook_url="https://169.254.169.254/api/webhooks/1/x")
+
+        with patch("alrt_workers.tasks.channels.discord.execute_read_one_query", return_value=sub), \
+             patch("alrt_workers.tasks.channels.discord.execute_insert_query") as mock_insert, \
+             patch("alrt_workers.tasks.channels.discord.execute_update_query") as mock_update, \
+             patch("alrt_workers.tasks.channels.discord.httpx") as mock_httpx:
+
+            from alrt_workers.tasks.channels.discord import deliver
+            deliver(
+                _mock_self(),
+                str(uuid.uuid4()), str(sub["id"]), str(uuid.uuid4()),
+                {"title": "x", "body": "y"},
+                {},
+            )
+
+            # Blocked before any notification row or HTTP call
+            mock_httpx.post.assert_not_called()
+            mock_insert.assert_not_called()
+            mock_update.assert_not_called()
+
     def test_plain_content_when_embed_disabled(self):
         """embed_enabled=False -> plain content message instead of embed."""
         # Arrange

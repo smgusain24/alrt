@@ -4,7 +4,10 @@ Contains Slack OAuth connect/callback, Discord webhook configuration,
 and WhatsApp Cloud API webhook verification and status updates.
 """
 
+import hashlib
+import hmac
 import json
+import logging
 import urllib.parse
 import uuid
 
@@ -15,9 +18,11 @@ from fastapi.responses import RedirectResponse
 
 from alrt.config import settings
 from alrt.db import execute_insert_query, execute_update_query
-from alrt.deps import get_current_team
+from alrt.deps import get_current_team, require_write
 from alrt.middleware.rate_limit import limiter
 from alrt.queries import providers as prov_q
+
+log = logging.getLogger("alrt.channels")
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 
@@ -128,6 +133,7 @@ async def slack_oauth_callback(code: str, state: str):
 async def update_discord_config(
     request: Request,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     """Save the Discord webhook URL for the team's Discord provider.
 
@@ -151,6 +157,34 @@ async def update_discord_config(
 
 # --- WhatsApp Webhooks ---
 
+def _whatsapp_verify_token() -> str:
+    """Meta GET-challenge verify token; falls back to the legacy derived value."""
+    return settings.whatsapp_verify_token or settings.encryption_key[:16]
+
+
+def _verify_whatsapp_signature(request: Request, raw: bytes) -> bool:
+    """Verify Meta's X-Hub-Signature-256 HMAC over the raw request body.
+
+    Returns True when the signature matches. When no app secret is configured,
+    verification is skipped (dev/optional-config) and a warning is logged.
+    """
+    secret = settings.whatsapp_app_secret
+    if not secret:
+        # Fail closed in production so a forgotten env var can't silently disable
+        # the control; fail open elsewhere so dev/self-hosted works without it.
+        if settings.environment == "production":
+            log.error("WhatsApp webhook rejected: WHATSAPP_APP_SECRET is required in production")
+            return False
+        log.warning("WhatsApp webhook signature NOT verified: WHATSAPP_APP_SECRET is unset")
+        return True
+
+    sig = request.headers.get("X-Hub-Signature-256", "")
+    if not sig.startswith("sha256="):
+        return False
+    expected = "sha256=" + hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(sig, expected)
+
+
 @router.get("/webhooks/whatsapp")
 async def whatsapp_webhook_verify(request: Request):
     """Handle Meta webhook verification challenge (GET hub.challenge)."""
@@ -158,16 +192,27 @@ async def whatsapp_webhook_verify(request: Request):
     token = request.query_params.get("hub.verify_token")
     challenge = request.query_params.get("hub.challenge")
 
-    verify_token = settings.encryption_key[:16]
-    if mode == "subscribe" and token == verify_token:
+    if mode == "subscribe" and token == _whatsapp_verify_token():
         return int(challenge)
     raise HTTPException(status_code=403, detail="Verification failed")
 
 
 @router.post("/webhooks/whatsapp")
 async def whatsapp_webhook(request: Request):
-    """Handle Meta WhatsApp webhook delivery status updates (sent/delivered/read/failed)."""
-    body = await request.json()
+    """Handle Meta WhatsApp webhook delivery status updates (sent/delivered/read/failed).
+
+    Rejects forged callbacks by verifying Meta's HMAC signature over the raw body.
+    Status rows are matched by the Meta message id (``wamid``), which is globally
+    unique per message, so an update only ever touches the sending team's row.
+    """
+    raw = await request.body()
+    if not _verify_whatsapp_signature(request, raw):
+        raise HTTPException(status_code=403, detail="Invalid signature")
+
+    try:
+        body = json.loads(raw)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
 
     if body.get("object") != "whatsapp_business_account":
         return {"ok": True}

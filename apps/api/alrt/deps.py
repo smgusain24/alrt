@@ -11,7 +11,7 @@ import hashlib
 import time
 import uuid
 
-from fastapi import Depends, HTTPException, Security
+from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt, JWTError
 
@@ -19,7 +19,21 @@ from alrt.config import settings
 from alrt.db import execute_read_one_query, execute_update_query
 from alrt.queries import api_keys as api_key_q, users as user_q
 
-security = HTTPBearer()
+# auto_error=False so a missing Authorization header falls through to the
+# httponly session cookie instead of erroring — the dashboard authenticates
+# via the cookie, API clients via the Bearer header.
+security = HTTPBearer(auto_error=False)
+
+_COOKIE_NAME = "alrt_token"
+
+
+def _extract_token(request, credentials):
+    """Bearer header first, then the httponly session cookie."""
+    if credentials:
+        return credentials.credentials
+    if request is not None:
+        return request.cookies.get(_COOKIE_NAME)
+    return None
 
 # Throttle the api_keys.last_used_at write: without this it fires on every
 # API-key request, hammering a hot table. last_used_at is an approximate
@@ -38,14 +52,12 @@ def _should_write_last_used(key_id) -> bool:
     return True
 
 
-async def _resolve_principal(credentials: HTTPAuthorizationCredentials) -> dict:
-    """Resolve a Bearer token to a principal dict.
+async def _resolve_principal(raw_key: str) -> dict:
+    """Resolve a raw token to a principal dict.
 
     Tries JWT first (dashboard sessions and subscriber WS tokens), then falls back
     to an API-key hash lookup. Returns keys: team_id, role, key_type, scope, user_id.
     """
-    raw_key = credentials.credentials
-
     try:
         payload = jwt.decode(raw_key, settings.api_secret_key, algorithms=["HS256"])
     except JWTError:
@@ -80,6 +92,7 @@ async def _resolve_principal(credentials: HTTPAuthorizationCredentials) -> dict:
 
 
 async def get_current_principal(
+    request: Request = None,
     credentials: HTTPAuthorizationCredentials = Security(security),
 ) -> dict:
     """Resolve the calling principal, rejecting subscriber WS tokens.
@@ -87,7 +100,10 @@ async def get_current_principal(
     Subscriber-scoped tokens are minted for end-user browsers (in-app WebSocket
     delivery only) and must never authenticate team/API endpoints.
     """
-    principal = await _resolve_principal(credentials)
+    token = _extract_token(request, credentials)
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    principal = await _resolve_principal(token)
     if principal["scope"] == "subscriber":
         raise HTTPException(status_code=401, detail="Subscriber tokens cannot access team resources")
     return principal
@@ -114,6 +130,7 @@ def require_write(principal: dict = Depends(get_current_principal)) -> dict:
 
 
 async def get_current_user(
+    request: Request = None,
     credentials: HTTPAuthorizationCredentials = Security(security),
 ) -> dict:
     """Return the full user record for a JWT-authenticated dashboard session.
@@ -121,7 +138,9 @@ async def get_current_user(
     Requires a JWT with a ``user_id`` claim; API keys and subscriber tokens are
     rejected.
     """
-    token = credentials.credentials
+    token = _extract_token(request, credentials)
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = jwt.decode(token, settings.api_secret_key, algorithms=["HS256"])
         user_id = payload.get("user_id")

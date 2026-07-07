@@ -11,6 +11,7 @@ from alrt_workers.db import execute_read_one_query, execute_insert_query, execut
 from alrt_workers.providers_cache import get_provider
 from alrt_workers.utils.crypto import get_fernet
 from alrt_workers.utils.retry import DISCORD_RETRY
+from alrt_workers.utils.ssrf import DISCORD_WEBHOOK_HOSTS, UnsafeUrlError, assert_safe_url
 from alrt_workers.utils.template import render
 
 log = logging.getLogger(__name__)
@@ -67,6 +68,15 @@ def deliver(self, execution_id, subscriber_id, team_id, template_data, payload, 
 
     if not webhook_url:
         log.warning("Subscriber %s has no discord_webhook_url and team %s has no Discord provider", subscriber_id, team_id)
+        return
+
+    # Defense-in-depth: reject a stored/legacy webhook URL that isn't a real
+    # Discord webhook host before we ever POST to it (API validation is the
+    # first line; this covers rows written before it or via direct DB access).
+    try:
+        assert_safe_url(webhook_url, allowed_hosts=DISCORD_WEBHOOK_HOSTS)
+    except UnsafeUrlError as exc:
+        log.warning("Blocked unsafe discord webhook for subscriber %s: %s", subscriber_id, exc)
         return
 
     overrides = overrides or {}
@@ -150,6 +160,7 @@ def _send_discord_message(webhook_url, title, description, color_hex, footer, ti
             webhook_url,
             json={"content": description[:2000]},
             timeout=10,
+            follow_redirects=False,
         )
         if resp.status_code not in (200, 204):
             _check_response(resp)
@@ -181,6 +192,7 @@ def _send_discord_message(webhook_url, title, description, color_hex, footer, ti
         webhook_url,
         json={"embeds": [embed]},
         timeout=10,
+        follow_redirects=False,
     )
     # Discord returns 204 No Content on success; 200 is also acceptable
     if resp.status_code not in (200, 204):

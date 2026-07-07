@@ -110,6 +110,7 @@ async def delete_team_api_key(
     team_id: uuid.UUID,
     key_id: uuid.UUID,
     current_team: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     """Revoke (soft-delete) an API key by marking it inactive."""
     if current_team != team_id:

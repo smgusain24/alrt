@@ -47,6 +47,15 @@ class Settings(BaseSettings):
     rate_limit_write: str = "60/minute"
     rate_limit_read: str = "120/minute"
     rate_limit_public: str = "30/minute"
+    # Tight limit on unauthenticated credential endpoints (login/signup) to blunt
+    # brute-force / credential-stuffing. Keyed on client IP.
+    rate_limit_auth: str = "5/minute"
+
+    # Meta WhatsApp webhook signing secret (app secret). When set, inbound
+    # webhook bodies are HMAC-verified; when empty, verification is skipped (dev).
+    whatsapp_app_secret: str = ""
+    # Meta webhook verify token (GET challenge). Falls back to encryption_key[:16].
+    whatsapp_verify_token: str = ""
 
     # Observability (optional — Sentry is a no-op when the DSN is empty)
     sentry_dsn: str = ""

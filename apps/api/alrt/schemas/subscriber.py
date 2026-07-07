@@ -1,7 +1,26 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Discord webhooks only ever live on these hosts. Pinning the prefix at ingestion
+# stops a subscriber webhook URL from being used to SSRF internal hosts
+# (e.g. http://169.254.169.254/...) when a worker later POSTs to it.
+_DISCORD_WEBHOOK_PREFIXES = (
+    "https://discord.com/api/webhooks/",
+    "https://discordapp.com/api/webhooks/",
+)
+
+
+def _validate_discord_webhook(v):
+    if not v:
+        return v
+    v = v.strip()
+    if not v:
+        return None
+    if not v.startswith(_DISCORD_WEBHOOK_PREFIXES):
+        raise ValueError("discord_webhook_url must be a https://discord.com/api/webhooks/ URL")
+    return v
 
 
 class DndWindow(BaseModel):
@@ -32,6 +51,8 @@ class CreateSubscriber(BaseModel):
     custom_properties: dict = Field(default_factory=dict)
     channel_preferences: dict = Field(default_factory=dict)
 
+    _v_discord = field_validator("discord_webhook_url")(_validate_discord_webhook)
+
 
 class UpdateSubscriber(BaseModel):
     email: str | None = None
@@ -42,6 +63,8 @@ class UpdateSubscriber(BaseModel):
     telegram_chat_id: str | None = None
     custom_properties: dict | None = None
     channel_preferences: dict | None = None
+
+    _v_discord = field_validator("discord_webhook_url")(_validate_discord_webhook)
 
 
 class SubscriberResponse(BaseModel):

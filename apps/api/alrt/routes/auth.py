@@ -8,13 +8,14 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from jose import jwt
 
 from alrt.config import settings
 from alrt.db import execute_read_one_query, execute_insert_query, execute_update_query
 from alrt.queries import users as user_q, teams as team_q
 from alrt.deps import get_current_user
+from alrt.middleware.rate_limit import limiter
 from alrt.schemas.auth import AuthResponse, LoginRequest, SignupRequest, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -46,7 +47,8 @@ def _create_jwt(user_id: str, team_id: str, email: str, role: str) -> str:
 
 
 @router.post("/signup", response_model=AuthResponse, status_code=201)
-async def signup(body: SignupRequest, response: Response):
+@limiter.limit(settings.rate_limit_auth)
+async def signup(request: Request, body: SignupRequest, response: Response):
     """Register a new user, create their team, and issue a JWT cookie.
 
     The signup flow creates a Team first, then a User linked to that team.
@@ -73,12 +75,14 @@ async def signup(body: SignupRequest, response: Response):
         key="alrt_token", value=token, httponly=True,
         secure=settings.cookie_secure, samesite="lax", max_age=JWT_EXPIRY_HOURS * 3600,
     )
+    response.headers["Cache-Control"] = "no-store"
 
     return AuthResponse(user=user, team_id=team_id, token=token)
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(body: LoginRequest, response: Response):
+@limiter.limit(settings.rate_limit_auth)
+async def login(request: Request, body: LoginRequest, response: Response):
     """Authenticate with email and password, then issue a JWT cookie.
 
     Updates the user's ``last_login_at`` timestamp on success.
@@ -102,6 +106,7 @@ async def login(body: LoginRequest, response: Response):
         key="alrt_token", value=token, httponly=True,
         secure=settings.cookie_secure, samesite="lax", max_age=JWT_EXPIRY_HOURS * 3600,
     )
+    response.headers["Cache-Control"] = "no-store"
 
     return AuthResponse(user=user, team_id=user["team_id"], token=token)
 

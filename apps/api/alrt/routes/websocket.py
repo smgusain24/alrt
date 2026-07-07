@@ -10,7 +10,7 @@ import redis.asyncio as aioredis
 
 from alrt.config import settings
 from alrt.db import execute_read_one_query, execute_update_query
-from alrt.deps import get_current_team
+from alrt.deps import get_current_team, require_write
 from alrt.middleware.rate_limit import limiter
 from alrt.queries import subscribers as sub_q, notifications as notif_q
 
@@ -33,6 +33,7 @@ async def create_subscriber_token(
     request: Request,
     external_id: str,
     team_id: uuid.UUID = Depends(get_current_team),
+    _: dict = Depends(require_write),
 ):
     subscriber = await execute_read_one_query(
         sub_q.FIND_BY_EXTERNAL_ID, [team_id, external_id]

@@ -26,6 +26,26 @@ SKIP_PATHS = {"/health", "/docs", "/openapi.json"}
 SKIP_PREFIXES = ("/ws",)
 MAX_BODY_SIZE = 10 * 1024  # 10KB
 
+# Keys whose values are always redacted, at any nesting depth.
+SENSITIVE_KEYS = {
+    "password", "password_hash", "secret", "token", "api_key", "apikey",
+    "access_token", "refresh_token", "auth_token", "bot_token", "client_secret",
+    "webhook_url", "discord_webhook_url", "smtp_password", "encryption_key",
+    "private_key", "authorization", "credentials", "config",
+}
+
+# Routes whose bodies are entirely credential payloads — never store them at all.
+CREDENTIAL_PREFIXES = ("/providers", "/channels")
+
+
+def _scrub(value):
+    """Recursively redact sensitive keys in a parsed JSON body."""
+    if isinstance(value, dict):
+        return {k: ("***" if k.lower() in SENSITIVE_KEYS else _scrub(v)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_scrub(v) for v in value]
+    return value
+
 
 def _extract_team_id_from_jwt(request: Request):
     """Best-effort team_id extraction from JWT. Returns UUID or None."""
@@ -116,18 +136,18 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         # Capture request body for mutating methods
         body = None
         if method in ("POST", "PUT", "PATCH"):
-            try:
-                raw = await request.body()
-                if len(raw) <= MAX_BODY_SIZE:
-                    body = json.loads(raw)
-                    # Scrub sensitive fields
-                    for key in ("password", "password_hash", "secret", "token"):
-                        if key in body:
-                            body[key] = "***"
-                else:
-                    body = {"_truncated": True, "_size": len(raw)}
-            except Exception:
-                body = None
+            if any(path.startswith(p) for p in CREDENTIAL_PREFIXES):
+                # Credential routes: never persist the body — it's all secrets.
+                body = {"_redacted": "credential route"}
+            else:
+                try:
+                    raw = await request.body()
+                    if len(raw) <= MAX_BODY_SIZE:
+                        body = _scrub(json.loads(raw))
+                    else:
+                        body = {"_truncated": True, "_size": len(raw)}
+                except Exception:
+                    body = None
 
         start = time.time()
         response = await call_next(request)

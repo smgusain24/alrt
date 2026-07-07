@@ -6,6 +6,7 @@ keys, viewer users) must be blocked from mutating routes.
 """
 import uuid
 from datetime import datetime, timezone, timedelta
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -33,16 +34,30 @@ class TestPrincipalAuth:
         """A subscriber-scoped token must not authenticate team endpoints."""
         token = _jwt(team_id=str(uuid.uuid4()), sub=str(uuid.uuid4()), scope="subscriber")
         with pytest.raises(HTTPException) as exc:
-            await get_current_principal(_creds(token))
+            await get_current_principal(credentials=_creds(token))
         assert exc.value.status_code == 401
 
     async def test_dashboard_jwt_accepted(self):
         """A normal dashboard JWT resolves to its team and role."""
         team_id = str(uuid.uuid4())
         token = _jwt(team_id=team_id, user_id=str(uuid.uuid4()), role="admin")
-        principal = await get_current_principal(_creds(token))
+        principal = await get_current_principal(credentials=_creds(token))
         assert str(principal["team_id"]) == team_id
         assert principal["role"] == "admin"
+
+    async def test_no_token_is_401(self):
+        """No Bearer header and no cookie → 401, not a 403 or 500."""
+        with pytest.raises(HTTPException) as exc:
+            await get_current_principal(request=None, credentials=None)
+        assert exc.value.status_code == 401
+
+    async def test_cookie_token_accepted(self):
+        """When there's no Bearer header, the httponly cookie authenticates."""
+        team_id = str(uuid.uuid4())
+        token = _jwt(team_id=team_id, user_id=str(uuid.uuid4()), role="admin")
+        request = SimpleNamespace(cookies={"alrt_token": token})
+        principal = await get_current_principal(request=request, credentials=None)
+        assert str(principal["team_id"]) == team_id
 
 
 class TestRequireWrite:
@@ -73,7 +88,7 @@ class TestLastUsedThrottle:
         with patch("alrt.deps.execute_read_one_query", new_callable=AsyncMock, return_value=api_key), \
              patch("alrt.deps.execute_update_query", new_callable=AsyncMock) as mock_update:
             # A non-JWT raw key falls through to the API-key hash path.
-            await deps._resolve_principal(_creds("alrt_sk_rawkey"))
-            await deps._resolve_principal(_creds("alrt_sk_rawkey"))
+            await deps._resolve_principal("alrt_sk_rawkey")
+            await deps._resolve_principal("alrt_sk_rawkey")
 
         assert mock_update.await_count == 1

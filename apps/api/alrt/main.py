@@ -18,6 +18,7 @@ from alrt.db import init_pool, close_pool, ensure_schema
 from alrt.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from alrt.middleware.audit_log import AuditLogMiddleware
 from alrt.middleware.request_id import RequestIdMiddleware
+from alrt.middleware.security_headers import SecurityHeadersMiddleware
 from alrt.routes import activity, analytics, auth, channels, events, invites, logs, notifications, providers, push_tokens, subscribers, teams, templates, websocket, workflows
 
 logger = logging.getLogger("alrt.main")
@@ -57,6 +58,9 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(AuditLogMiddleware)
+
+# Security headers on every response (CSP/HSTS/nosniff/frame-ancestors).
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
